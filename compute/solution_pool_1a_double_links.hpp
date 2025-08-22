@@ -85,10 +85,11 @@ void recurse_1(
         int main_index = first.front()[1];
         double slope = -new_criteria[main_index][var_index];
         first.pop_front();
-        std::vector<double> new_degrees(degrees.size());
+
+        std::vector<double> new_degrees = degrees;
         for (int i = 0;  i <= degrees[main_index] / slope; i++) {
             point[var_index - 1] = i;
-            new_degrees[main_index] = degrees[main_index] - i * slope;
+            new_degrees[main_index] -= i * slope;
             recurse_1(
                 new_criteria, 
                 new_degrees, 
@@ -218,9 +219,7 @@ void pooling(
     std::vector<std::vector<double>> criteria(mains, std::vector<double>(size));
     std::vector<std::vector<double>> new_criteria(mains, std::vector<double>(size));
     std::list<std::vector<std::vector<double>>> queue = {main_inequalities};
-    int yim = 0;
     while (true) {
-        yim++;
         criteria = queue.front();
         queue.pop_front();
         for (int i = 0; i < support; i++) {
@@ -304,12 +303,6 @@ void pooling(
                                                                 degrees.push_back(x[0]);
                                                             }
                                                             std::vector<int> point(size - 1, 0);
-                                                            for (auto x: new_criteria) {
-                                                                for (auto y : x) {
-                                                                    std::cout << y << " ";
-                                                                }
-                                                                std::cout << std::endl;
-                                                            }
                                                             recurse_1(
                                                                 new_criteria, 
                                                                 degrees, 
