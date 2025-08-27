@@ -804,11 +804,13 @@ def find_expressions(relations, assignment, braid_states):
                 alias, sum_vars = sum_alias
                 valid_list = [alias] + sum_vars
                 if all([v in list(assignment.keys()) for v in valid_list]):
-                    expression = assignment[alias] - assignment[sum_vars[0]] - assignment[sum_vars[1]]
+                    if len(sum_vars) > 0: # modifying: bad coding practice
+                        expression = assignment[alias] - assignment[sum_vars[0]] - assignment[sum_vars[1]]
             else:
-                valid_list = relation.inputs + relation.outputs
-                if all([v in list(assignment.keys()) for v in valid_list]):
-                    expression = assignment[relation.inputs[0]] + assignment[relation.inputs[1]] - assignment[relation.outputs[0]] - assignment[relation.outputs[1]]
+                if len(relation.inputs) > 0:# modifying: bad coding practice
+                    valid_list = relation.inputs + relation.outputs
+                    if all([v in list(assignment.keys()) for v in valid_list]):
+                        expression = assignment[relation.inputs[0]] + assignment[relation.inputs[1]] - assignment[relation.outputs[0]] - assignment[relation.outputs[1]]
             if expression != None and expression != 0:
                 expressions.append(expression)
     return expressions
@@ -1000,7 +1002,8 @@ def subs(expr):
 
 def minimum_degree_symbolic(assignment, braid_states):
     conditions = {val:zero for val in range(braid_states.n_components)}
-    for index in range(braid_states.n_strands - 1):
+    for index in range(0, braid_states.n_strands): # starting at 0 seems to be correct for links with >= 2 components
+        print(braid_states.closed_strand_components)
         conditions[braid_states.closed_strand_components[index]] -= 1/2
     for index in range(braid_states.n_crossings):
         crossing_type = braid_states.r_matrices[index]
@@ -1020,6 +1023,9 @@ def minimum_degree_symbolic(assignment, braid_states):
             conditions[braid_states.bottom_crossing_components[index]] -= (assignment[in1] + assignment[out2] + 1) / 4
         else:
             raise Exception("Crossing type is not one of the four acceptable values: 'R1', 'R2', 'R3', or 'R4'.")
+    for value in conditions.values():
+        print(value.var)
+    # quit()
     return conditions
 
 def inequality_manager(relations, assignment, braid_states):
@@ -1118,7 +1124,6 @@ def breadth_first_search(criteria, multiples, singlesigns, n_components, return_
 
         if status == 200:
             print(criteria[0])
-            quit()
             if return_branching:
                 return_list = []
                 for index in range(len(queue[0][1][0])):
@@ -1400,6 +1405,11 @@ def check_sign_assignment(degree, relations, braid_states):
 def czech_sign_assignment(degree, relations, braid_states):
     assignment = symbolic_variable_assignment(relations, braid_states)
     criteria, multiples, singlesigns = process_assignment(assignment, braid_states, relations)
+
+    for value in criteria.values():
+        print(expression_minimum(value, singlesigns))
+    # quit()
+
     for (key, value) in criteria.items():
         criteria[key] = degree - value
     if not integral_bounded(multiples + list(criteria.values()), singlesigns):
@@ -1463,11 +1473,15 @@ def ilp(degree, relations, braid_states, write_to):
     check = czech_sign_assignment(degree, relations, braid_states)
     if check is None:
         return None
-    
+
     criteria = check['criteria']
     multiples = check['multiples']
     singlesigns = check['single_signs']
     assignment = check['assignment']
+
+    for value in criteria.values():
+        print(value.var)
+    # quit()
 
     criteria = list(criteria.values())
 
@@ -1563,7 +1577,7 @@ def ilp(degree, relations, braid_states, write_to):
             f.write(str(abs(braid_states.braid[c])) + ",")
             f.write(str(braid_states.r_matrices[c])[1] + ",")
         f.write("\n")
-        for c in range(braid_states.n_strands - 1):
+        for c in range(1, braid_states.n_strands):
             f.write(str(braid_states.closed_strand_components[c]) + ",")
         f.write("\n")
         for c in range(braid_states.n_crossings):
