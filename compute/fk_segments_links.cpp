@@ -46,7 +46,6 @@ class FK {
                     numerical_assignment[i][j] = dot(assignment[i][j], angles);
                 }
             }
-            // std::cout << "ININININ\n";
             // std::vector<int> point = {};
             // for (auto x : angles) {
             //     std::cout << x << " ";
@@ -106,6 +105,7 @@ class FK {
                 q_acc_double -= numerical_assignment[0][i + 1];
                 x_acc_double[closed_strand_components[i]] -= 0.5;
             }
+            x_acc_double[0] -= 0.5;
 
             for (int ind = 0; ind < crossings; ind++) {
                 int i = numerical_assignment[matrices[ind][0][0]][matrices[ind][0][1]];
@@ -121,7 +121,7 @@ class FK {
                 }
                 else if (r[ind] == 4) { 
                     q_acc_double -= (i + k + m * (m + 1) - i * (i + 1)) / 2.0 + i * k;
-                    x_acc_double[t] -= ((2 * j - i + m + 1) / 4.0);
+                    x_acc_double[t] -= ((3 * j - k + 1) / 4.0);
                     x_acc_double[b] -= ((i + m + 1) / 4.0);
                     if ((j - k) % 2 == 0) {
                         init *= -1;
@@ -136,7 +136,8 @@ class FK {
                     }
                 }
             }
-            int q_acc = q_acc_double;
+            std::cout << "q_acc_double : " <<  q_acc_double << "\n";
+            int q_acc = static_cast<int>(std::floor(q_acc_double)); // currently, we are losing the actual q powers because rounding down; later, implement output with the exact q powers
             std::vector<int> x_acc(components);
             std::vector<int> X_MAX(components);
             std::vector<int> blocks(components);
@@ -149,8 +150,13 @@ class FK {
                 }
             }
             int prod = blocks[components - 1] * (X_MAX[components - 1] + 1);
-            // std::cout << "x_acc:" << x_acc_double[0] << "\n\n";
-            std::cout << "x_acc:" << x_acc_double[0] << " "<< x_acc_double[1] << "\n\n"; // modifying: x_acc's are coming out to half-integers in general
+            // std::cout << "x_acc: " << x_acc_double[0] << "\n\n";
+            std::cout << "x_acc: " << x_acc_double[0] << " "<< x_acc_double[1] << "\n\n"; // modifying: x_acc's are coming out to half-integers in general
+            // exit(0);
+            // if (x_acc_double[0] > 15) {
+            //     std::cout << "exiting due to x_acc large enough\n";
+            //     exit(0);
+            // }
             std::vector<bilvector<int>> term(prod,  bilvector<int>(0, 1, 20, 0)); // error is the degree issue; modifying
             term[0][0] = init;
             for (int ind = 0; ind < crossings; ind++) {
@@ -201,7 +207,7 @@ class FK {
                 else if (r[ind] == 3) {  
                     int t = top_crossing_components[ind];
                     int i = numerical_assignment[matrices[ind][0][0]][matrices[ind][0][1]];
-                    int m = numerical_assignment[matrices[ind][3][0]][matrices[ind][3][1]];    
+                    int m = numerical_assignment[matrices[ind][3][0]][matrices[ind][3][1]]; 
                     x_q_inv_pochhammer(term, i, m + 1, t, components, X_MAX, blocks);
                 }
                 else {
@@ -211,22 +217,7 @@ class FK {
                     x_q_pochhammer(term, m, i + 1, t, components, X_MAX, blocks);
                 }
             } 
-            // for (int w = 0; w < X_MAX[0] + 1; w++) {
-            //     for (int j = term[w].get_max_nindex(); j <= term[w].get_max_pindex(); j++) {
-            //         std::cout << term[w][j] << " ";
-            //     }
-            //     std::cout << std::endl;
-            // } 
-            // std::cout << "q_acc : " << q_acc << "\n";
             offset_addition(acc, term, x_acc, q_acc, components, X_MAX, 1, acc_blocks, blocks);
-            // std::cout << "acc : \n";
-            // for (int w = 0; w < degree + 1; w++) {
-            //     for (int j = acc[w].get_max_nindex(); j <= acc[w].get_max_pindex(); j++) {
-            //         std::cout << acc[w][j] << " ";
-            //     }
-            //     std::cout << std::endl;
-            // } 
-            // std::cout << "acc completo\n";
         }
         void write (std::string file_) {
             std::ofstream file;
@@ -403,8 +394,33 @@ class FK {
             std::vector<int> increment_offset(components);
             increment_offset[0] = 1;
             std::vector<int> maxima(components, degree - 1);
+
+            // for (int w = 0; w < degree + 1; w++) {
+            //     for (int a = 0; a < degree + 1; a++) {
+            //         for (int j = acc[w * (degree + 1) + a].get_max_nindex(); j <= acc[w * (degree + 1) + a].get_max_pindex(); j++) {
+            //             std::cout << acc[w * (degree + 1) + a][j] << " ";
+            //         }
+            //         std::cout << "\t";
+            //     }
+            //     std::cout << "\n";
+            // }
+            // std::cout << std::endl;
+            // std::cout << acc_blocks.size() << " " << increment_offset.size() << " " << components << " " << maxima.size() << "\n";
             offset_addition(acc, acc, increment_offset, 0, components, maxima, -1, acc_blocks, acc_blocks);
             write(outfile_);
+
+            // for (int w = 0; w < degree + 1; w++) {
+            //     for (int a = 0; a < degree + 1; a++) {
+            //         for (int j = acc[w * (degree + 1) + a].get_max_nindex(); j <= acc[w * (degree + 1) + a].get_max_pindex(); j++) {
+            //             std::cout << acc[w * (degree + 1) + a][j] << " ";
+            //         }
+            //         std::cout << "\t";
+            //     }
+            //     std::cout << "\n";
+            // }
+            std::cout << std::endl;
+
+
         }
 };
 
@@ -440,10 +456,14 @@ int main(int argc, char* argv[]) {
     //     std::cout << x << "\n";
     // }
     // FK(braid, inversion_data, degree, file);
-    FK("davide/A", "davide/A");
-    FK("davide/B", "davide/B");
-    FK("davide/C", "davide/C");
-    FK("davide/D", "davide/D");
+
+    // FK("Data/Input/L9n11{0}", "Data/Output/L9n11{0}");
+    FK("Data/Input/L9n11{1}", "Data/Output/L9n11{1}");
+    // FK("Data/Input/L9n11{1}2", "Data/Output/L9n11{1}2");
+    // FK("Data/Input/Hopf", "Data/Output/Hopf");
+    // FK("Data/Input/10_60", "Data/Output/10_60");
+    // FK("Data/Input/8_20", "Data/Output/8_20");
+    // FK("Data/Input/Whitehead", "Data/Output/Whitehead");
 }
 
 // implement multithreading at top level of recursion
