@@ -22,9 +22,9 @@ void recurse_2(
         int inequality = bounds.front()[1];
         bounds.pop_front();
         int upper = supporting_inequalities[inequality][0];
-        for (int i = 1; i < point.size() + 1; i++) {
-            if (i != 1 + index) {
-                upper += supporting_inequalities[inequality][i] * point[i - 1];
+        for (int i = 0; i < point.size(); i++) {
+            if (i != index) {
+                upper += supporting_inequalities[inequality][1 + i] * point[i];
             }
         }
         upper /= -supporting_inequalities[inequality][1 + index];
@@ -85,11 +85,10 @@ void recurse_1(
         int main_index = first.front()[1];
         double slope = -new_criteria[main_index][var_index];
         first.pop_front();
-
         std::vector<double> new_degrees = degrees;
         for (int i = 0;  i <= degrees[main_index] / slope; i++) {
             point[var_index - 1] = i;
-            new_degrees[main_index] -= i * slope;
+            new_degrees[main_index] = degrees[main_index] - i * slope; // eventually change this to constant decrements by "slope", to avoid re-accessing the "degrees" vector
             recurse_1(
                 new_criteria, 
                 new_degrees, 
@@ -112,6 +111,8 @@ void recurse_1(
         );
     }
 }
+
+// NEED TO HANDLE CASE WHEN CRITERION-BOUNDED VARIABLES OVERLAP, LEADING TO INCONSISTENCIES BETWEEN CRITERIA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 void pooling(
     std::vector<std::vector<double>> main_inequalities, 
@@ -174,7 +175,7 @@ void pooling(
             );
             return;
         }
-        int index = 0;
+        int index = 0; // issue: you're only searching through supporting inequalities here, but you also want to search through criteria to bound the variables !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         while (index < size - 1) {
             if (!bounded_v[index]) { // we find a vanishing variable
                 for (int l = 0; l < support; l++) {  // we search for inequalities to bound vanishing variable
