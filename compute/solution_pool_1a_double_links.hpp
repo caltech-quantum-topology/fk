@@ -37,149 +37,6 @@
 // Can be optimized by decrementing degrees of other criteria before calling recurse_1.
 
 /**
- * @brief Detect variables that can be bounded by criteria with all-negative coefficients
- * @param criteria_set The criteria to analyze
- * @param bounded_v Output array of bounded variable flags
- * @param first Output list of [variable_index, criterion_index] pairs (1-indexed variables)
- * @return Number of variables that could be bounded
- */
-int detect_bounded_variables(
-    const std::vector<std::vector<double>>& criteria_set,
-    std::vector<int>& bounded_v,
-    std::list<std::array<int, 2>>& first
-) {
-    int size = criteria_set[0].size();
-    int mains = criteria_set.size();
-    int bounded = 0;
-    
-    bounded_v.assign(size - 1, false);
-    first.clear();
-    
-    // Check each criterion for variables with all-negative coefficients
-    for (int i = 0; i < mains; i++) {
-        bool condition = true;  // True if all variable coefficients are negative
-        std::vector<bool> locally_bounded(size - 1, false);
-        
-        // Check each variable coefficient in this criterion
-        for (int k = 1; k < size; k++) {
-            if (criteria_set[i][k] > 0) {
-                condition = false;  // Positive coefficient disqualifies criterion
-                break; // Can break early since criterion won't be useful
-            }
-            else if (criteria_set[i][k] < 0) {
-                locally_bounded[k - 1] = true;  // Negative coeff can bound this variable
-            }
-        }
-        
-        // If criterion has all negative coefficients, mark bounded variables
-        if (condition) {
-            for (int v = 0; v < size - 1; v++) {
-                if (locally_bounded[v] && !bounded_v[v]) {
-                    bounded_v[v] = true;
-                    first.push_back({v + 1, i});  // Note: 1-indexed for recurse_1
-                    bounded++;
-                }
-            }
-        }
-    }
-    
-    return bounded;
-}
-
-/**
- * @brief Try to bound remaining unbounded variables using supporting inequalities
- * @param bounded_v Input/output array of bounded variable flags
- * @param bounds Output list of [variable_index, inequality_index] pairs (0-indexed variables)
- * @param supporting_inequalities All inequality constraints
- * @return Updated count of bounded variables
- */
-int try_bound_with_inequalities(
-    std::vector<int>& bounded_v,
-    std::list<std::array<int, 2>>& bounds,
-    const std::vector<std::vector<double>>& supporting_inequalities
-) {
-    int size = bounded_v.size() + 1;  // +1 for constant term
-    int support = supporting_inequalities.size();
-    int bounded = std::count(bounded_v.begin(), bounded_v.end(), true);
-    
-    bounds.clear();
-    
-    // Try to bound remaining unbounded variables using supporting inequalities
-    int index = 0;
-    while (index < size - 1) {
-        if (!bounded_v[index]) { // Found an unbounded variable
-            // Search through all supporting inequalities for potential bounds
-            for (int l = 0; l < support; l++) {
-                // Check if this inequality has negative coefficient for current variable (can bound it)
-                if (supporting_inequalities[l][1 + index] < 0) {
-                    bool useful = true;
-                    // Check if inequality is "useful" - no positive coefficients for other unbounded variables
-                    for (int n = 0; n < size - 1; n++) {
-                        if (n != index && supporting_inequalities[l][1 + n] > 0 && !bounded_v[n]) {
-                            useful = false;  // Positive coeff on unbounded var makes inequality not useful for bounding
-                        }
-                    }
-                    if (useful) {
-                        bounds.push_back({index, l});  // Add this variable-inequality pair to bounds list (0-indexed)
-                        bounded_v[index] = true;
-                        bounded++;
-                        if (bounded == size - 1) {  // All variables now bounded!
-                            return bounded;
-                        }
-                        index = -1;  // Restart search from beginning
-                        break;
-                    }
-                }
-            }
-        }
-        index++;
-    }
-    
-    return bounded;
-}
-
-/**
- * @brief Solve the ILP when all variables are bounded
- * @param criteria Current criteria set
- * @param main_inequalities Original degree-bounding criteria
- * @param first Variables bounded by criteria
- * @param bounds Variables bounded by supporting inequalities  
- * @param supporting_inequalities All inequality constraints
- * @param function Callback function for feasible solutions
- */
-void solve_bounded_problem(
-    const std::vector<std::vector<double>>& criteria,
-    const std::vector<std::vector<double>>& main_inequalities,
-    const std::list<std::array<int, 2>>& first,
-    const std::list<std::array<int, 2>>& bounds,
-    const std::vector<std::vector<double>>& supporting_inequalities,
-    const std::function<void(const std::vector<int>&)>& function
-) {
-    int size = criteria[0].size();
-    
-    // Extract degree bounds from criteria
-    std::vector<double> degrees = {};
-    for (auto x : criteria) {
-        degrees.push_back(x[0]);
-    }
-    
-    // Initialize solution point
-    std::vector<int> point(size - 1, 0);
-    
-    // Call recursive solver
-    recurse_1(
-        const_cast<std::vector<std::vector<double>>&>(criteria), 
-        degrees, 
-        const_cast<std::vector<std::vector<double>>&>(main_inequalities),
-        first, 
-        bounds, 
-        const_cast<std::vector<std::vector<double>>&>(supporting_inequalities), 
-        point, 
-        function
-    );
-}
-
-/**
  * @brief Recursive function to enumerate integer solutions for remaining unbounded variables
  * @param criteria Original degree-bounding criteria constraints  
  * @param bounds List of [variable_index, inequality_index] pairs for variables bounded by supporting inequalities
@@ -336,6 +193,149 @@ void recurse_1(
             function
         );
     }
+}
+
+/**
+ * @brief Detect variables that can be bounded by criteria with all-negative coefficients
+ * @param criteria_set The criteria to analyze
+ * @param bounded_v Output array of bounded variable flags
+ * @param first Output list of [variable_index, criterion_index] pairs (1-indexed variables)
+ * @return Number of variables that could be bounded
+ */
+int detect_bounded_variables(
+    const std::vector<std::vector<double>>& criteria_set,
+    std::vector<int>& bounded_v,
+    std::list<std::array<int, 2>>& first
+) {
+    int size = criteria_set[0].size();
+    int mains = criteria_set.size();
+    int bounded = 0;
+    
+    bounded_v.assign(size - 1, false);
+    first.clear();
+    
+    // Check each criterion for variables with all-negative coefficients
+    for (int i = 0; i < mains; i++) {
+        bool condition = true;  // True if all variable coefficients are negative
+        std::vector<bool> locally_bounded(size - 1, false);
+        
+        // Check each variable coefficient in this criterion
+        for (int k = 1; k < size; k++) {
+            if (criteria_set[i][k] > 0) {
+                condition = false;  // Positive coefficient disqualifies criterion
+                break; // Can break early since criterion won't be useful
+            }
+            else if (criteria_set[i][k] < 0) {
+                locally_bounded[k - 1] = true;  // Negative coeff can bound this variable
+            }
+        }
+        
+        // If criterion has all negative coefficients, mark bounded variables
+        if (condition) {
+            for (int v = 0; v < size - 1; v++) {
+                if (locally_bounded[v] && !bounded_v[v]) {
+                    bounded_v[v] = true;
+                    first.push_back({v + 1, i});  // Note: 1-indexed for recurse_1
+                    bounded++;
+                }
+            }
+        }
+    }
+    
+    return bounded;
+}
+
+/**
+ * @brief Try to bound remaining unbounded variables using supporting inequalities
+ * @param bounded_v Input/output array of bounded variable flags
+ * @param bounds Output list of [variable_index, inequality_index] pairs (0-indexed variables)
+ * @param supporting_inequalities All inequality constraints
+ * @return Updated count of bounded variables
+ */
+int try_bound_with_inequalities(
+    std::vector<int>& bounded_v,
+    std::list<std::array<int, 2>>& bounds,
+    const std::vector<std::vector<double>>& supporting_inequalities
+) {
+    int size = bounded_v.size() + 1;  // +1 for constant term
+    int support = supporting_inequalities.size();
+    int bounded = std::count(bounded_v.begin(), bounded_v.end(), true);
+    
+    bounds.clear();
+    
+    // Try to bound remaining unbounded variables using supporting inequalities
+    int index = 0;
+    while (index < size - 1) {
+        if (!bounded_v[index]) { // Found an unbounded variable
+            // Search through all supporting inequalities for potential bounds
+            for (int l = 0; l < support; l++) {
+                // Check if this inequality has negative coefficient for current variable (can bound it)
+                if (supporting_inequalities[l][1 + index] < 0) {
+                    bool useful = true;
+                    // Check if inequality is "useful" - no positive coefficients for other unbounded variables
+                    for (int n = 0; n < size - 1; n++) {
+                        if (n != index && supporting_inequalities[l][1 + n] > 0 && !bounded_v[n]) {
+                            useful = false;  // Positive coeff on unbounded var makes inequality not useful for bounding
+                        }
+                    }
+                    if (useful) {
+                        bounds.push_back({index, l});  // Add this variable-inequality pair to bounds list (0-indexed)
+                        bounded_v[index] = true;
+                        bounded++;
+                        if (bounded == size - 1) {  // All variables now bounded!
+                            return bounded;
+                        }
+                        index = -1;  // Restart search from beginning
+                        break;
+                    }
+                }
+            }
+        }
+        index++;
+    }
+    
+    return bounded;
+}
+
+/**
+ * @brief Solve the ILP when all variables are bounded
+ * @param criteria Current criteria set
+ * @param main_inequalities Original degree-bounding criteria
+ * @param first Variables bounded by criteria
+ * @param bounds Variables bounded by supporting inequalities  
+ * @param supporting_inequalities All inequality constraints
+ * @param function Callback function for feasible solutions
+ */
+void solve_bounded_problem(
+    const std::vector<std::vector<double>>& criteria,
+    const std::vector<std::vector<double>>& main_inequalities,
+    const std::list<std::array<int, 2>>& first,
+    const std::list<std::array<int, 2>>& bounds,
+    const std::vector<std::vector<double>>& supporting_inequalities,
+    const std::function<void(const std::vector<int>&)>& function
+) {
+    int size = criteria[0].size();
+    
+    // Extract degree bounds from criteria
+    std::vector<double> degrees = {};
+    for (auto x : criteria) {
+        degrees.push_back(x[0]);
+    }
+    
+    // Initialize solution point
+    std::vector<int> point(size - 1, 0);
+    
+    // Call recursive solver
+    recurse_1(
+        const_cast<std::vector<std::vector<double>>&>(criteria), 
+        degrees, 
+        const_cast<std::vector<std::vector<double>>&>(main_inequalities),
+        first, 
+        bounds, 
+        const_cast<std::vector<std::vector<double>>&>(supporting_inequalities), 
+        point, 
+        function
+    );
 }
 
 /**
