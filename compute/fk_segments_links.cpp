@@ -522,7 +522,7 @@ class FK {
  */
 int main(int argc, char* argv[]) {
     if (argc == 3) {
-        FK(argv[1], argv[2]);
+        FK(argv[1], argv[2]); // argv[1] is the input ILP csv file without the .csv extension, and argv[2] similarly doesn't have an extension
         return 0;
     }
     else {
