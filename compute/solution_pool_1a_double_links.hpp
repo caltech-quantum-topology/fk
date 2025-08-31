@@ -88,7 +88,6 @@ void recurse_1(
         std::vector<double> new_degrees = degrees;
         for (int i = 0;  i <= degrees[main_index] / slope; i++) {
             point[var_index - 1] = i;
-            new_degrees[main_index] = degrees[main_index] - i * slope; // eventually change this to constant decrements by "slope", to avoid re-accessing the "degrees" vector
             recurse_1(
                 new_criteria, 
                 new_degrees, 
@@ -99,6 +98,7 @@ void recurse_1(
                 point, 
                 function
             );
+            new_degrees[main_index] -= slope;
         }
     }
     else {
@@ -274,7 +274,7 @@ void pooling(
                                         recurse_1(
                                             new_criteria, 
                                             degrees, 
-                                            criteria,
+                                            main_inequalities,
                                             first, 
                                             bounds, 
                                             supporting_inequalities, 
@@ -307,7 +307,7 @@ void pooling(
                                                             recurse_1(
                                                                 new_criteria, 
                                                                 degrees, 
-                                                                criteria,
+                                                                main_inequalities,
                                                                 first,
                                                                 bounds, 
                                                                 supporting_inequalities, 
