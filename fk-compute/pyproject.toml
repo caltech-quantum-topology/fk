@@ -1,0 +1,49 @@
+[build-system]
+requires = [
+  "scikit-build-core>=0.9.0",
+  "cmake>=3.20",
+  "ninja"
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "fkcompute"
+version = "0.2.0"
+description = "Compute the FK invariant for braids (inversion + ILP + compiled helper binary)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Davide" }]
+keywords = ["knot-theory", "braids", "FK-invariant", "mathematics"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+dependencies = [
+  "numpy>=1.20",
+  "gurobipy>=9.5",
+]
+
+[project.optional-dependencies]
+viz = ["ipython>=8"]
+
+[project.scripts]
+fk = "fkcompute.cli:main"
+
+[tool.scikit-build]
+# Point to your src-layout package directory
+wheel.packages = ["src/fkcompute"]
+
+# (Optional) add files to sdist
+sdist.include = [
+  "cpp/**",
+  "CMakeLists.txt",
+  "README.md",
+  "LICENSE",
+  "src/**",
+]
+
+# Example CMake args if you ever need them:
+# cmake.args = ["-DSOME_FLAG=ON"]
