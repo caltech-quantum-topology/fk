@@ -503,8 +503,11 @@ def _fk_batch_from_config(config_data: Dict[str, Any], config_path: str) -> Dict
         # Print progress for batch jobs
         if total > 1 and verbose:
             logger.info(f"Computing {comp_name} ({i}/{total})")
+        """
+        I need to figure out how to do this without messing up redirecting to file
         elif total > 1:
             print(f"Computing {comp_name} ({i}/{total})")
+        """ 
 
         try:
             # Run the computation
