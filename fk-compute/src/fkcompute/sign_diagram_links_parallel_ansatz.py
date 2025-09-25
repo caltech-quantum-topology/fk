@@ -619,7 +619,7 @@ if __name__ == "__main__":
         verbose=True,
         max_workers=None,  # or set an explicit int
         chunk_size=1 << 14,  # tune if you like
-        include_flip=True,
+        include_flip=False,
         max_shifts=None,  # or a small int to limit shifts
     )
     end = time.time()

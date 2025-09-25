@@ -1,311 +1,389 @@
 # src/fk-compute/cli.py
 from __future__ import annotations
 import sys
-import argparse, json, logging, os, subprocess, sys, time, shutil, tempfile, pathlib
-from typing import Optional, Dict, Any, List, Union
-from importlib import resources
+import argparse
+import json
+from typing import Optional, List
 
-# Updated absolute imports (assuming these files live in the package):
-from fkcompute.sign_diagram_links_parallel_ansatz import get_sign_assignment_parallel
-from fkcompute.fklinks import FK as fk_ilp
+# Import all functionality from fk module
+from .fk import (
+    fk, PRESETS,
+    _parse_int_list, _parse_bool,
+    configure_logging
+)
 
-logger = logging.getLogger("fk_logger")
-
-def configure_logging(verbose: bool) -> None:
-    """Set logging level based on verbose flag."""
-    handler = logging.StreamHandler()
-    fmt = logging.Formatter("[%(levelname)s] %(message)s")
-    handler.setFormatter(fmt)
-
-    # Remove old handlers so repeated runs don’t duplicate output
-    logger.handlers.clear()
-    logger.addHandler(handler)
-
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
-
-def _binary_path(name: str) -> str:
-    exe = f"{name}.exe" if os.name == "nt" else name
-    # 1) Prefer PATH if user has a system install
-    found = shutil.which(exe)
-    if found:
-        return found
-    # 2) Fall back to packaged binary inside fkcompute/_bin/
-    try:
-        return str(resources.files("fkcompute").joinpath("_bin", exe))
-    except Exception as e:
-        raise RuntimeError(
-            f"Could not find required helper binary '{exe}' in PATH or package."
-        ) from e
-
-def _safe_unlink(path: str):
-    try:
-        pathlib.Path(path).unlink(missing_ok=True)
-    except Exception:
-        pass
+# Import symbolic functionality
+from .symbolic_output import print_symbolic_result, SYMPY_AVAILABLE
 
 # -------------------------------------------------------------------------
-# Helpers
-# -------------------------------------------------------------------------
-def _assess_inversion(inversion: Dict[str, Any]) -> None:
-    """Validate the structure of inversion data."""
-    if "inversion_data" not in inversion:
-        logger.error("Inversion data missing in inversion dictionary")
-    if inversion.get("inversion_data") == "failure":
-        logger.error("Inversion data invalid (failure)")
-
-
-def _load_inversion_file(inversion_file: str) -> Dict[str, Any]:
-    """Load inversion data from a JSON file and ensure integer keys."""
-    with open(inversion_file, "r") as f:
-        inversion = json.load(f)
-    inversion["inversion_data"] = {int(k): v for k, v in inversion["inversion_data"].items()}
-    return inversion
-
-
-def _load_ilp_file(ilp_file: str) -> str:
-    """Load ILP data from a file."""
-    with open(ilp_file, "r") as f:
-        return f.read()
-
-
-def _parse_int_list(s: Optional[str]) -> Optional[List[int]]:
-    """Parse a string into a list of ints.
-
-    Accepts:
-      - JSON-style: "[1, -2, 3]"
-      - Comma-separated: "1,-2,3"
-      - Space-separated: "1 -2 3"
-    """
-    if s is None:
-        return None
-    s = s.strip()
-    if not s:
-        return None
-    # Try JSON first
-    try:
-        val = json.loads(s)
-        if isinstance(val, list):
-            return [int(x) for x in val]
-    except Exception:
-        pass
-    # Fallback: split on commas/spaces
-    parts = [p for p in s.replace(",", " ").split() if p]
-    return [int(p) for p in parts]
-
-
-
-
-def _parse_bool(default_true: bool):
-    """Return a function that adds --foo / --no-foo toggle flags for a bool."""
-
-    def add(parser: argparse.ArgumentParser, name: str, help_text: str):
-        dest = name.replace("-", "_")
-        group = parser.add_mutually_exclusive_group()
-        if default_true:
-            group.add_argument(f"--{name}", dest=dest, action="store_true", help=f"{help_text} (default)")
-            group.add_argument(f"--no-{name}", dest=dest, action="store_false", help=f"Disable {help_text}")
-            parser.set_defaults(**{dest: True})
-        else:
-            group.add_argument(f"--{name}", dest=dest, action="store_true", help=f"Enable {help_text}")
-            group.add_argument(f"--no-{name}", dest=dest, action="store_false", help=f"{help_text} (default)")
-            parser.set_defaults(**{dest: False})
-        return group
-
-    return add
-
-# -------------------------------------------------------------------------
-# Main computation function
-# -------------------------------------------------------------------------
-def fk(
-    braid: List[int],
-    degree: int,
-    ilp: Optional[str] = None,
-    ilp_file: Optional[str] = None,
-    inversion: Optional[Dict[str, Any]] = None,
-    inversion_file: Optional[str] = None,
-    partial_signs: Optional[List[int]] = None,
-    max_workers: int = 1,
-    chunk_size: int = 1 << 14,
-    include_flip: bool = True,
-    max_shifts: Optional[int] = None,
-    verbose: bool = False,
-    save_data: bool = False,
-    save_dir: str = "data",
-    link_name: Optional[str] = None,
-) -> Dict[str, Union[int, float]]:
-    """
-    Compute the FK invariant of a braid via inversion data and ILP reduction.
-    """
-    # --- Handle naming and save directories ---
-    if save_data:
-        if not os.path.isdir(save_dir):
-            os.makedirs(save_dir)
-        if not link_name:
-            tstr = time.strftime("%H%M%S", time.localtime(time.time()))
-            link_name = f"Unknown_{tstr}"
-            logger.debug(f"No name provided for link/knot, saving as: {link_name}")
-        else:
-            logger.debug(f"Saving as: {link_name}")
-        link_name = os.path.join(save_dir, link_name)
-    else:
-        link_name = "temp"
-
-    # --- Step 1: Inversion data ---
-    if ilp is None and ilp_file is None:
-        logger.debug("No ilp data provided, I need to calculate it")
-
-        if inversion is not None and inversion_file is not None:
-            logger.error("Both inversion data and inversion file are passed through. Pass one or the other")
-
-        if inversion_file is not None and inversion is None:
-            logger.debug("Loading inversion from file")
-            inversion = _load_inversion_file(inversion_file)
-
-        if inversion is None and inversion_file is None:
-            logger.debug("Calculating inversion data")
-            inversion = get_sign_assignment_parallel(
-                braid,
-                partial_signs=partial_signs,
-                degree=degree,
-                verbose=verbose,
-                max_workers=max_workers,
-                chunk_size=chunk_size,
-                include_flip=include_flip,
-                max_shifts=max_shifts,
-            )
-            logger.debug("Inversion data calculated")
-
-        _assess_inversion(inversion)
-
-    if save_data:
-        with open(link_name + "_inversion.json", "w") as f:
-            json.dump(inversion, f)
-
-    # --- Step 2: ILP data ---
-    if ilp is not None and ilp_file is not None:
-        logger.error("Both ilp data and ilp file are passed through. Pass one or the other")
-
-    if ilp is None and ilp_file is not None:
-        logger.debug("Loading ILP from file")
-        ilp = _load_ilp_file(ilp_file)
-
-    if ilp is None and ilp_file is None:
-        logger.debug("Calculating ILP data")
-        ilp = fk_ilp(
-            braid,
-            degree=degree,
-            inversion_data=inversion["inversion_data"],
-            outfile=link_name + "_ilp.csv",
-        )
-        logger.debug("ILP data calculated")
-
-    # --- Step 3: FK invariant computation ---
-    bin_path = _binary_path("fk_segments_links")
-    if verbose:
-        subprocess.run([bin_path, f"{link_name}_ilp", f"{link_name}"], check=True)
-    else:
-        subprocess.run([bin_path, f"{link_name}_ilp", f"{link_name}"], check=True, stdout=subprocess.DEVNULL)
-
-    with open(link_name + ".json", "r") as f:
-        result = json.load(f)
-
-    result = result["coefficient_q_powers"]
-
-    # Clean up intermediate files unless explicitly saving
-    if not save_data:
-        _safe_unlink(f"{link_name}_ilp.csv")
-        _safe_unlink(f"{link_name}.json")
-
-    return result
-
-
-# -------------------------------------------------------------------------
-# CLI
+# CLI Parser
 # -------------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
+    """Build the main argument parser with subcommands."""
     p = argparse.ArgumentParser(
-        description="Compute FK invariant from a braid using inversion and ILP stages."
+        description="""
+Compute the FK invariant for braids using inversion, ILP reduction, and compiled helper binary.
+
+The FK invariant is a mathematical object used in knot theory to distinguish different
+types of knots and links. This tool provides multiple interfaces for different use cases:
+
+SIMPLE USAGE:
+  fk simple "[1,-2,3]" 2              # Quick computation with defaults
+
+PRESET USAGE:
+  fk preset "[1,-2,3]" 2 --preset fast      # Fast computation
+  fk preset "[1,-2,3]" 2 --preset accurate  # Thorough computation
+  fk preset "[1,-2,3]" 2 --preset parallel  # Multi-core optimized
+
+CONFIG FILE USAGE:
+  fk config single.yaml               # Single computation from file
+  fk config batch.json                # Multiple computations from file
+
+ADVANCED USAGE:
+  fk advanced "[1,-2,3]" 2 --max-workers 4 --verbose  # Full control
+
+BRAID FORMATS:
+  Braids can be specified in multiple formats:
+  • JSON-style: "[1, -2, -3, 1]"
+  • Comma-separated: "1,-2,-3,1"
+  • Space-separated: "1 -2 -3 1"
+
+For detailed documentation, run 'man fk' (after running 'fk-install-man').
+""",
+        prog="fk",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+EXAMPLES:
+  # Simple - just the essentials
+  fk simple "[1,-2,3]" 2
+
+  # Preset - predefined configurations
+  fk preset "[1,-2,3]" 2 --preset accurate
+
+  # Config - single computation
+  echo '{"braid": [1,-2,3], "degree": 2, "preset": "fast"}' > single.json
+  fk config single.json
+
+  # Config - batch processing
+  cat > batch.yaml << 'EOF'
+  preset: fast
+  max_workers: 4
+  computations:
+    - name: trefoil
+      braid: [1, -2, 1, -2]
+      degree: 2
+    - name: figure_eight
+      braid: [1, -2, -1, 2]
+      degree: 3
+      preset: accurate
+  EOF
+  fk config batch.yaml
+
+  # Advanced - full parameter control
+  fk advanced "[1,-2,3]" 2 --max-workers 4 --verbose --save-data
+
+  # Legacy mode (backward compatibility)
+  fk "[1,-2,3]" 2 --verbose
+
+For more examples and detailed parameter descriptions, see 'man fk'.
+"""
     )
 
-    p.add_argument(
-        "--braid",
+    # Add subcommands
+    subparsers = p.add_subparsers(dest="command", help="Available commands")
+
+    # Simple compute command
+    simple_parser = subparsers.add_parser(
+        "simple",
+        help="Simple FK computation with minimal options",
+        description="Simple interface with sensible defaults. Uses quiet mode and standard parameters for quick computations.",
+        epilog="Example: fk simple \"[1,-2,3]\" 2"
+    )
+    simple_parser.add_argument(
+        "braid",
         type=str,
-        required=True,
-        help='Braid word as a list. Examples: "[ -2, -2, -3, 1 ]" or "-2,-2,-3,1" or "-2 -2 -3 1".',
+        help='Braid word. Examples: "[1,-2,3]", "1,-2,3", or "1 -2 3"'
     )
-    p.add_argument("--degree", type=int, required=True, help="Degree of the invariant computation.")
+    simple_parser.add_argument("degree", type=int, help="Computation degree")
+    add_symbolic_simple = _parse_bool(default_true=False)
+    add_symbolic_simple(simple_parser, "symbolic", "Print result in human-readable symbolic form using SymPy")
 
-    p.add_argument("--ilp-file", type=str, default=None, help="Path to a precomputed ILP file.")
-    # Supplying raw ILP text via CLI is uncommon; keep for parity but optional:
-    p.add_argument("--ilp", type=str, default=None, help="ILP data as a raw string (advanced).")
+    # Preset compute command
+    preset_parser = subparsers.add_parser(
+        "preset",
+        help="FK computation using preset configurations",
+        description="""
+Use predefined configuration presets optimized for different scenarios:
 
-    p.add_argument("--inversion-file", type=str, default=None, help="Path to inversion JSON file.")
-    p.add_argument(
-        "--partial-signs",
+• fast:     Single-threaded, limited shifts, no flip symmetry (fastest)
+• accurate: Multi-core, unlimited shifts, no flip symmetry, saves data (most thorough)
+• parallel: High parallelism, balanced settings, no flip symmetry (best for multi-core systems)
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Example: fk preset \"[1,-2,3]\" 2 --preset accurate"
+    )
+    preset_parser.add_argument(
+        "braid",
         type=str,
-        default=None,
-        help='Optional partial sign assignments. Same formats as --braid.',
+        help='Braid word. Examples: "[1,-2,3]", "1,-2,3", or "1 -2 3"'
+    )
+    preset_parser.add_argument("degree", type=int, help="Computation degree")
+    preset_parser.add_argument(
+        "--preset",
+        choices=list(PRESETS.keys()),
+        default="fast",
+        help="Preset configuration to use"
+    )
+    add_symbolic_preset = _parse_bool(default_true=False)
+    add_symbolic_preset(preset_parser, "symbolic", "Print result in human-readable symbolic form using SymPy")
+
+    # Advanced compute command (full options)
+    advanced_parser = subparsers.add_parser(
+        "advanced",
+        help="Advanced FK computation with all options",
+        description="Full control over all computation parameters. Use this for fine-tuned computations when presets don't meet your needs.",
+        epilog="Example: fk advanced \"[1,-2,3]\" 2 --max-workers 4 --verbose --save-data"
+    )
+    _add_advanced_arguments(advanced_parser)
+
+    # Config file command
+    config_parser = subparsers.add_parser(
+        "config",
+        help="FK computation from configuration file",
+        description="""
+Load computation parameters from a JSON or YAML configuration file.
+Supports both single computations and batch processing of multiple braids.
+
+SINGLE COMPUTATION:
+  {
+    "braid": [1, -2, 3],
+    "degree": 2,
+    "preset": "accurate",
+    "max_workers": 8
+  }
+
+BATCH PROCESSING:
+  {
+    "preset": "fast",
+    "max_workers": 4,
+    "computations": [
+      {
+        "name": "trefoil",
+        "braid": [1, -2, 1, -2],
+        "degree": 2
+      },
+      {
+        "name": "figure_eight",
+        "braid": [1, -2, -1, 2],
+        "degree": 3,
+        "preset": "accurate"
+      }
+    ]
+  }
+
+Batch mode supports:
+• Global defaults (applied to all computations)
+• Individual computation overrides
+• Named computations for organized results
+• Progress tracking and error handling
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Examples: fk config single.yaml | fk config batch.json"
+    )
+    config_parser.add_argument(
+        "config_path",
+        type=str,
+        help="Path to JSON or YAML configuration file"
     )
 
-    p.add_argument("--max-workers", type=int, default=1, help="Parallel workers for inversion calculation.")
-    p.add_argument("--chunk-size", type=int, default=(1 << 14), help="Chunk size for parallel tasks.")
-    p.add_argument("--max-shifts", type=int, default=None, help="Maximum shifts considered in inversion.")
+    # Legacy compute command (backward compatibility)
+    legacy_parser = subparsers.add_parser(
+        "compute",
+        help="Legacy compute command (same as advanced)",
+        description="Legacy interface for backward compatibility. Equivalent to the 'advanced' subcommand.",
+        epilog="Example: fk compute \"[1,-2,3]\" 2 --max-workers 4"
+    )
+    _add_advanced_arguments(legacy_parser)
 
-    # Toggle flags
-    add_verbose = _parse_bool(default_true=False)
-    add_verbose(p, "verbose", "Verbose logging")
-
-    add_flip = _parse_bool(default_true=True)
-    add_flip(p, "include-flip", "Include flip symmetry in inversion")
-
-    add_save = _parse_bool(default_true=False)
-    add_save(p, "save-data", "Save intermediate files (inversion/ILP/JSON)")
-
-    add_print = _parse_bool(default_true=False)
-    add_print(p, "print-result", "Print the FK result to stdout")
-
-    p.add_argument("--save-dir", type=str, default="data", help="Directory to store data when --save-data is set.")
-    p.add_argument("--link-name", type=str, default=None, help="Base name for output files (without extension).")
+    # If no subcommand provided, default to legacy behavior
+    p.set_defaults(command="legacy")
 
     return p
 
 
-def main(argv: Optional[List[str]]=None) -> None:
-    if argv is None:
-        argv = sys.argv
-    parser = build_parser()
-    args = parser.parse_args(argv[1:])
+def _add_advanced_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add all advanced arguments to a parser."""
+    parser.add_argument(
+        "braid",
+        type=str,
+        help='Braid word. Examples: "[1,-2,3]", "1,-2,3", or "1 -2 3"'
+    )
+    parser.add_argument("degree", type=int, help="Degree of the invariant computation")
 
-    braid = _parse_int_list(args.braid)
-    if not braid:
-        parser.error("Could not parse --braid into a non-empty list of integers.")
+    parser.add_argument("--ilp-file", type=str, default=None, help="Path to a precomputed ILP file")
+    parser.add_argument("--ilp", type=str, default=None, help="ILP data as a raw string (advanced)")
 
-    partial_signs = _parse_int_list(args.partial_signs)
-
-    # sync logger level with --verbose toggle
-    
-    configure_logging(args.verbose)
-    result = fk(
-        braid=braid,
-        degree=args.degree,
-        ilp=args.ilp,
-        ilp_file=args.ilp_file,
-        inversion=None,                      # prefer file path via --inversion-file, else compute
-        inversion_file=args.inversion_file,
-        partial_signs=partial_signs,
-        max_workers=args.max_workers,
-        chunk_size=args.chunk_size,
-        include_flip=args.include_flip,
-        max_shifts=args.max_shifts,
-        verbose=args.verbose,
-        save_data=args.save_data,
-        save_dir=args.save_dir,
-        link_name=args.link_name,
+    parser.add_argument("--inversion-file", type=str, default=None, help="Path to inversion JSON file")
+    parser.add_argument(
+        "--partial-signs",
+        type=str,
+        default=None,
+        help='Optional partial sign assignments. Same formats as braid'
     )
 
-    # Pretty-print result JSON to stdout
-    if args.print_result:
+    parser.add_argument("--max-workers", type=int, default=1, help="Parallel workers for inversion calculation")
+    parser.add_argument("--chunk-size", type=int, default=(1 << 14), help="Chunk size for parallel tasks")
+    parser.add_argument("--max-shifts", type=int, default=None, help="Maximum shifts considered in inversion")
+
+    # Toggle flags
+    add_verbose = _parse_bool(default_true=False)
+    add_verbose(parser, "verbose", "Verbose logging")
+
+    add_flip = _parse_bool(default_true=False)
+    add_flip(parser, "include-flip", "Include flip symmetry in inversion")
+
+    add_save = _parse_bool(default_true=False)
+    add_save(parser, "save-data", "Save intermediate files (inversion/ILP/JSON)")
+
+    add_print = _parse_bool(default_true=True)
+    add_print(parser, "print-result", "Print the FK result to stdout")
+
+    add_symbolic = _parse_bool(default_true=False)
+    add_symbolic(parser, "symbolic", "Print result in human-readable symbolic form using SymPy")
+
+    parser.add_argument("--save-dir", type=str, default="data", help="Directory to store data when --save-data is set")
+    parser.add_argument("--link-name", type=str, default=None, help="Base name for output files (without extension)")
+
+
+def build_legacy_parser() -> argparse.ArgumentParser:
+    """Build legacy parser for backward compatibility when no subcommands used."""
+    p = argparse.ArgumentParser(
+        description="""
+LEGACY MODE - Compute FK invariant from a braid using inversion and ILP stages.
+
+This is the legacy interface maintained for backward compatibility.
+For new usage, consider using the subcommand interface:
+
+  fk simple "[1,-2,3]" 2                    # Quick computation
+  fk preset "[1,-2,3]" 2 --preset accurate  # Preset-based
+  fk advanced "[1,-2,3]" 2 --verbose        # Full control
+  fk config myconfig.yaml                    # From config file
+
+Run 'fk -h' to see all available subcommands and improved help.
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Example: fk \"[1,-2,3]\" 2 --max-workers 4 --verbose"
+    )
+    _add_advanced_arguments(p)
+    return p
+
+
+# -------------------------------------------------------------------------
+# Helper functions
+# -------------------------------------------------------------------------
+def _print_result(result: dict, symbolic: bool = False) -> None:
+    """Helper function to print result in requested format."""
+    if symbolic:
+        # Print symbolic representation if requested and SymPy is available
+        if SYMPY_AVAILABLE:
+            print_symbolic_result(result, format_type="pretty", show_matrix=False)
+        else:
+            print("Error: SymPy is required for symbolic output. Install with: pip install sympy")
+            print("Falling back to JSON output:")
+            print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        # Standard JSON output
         print(json.dumps(result, indent=2, sort_keys=True))
+
+
+# -------------------------------------------------------------------------
+# Command handlers
+# -------------------------------------------------------------------------
+def handle_simple(args) -> None:
+    """Handle simple command."""
+    braid = _parse_int_list(args.braid)
+    if not braid:
+        raise ValueError("Could not parse braid into a non-empty list of integers")
+
+    result = fk(braid, args.degree, symbolic=getattr(args, 'symbolic', False))  # Simple mode auto-detected
+    _print_result(result, getattr(args, 'symbolic', False))
+
+
+def handle_preset(args) -> None:
+    """Handle preset command."""
+    braid = _parse_int_list(args.braid)
+    if not braid:
+        raise ValueError("Could not parse braid into a non-empty list of integers")
+
+    result = fk(braid, args.degree, preset=args.preset, symbolic=getattr(args, 'symbolic', False))  # Preset mode
+    _print_result(result, getattr(args, 'symbolic', False))
+
+
+def handle_config(args) -> None:
+    """Handle config command."""
+    result = fk(args.config_path)  # Config mode auto-detected
+    _print_result(result, False)  # Config mode doesn't currently support CLI symbolic flag
+
+
+def handle_advanced(args) -> None:
+    """Handle advanced/compute/legacy commands."""
+    braid = _parse_int_list(args.braid)
+    if not braid:
+        raise ValueError("Could not parse braid into a non-empty list of integers")
+
+    partial_signs = _parse_int_list(getattr(args, 'partial_signs', None))
+
+    # Advanced mode - pass all parameters to unified fk function
+    result = fk(
+        braid,
+        args.degree,
+        ilp=getattr(args, 'ilp', None),
+        ilp_file=getattr(args, 'ilp_file', None),
+        inversion_file=getattr(args, 'inversion_file', None),
+        partial_signs=partial_signs,
+        max_workers=getattr(args, 'max_workers', 1),
+        chunk_size=getattr(args, 'chunk_size', 1 << 14),
+        include_flip=getattr(args, 'include_flip', False),
+        max_shifts=getattr(args, 'max_shifts', None),
+        verbose=getattr(args, 'verbose', False),
+        save_data=getattr(args, 'save_data', False),
+        save_dir=getattr(args, 'save_dir', 'data'),
+        link_name=getattr(args, 'link_name', None),
+        symbolic=getattr(args, 'symbolic', False),
+    )
+
+    # Print result in requested format
+    if getattr(args, 'print_result', True):
+        _print_result(result, getattr(args, 'symbolic', False))
+
+
+# -------------------------------------------------------------------------
+# Main entry point
+# -------------------------------------------------------------------------
+def main(argv: Optional[List[str]] = None) -> None:
+    if argv is None:
+        argv = sys.argv
+
+    # Check if using help flag or subcommands
+    has_help = len(argv) > 1 and argv[1] in ['-h', '--help']
+    has_subcommand = len(argv) > 1 and argv[1] in ['simple', 'preset', 'config', 'advanced', 'compute']
+
+    if has_help or has_subcommand:
+        parser = build_parser()
+        args = parser.parse_args(argv[1:])
+
+        if args.command == 'simple':
+            handle_simple(args)
+        elif args.command == 'preset':
+            handle_preset(args)
+        elif args.command == 'config':
+            handle_config(args)
+        elif args.command in ['advanced', 'compute']:
+            handle_advanced(args)
+        else:
+            parser.print_help()
+    else:
+        # Legacy mode - parse as before for backward compatibility
+        parser = build_legacy_parser()
+        args = parser.parse_args(argv[1:])
+        handle_advanced(args)

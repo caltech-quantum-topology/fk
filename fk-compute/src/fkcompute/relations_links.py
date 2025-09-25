@@ -506,10 +506,10 @@ def print_angle_inequalities(criteria, relations, mapping, angle_assignment, n_c
     dict_ = criteria[0].as_coefficients_dict()
     for key in dict_:
         acc += angle_assignment[tuple(mapping[key])] * dict_[key]
-    print("\nAngle Criterion:")
+    # print("\nAngle Criterion:")  # Commented out to avoid unwanted output
     acc[1:] *= -1
-    print(acc)
-    print("\n")
+    # print(acc)  # Commented out to avoid unwanted output
+    # print("\n")  # Commented out to avoid unwanted output
         
     # quit()
 
@@ -534,7 +534,7 @@ def print_angle_inequalities(criteria, relations, mapping, angle_assignment, n_c
                 acc += angle_assignment[tuple(mapping[key])] * dict_[key]
             # print(expression_minimum(criteria[0], singlesigns))
             if list(acc) not in printed:
-                print(acc)
+                # print(acc)  # Commented out to avoid unwanted output
                 printed.append(list(acc[:]))
 
 def print_inequality_in_angles (inequality, angle_assignment, n_crossings, mapping):
@@ -543,7 +543,7 @@ def print_inequality_in_angles (inequality, angle_assignment, n_crossings, mappi
         for key in dict_:
             acc += angle_assignment[tuple(mapping[key])] * dict_[key]
         # print(expression_minimum(criteria[0], singlesigns))
-        print(acc)
+        # print(acc)  # Commented out to avoid unwanted output
 
 def get_zeros(relations):
     return [r.state for r in relations if type(r) == Zero]
@@ -1125,7 +1125,7 @@ def breadth_first_search(criteria, multiples, singlesigns, n_components, return_
         status, data = find_pathos(criteria, multiples, singlesigns)
 
         if status == 200:
-            print(criteria[0])
+            # print(criteria[0])  # Commented out to avoid unwanted output
             if return_branching:
                 return_list = []
                 for index in range(len(queue[0][1][0])):
@@ -1171,7 +1171,7 @@ def find_pathos(joint, multiples, singlesigns):
             pathology_syms.update(pathology_syms_)
     
     vanishing = all_vars - bounded_syms
-    print(joint[0], vanishing)
+    # print(joint[0], vanishing)  # Commented out to avoid unwanted output
     bounding_inequalities = []
     index = 0
     multiples_ = copy.deepcopy(multiples)

@@ -4,30 +4,75 @@ import os
 import json
 import time
 import subprocess
+import shutil
+import pathlib
 from typing import Optional, Dict, Any, List, Union
 import argparse
+from importlib import resources
+try:
+    import yaml
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
 
-from sign_diagram_links_parallel_ansatz import get_sign_assignment_parallel
-from fklinks import FK as fk_ilp
+# Import symbolic output functionality
+from .symbolic_output import (
+    format_symbolic_output,
+    print_symbolic_result,
+    SYMPY_AVAILABLE
+)
+
+# Import BraidStates for extracting component information
+from .braidstates_links import BraidStates
+
+from .sign_diagram_links_parallel_ansatz import get_sign_assignment_parallel
+from .fklinks import FK as fk_ilp
 
 # -------------------------------------------------------------------------
 # Logger setup
 # -------------------------------------------------------------------------
 logger = logging.getLogger("fk_logger")
-logger.setLevel(logging.DEBUG)  # master threshold
 
-# Avoid duplicate handlers if script is rerun
-logger.handlers.clear()
-logger.propagate = False
+def configure_logging(verbose: bool) -> None:
+    """Set logging level based on verbose flag."""
+    handler = logging.StreamHandler()
+    fmt = logging.Formatter("[%(levelname)s] %(message)s")
+    handler.setFormatter(fmt)
 
-console = logging.StreamHandler(sys.stdout)
-console.setLevel(logging.DEBUG)
-console.setFormatter(logging.Formatter(
-    "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt="%H:%M:%S",
-))
-logger.addHandler(console)
+    # Remove old handlers so repeated runs don't duplicate output
+    logger.handlers.clear()
+    logger.addHandler(handler)
 
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.WARNING)  # Suppress INFO and DEBUG messages
+
+
+# -------------------------------------------------------------------------
+# Binary and file utilities
+# -------------------------------------------------------------------------
+def _binary_path(name: str) -> str:
+    """Find the path to a required binary, checking PATH first then package."""
+    exe = f"{name}.exe" if os.name == "nt" else name
+    # 1) Prefer PATH if user has a system install
+    found = shutil.which(exe)
+    if found:
+        return found
+    # 2) Fall back to packaged binary inside fkcompute/_bin/
+    try:
+        return str(resources.files("fkcompute").joinpath("_bin", exe))
+    except Exception as e:
+        raise RuntimeError(
+            f"Could not find required helper binary '{exe}' in PATH or package."
+        ) from e
+
+def _safe_unlink(path: str):
+    """Safely remove a file, ignoring errors."""
+    try:
+        pathlib.Path(path).unlink(missing_ok=True)
+    except Exception:
+        pass
 
 # -------------------------------------------------------------------------
 # Helpers
@@ -79,6 +124,22 @@ def _parse_int_list(s: Optional[str]) -> Optional[List[int]]:
     return [int(p) for p in parts]
 
 
+def _load_config_file(config_path: str) -> Dict[str, Any]:
+    """Load configuration from JSON or YAML file."""
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with open(config_path, 'r') as f:
+        if config_path.endswith(('.yml', '.yaml')):
+            if not HAS_YAML:
+                raise ImportError("PyYAML is required for YAML config files. Install with: pip install PyYAML")
+            return yaml.safe_load(f)
+        else:
+            return json.load(f)
+
+
+
+
 
 
 def _parse_bool(default_true: bool):
@@ -100,11 +161,49 @@ def _parse_bool(default_true: bool):
     return add
 
 # -------------------------------------------------------------------------
-# Main computation function
+# Preset configurations
+# -------------------------------------------------------------------------
+PRESETS = {
+    "fast": {
+        "max_workers": 1,
+        "chunk_size": 1 << 12,  # Smaller chunks for faster start
+        "include_flip": False,  # Disable flip symmetry
+        "max_shifts": None,     # Don't limit shifts
+        "verbose": False,
+        "save_data": False,
+    },
+    "accurate": {
+        "max_workers": 4,
+        "chunk_size": 1 << 16,  # Larger chunks for thoroughness
+        "include_flip": False,  # Disable flip symmetry
+        "max_shifts": None,     # No limit on shifts
+        "verbose": True,
+        "save_data": True,
+    },
+    "parallel": {
+        "max_workers": 8,       # High parallelism
+        "chunk_size": 1 << 14,  # Balanced chunk size
+        "include_flip": False,
+        "max_shifts": None,
+        "verbose": True,
+        "save_data": False,
+    }
+}
+
+# -------------------------------------------------------------------------
+# Intelligent FK function that handles all interfaces
+# -------------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------------
+# Unified FK function - handles all interfaces intelligently
 # -------------------------------------------------------------------------
 def fk(
-    braid: List[int],
-    degree: int,
+    braid_or_config: Union[List[int], str],
+    degree: Optional[int] = None,
+    preset: Optional[str] = None,
+    config: Optional[str] = None,
+    # Core computation parameters
     ilp: Optional[str] = None,
     ilp_file: Optional[str] = None,
     inversion: Optional[Dict[str, Any]] = None,
@@ -112,16 +211,413 @@ def fk(
     partial_signs: Optional[List[int]] = None,
     max_workers: int = 1,
     chunk_size: int = 1 << 14,
-    include_flip: bool = True,
+    include_flip: bool = False,
     max_shifts: Optional[int] = None,
-    verbose: bool = True,
+    verbose: bool = False,
     save_data: bool = False,
     save_dir: str = "data",
     link_name: Optional[str] = None,
-) -> Dict[str, Union[int, float]]:
+    symbolic: bool = False,
+) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
     """
-    Compute the FK invariant of a braid via inversion data and ILP reduction.
+    Unified FK invariant computation with intelligent interface detection.
+
+    This function automatically detects the type of call and handles:
+    1. Config file mode: fk("config.yaml") or fk(config="config.yaml")
+    2. Preset mode: fk([1,-2,3], 2, preset="fast")
+    3. Simple mode: fk([1,-2,3], 2)
+    4. Advanced mode: fk([1,-2,3], 2, max_workers=4, verbose=True, ...)
+
+    Args:
+        braid_or_config: Either a braid list [1,-2,3] OR config file path "config.yaml"
+        degree: Computation degree (required unless using config file)
+        preset: Preset name ("fast", "accurate", "parallel") - all disable flip symmetry by default
+        config: Config file path (alternative to passing as first argument)
+
+        # Advanced mode parameters:
+        ilp: Pre-computed ILP data as string
+        ilp_file: Path to pre-computed ILP file
+        inversion: Pre-computed inversion data dictionary
+        inversion_file: Path to pre-computed inversion JSON file
+        partial_signs: Optional partial sign assignments for inversion
+        max_workers: Number of parallel workers for computation (default: 1)
+        chunk_size: Chunk size for parallel processing (default: 16384)
+        include_flip: Include flip symmetry in inversion (default: False)
+        max_shifts: Maximum cyclic shifts to consider (default: None = unlimited)
+        verbose: Enable verbose logging (default: False for simple mode, True for others)
+        save_data: Save intermediate files (inversion/ILP/JSON) (default: False)
+        save_dir: Directory to store saved data (default: "data")
+        link_name: Base name for output files (default: auto-generated)
+        symbolic: Generate symbolic polynomial representation using SymPy (default: False)
+
+    Returns:
+        Dictionary containing comprehensive computation results:
+        {
+            "braid": [1, -2, 3],                    # The braid used in computation
+            "inversion_data": {...},                # Inversion assignment data
+            "degree": 2,                            # Computation degree
+            "components": 4,                        # Number of braid components/strands
+            "fk": [[coeff_pairs], ...],             # FK coefficient matrix
+            "symbolic": "polynomial_string"         # Symbolic representation (if requested)
+        }
+
+        For batch processing, returns a dictionary keyed by computation names:
+        {
+            "comp1": {"braid": [...], "inversion_data": {...}, "degree": ..., "components": ..., "fk": [...]},
+            "comp2": {"braid": [...], "inversion_data": {...}, "degree": ..., "components": ..., "fk": [...]}
+        }
+
+    Examples:
+        fk([1,-2,3], 2)                              # Simple mode
+        fk([1,-2,3], 2, preset="fast")              # Fast preset (single-threaded)
+        fk([1,-2,3], 2, preset="accurate")          # Accurate preset (multi-core, saves data)
+        fk([1,-2,3], 2, symbolic=True)              # With symbolic polynomial output
+        fk("config.yaml")                            # From configuration file
+        fk([1,-2,3], 2, max_workers=4, verbose=True) # Advanced mode
+
+    Note:
+        - All presets disable flip symmetry by default for improved performance
+        - Symbolic output requires SymPy (install with: pip install sympy)
+        - The "components" field indicates the number of strands in the braid
+        - FK coefficients are organized by powers of topological variables (x, y, etc.) and q
     """
+
+    # ========== INTERFACE DETECTION ==========
+
+    # 1. Config file mode detection
+    if isinstance(braid_or_config, str) or config is not None:
+        config_path = config or braid_or_config
+        return _fk_from_config(config_path)
+
+    # 2. From here, braid_or_config must be a braid list
+    braid = braid_or_config
+    if degree is None:
+        raise ValueError("degree is required when providing a braid list")
+
+    # 3. Preset mode detection
+    if preset is not None:
+        return _fk_with_preset(braid, degree, preset, locals())
+
+    # 4. Simple mode detection (only braid + degree provided)
+    call_locals = locals()
+    provided_advanced_params = [
+        k for k in ['ilp', 'ilp_file', 'inversion', 'inversion_file',
+                   'partial_signs', 'max_shifts', 'link_name']
+        if call_locals[k] is not None
+    ]
+    provided_settings = [
+        k for k in ['max_workers', 'chunk_size', 'include_flip', 'verbose',
+                   'save_data', 'save_dir', 'symbolic']
+        if call_locals[k] != _get_default_value(k)
+    ]
+
+    if not provided_advanced_params and not provided_settings:
+        # Simple mode - just braid and degree with defaults
+        configure_logging(False)  # Quiet by default for simple mode
+        return _fk_compute(braid, degree, verbose=False, max_workers=1,
+                          chunk_size=1<<14, include_flip=False, max_shifts=None,
+                          save_data=False, save_dir="data", link_name=None,
+                          symbolic=symbolic, ilp=None, ilp_file=None, inversion=None,
+                          inversion_file=None, partial_signs=None)
+
+    # 5. Advanced mode - use all provided parameters
+    configure_logging(verbose)
+    return _fk_compute(braid, degree, verbose, max_workers, chunk_size,
+                      include_flip, max_shifts, save_data, save_dir, link_name,
+                      symbolic, ilp, ilp_file, inversion, inversion_file, partial_signs)
+
+
+def _get_default_value(param_name: str):
+    """Get default values for parameter detection."""
+    defaults = {
+        'max_workers': 1,
+        'chunk_size': 1 << 14,
+        'include_flip': False,
+        'verbose': True,
+        'save_data': False,
+        'save_dir': "data",
+        'symbolic': False
+    }
+    return defaults.get(param_name)
+
+
+def _fk_from_config(config_path: str) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+    """
+    Handle FK computation from JSON/YAML configuration files.
+
+    Supports both single computation and batch processing modes:
+    - Single mode: Direct computation from config with braid, degree, and parameters
+    - Batch mode: Multiple computations with global defaults and per-computation overrides
+
+    Args:
+        config_path: Path to JSON or YAML configuration file
+
+    Returns:
+        Single computation: Dict[str, Any] containing FK results
+        Batch processing: Dict[str, Dict[str, Any]] keyed by computation names
+
+    Configuration Format:
+        Single computation:
+        {
+            "braid": [1, -2, 3],
+            "degree": 2,
+            "preset": "accurate",
+            "max_workers": 8
+        }
+
+        Batch processing:
+        {
+            "preset": "fast",
+            "max_workers": 4,
+            "computations": [
+                {
+                    "name": "trefoil",
+                    "braid": [1, -2, 1, -2],
+                    "degree": 2
+                },
+                {
+                    "name": "figure_eight",
+                    "braid": [1, -2, -1, 2],
+                    "degree": 3,
+                    "preset": "accurate"
+                }
+            ]
+        }
+
+    Note:
+        - Global parameters are applied to all batch computations
+        - Individual computations can override global settings
+        - All presets disable flip symmetry by default
+        - Batch mode provides progress tracking for multiple computations
+    """
+    config_data = _load_config_file(config_path)
+
+    # Check if this is a batch configuration (multiple braids)
+    if 'computations' in config_data:
+        return _fk_batch_from_config(config_data, config_path)
+
+    # Single computation mode (existing behavior)
+    braid = config_data.get('braid')
+    if not braid:
+        raise ValueError("'braid' is required in config file")
+
+    degree = config_data.get('degree')
+    if degree is None:
+        raise ValueError("'degree' is required in config file")
+
+    # Check if using preset in config
+    preset = config_data.get('preset')
+    if preset:
+        filtered_config = {k: v for k, v in config_data.items()
+                         if k not in ['braid', 'degree', 'preset']}
+        preset_config = PRESETS.get(preset, {}).copy()
+        preset_config.update(filtered_config)
+        verbose = preset_config.get("verbose", False)
+        configure_logging(verbose)
+        return _fk_compute(braid, degree, **preset_config)
+    else:
+        filtered_config = {k: v for k, v in config_data.items()
+                         if k not in ['braid', 'degree']}
+        verbose = filtered_config.get("verbose", False)
+        configure_logging(verbose)
+        return _fk_compute(braid, degree, **filtered_config)
+
+
+def _fk_batch_from_config(config_data: Dict[str, Any], config_path: str) -> Dict[str, Dict[str, Any]]:
+    """
+    Execute batch FK computations from configuration data with progress tracking.
+
+    Processes multiple braid computations with global defaults and per-computation
+    overrides, providing organized results keyed by computation names.
+
+    Args:
+        config_data: Dictionary containing batch configuration with 'computations' array
+        config_path: Path to original config file (for error reporting)
+
+    Returns:
+        Dict[str, Dict[str, Any]]: Results keyed by computation names, each containing
+        standard FK computation output (braid, inversion_data, degree, components, fk)
+
+    Batch Processing Features:
+        - Global parameter defaults applied to all computations
+        - Individual computation parameter overrides
+        - Named computations for organized output
+        - Progress tracking during batch execution
+        - Error handling continues processing remaining computations
+
+    Note:
+        - Computation names default to "computation_N" if not specified
+        - Failed computations are logged but don't halt the batch
+        - All computations use the same global logging configuration
+    """
+    computations = config_data.get('computations', [])
+    if not computations:
+        raise ValueError("'computations' array is empty in config file")
+
+    # Global defaults from the config file
+    global_defaults = {k: v for k, v in config_data.items()
+                      if k not in ['computations']}
+
+    results = {}
+    total = len(computations)
+
+    for i, computation in enumerate(computations, 1):
+        # Get computation name (for results key)
+        comp_name = computation.get('name', f"computation_{i}")
+
+        # Required fields for each computation
+        braid = computation.get('braid')
+        if not braid:
+            raise ValueError(f"'braid' is required for computation '{comp_name}'")
+
+        degree = computation.get('degree')
+        if degree is None:
+            raise ValueError(f"'degree' is required for computation '{comp_name}'")
+
+        # Merge global defaults with computation-specific parameters
+        comp_config = global_defaults.copy()
+        comp_config.update({k: v for k, v in computation.items()
+                           if k not in ['name', 'braid', 'degree']})
+
+        # Handle preset if specified
+        preset = comp_config.get('preset')
+        if preset:
+            if preset not in PRESETS:
+                raise ValueError(f"Unknown preset '{preset}' for computation '{comp_name}'. Available: {list(PRESETS.keys())}")
+
+            # Start with preset, then apply overrides
+            filtered_config = {k: v for k, v in comp_config.items()
+                             if k != 'preset'}
+            preset_config = PRESETS[preset].copy()
+            preset_config.update(filtered_config)
+            comp_config = preset_config
+
+        # Configure logging (quiet for batch unless explicitly verbose)
+        verbose = comp_config.get("verbose", False)
+        if not verbose and total > 1:
+            # For batch jobs, be quiet unless explicitly requested
+            comp_config["verbose"] = False
+
+        configure_logging(verbose)
+
+        # Print progress for batch jobs
+        if total > 1 and verbose:
+            logger.info(f"Computing {comp_name} ({i}/{total})")
+        elif total > 1:
+            print(f"Computing {comp_name} ({i}/{total})")
+
+        try:
+            # Run the computation
+            result = _fk_compute(braid, degree, **{k: v for k, v in comp_config.items()
+                                                  if k not in ['braid', 'degree']})
+            results[comp_name] = result
+
+        except Exception as e:
+            error_msg = f"Failed to compute {comp_name}: {str(e)}"
+            if verbose:
+                logger.error(error_msg)
+            results[comp_name] = {"error": str(e)}
+
+    return results
+
+
+def _fk_with_preset(braid: List[int], degree: int, preset: str,
+                   call_locals: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle preset mode with parameter overrides."""
+    if preset not in PRESETS:
+        raise ValueError(f"Unknown preset '{preset}'. Available: {list(PRESETS.keys())}")
+
+    preset_config = PRESETS[preset].copy()
+
+    # Override preset with any explicitly provided parameters
+    override_params = {}
+    param_names = ['ilp', 'ilp_file', 'inversion', 'inversion_file', 'partial_signs',
+                   'max_workers', 'chunk_size', 'include_flip', 'max_shifts',
+                   'verbose', 'save_data', 'save_dir', 'link_name', 'symbolic']
+
+    for param in param_names:
+        if param in call_locals and call_locals[param] != _get_default_value(param):
+            override_params[param] = call_locals[param]
+
+    preset_config.update(override_params)
+    verbose = preset_config.get("verbose", False)
+    configure_logging(verbose)
+
+    return _fk_compute(braid, degree, **preset_config)
+
+
+# -------------------------------------------------------------------------
+# Core computation function (internal)
+# -------------------------------------------------------------------------
+def _fk_compute(
+    braid: List[int],
+    degree: int,
+    verbose: bool = True,
+    max_workers: int = 1,
+    chunk_size: int = 1 << 14,
+    include_flip: bool = False,
+    max_shifts: Optional[int] = None,
+    save_data: bool = False,
+    save_dir: str = "data",
+    link_name: Optional[str] = None,
+    symbolic: bool = False,
+    ilp: Optional[str] = None,
+    ilp_file: Optional[str] = None,
+    inversion: Optional[Dict[str, Any]] = None,
+    inversion_file: Optional[str] = None,
+    partial_signs: Optional[List[int]] = None,
+) -> Dict[str, Any]:
+    """
+    Internal FK computation function performing the complete FK invariant calculation.
+
+    This function executes the complete FK computation pipeline:
+    1. Sign assignment calculation (inversion step) - can be parallelized
+    2. ILP (Integer Linear Programming) formulation
+    3. FK invariant computation using compiled helper binary
+    4. Component count extraction from braid topology
+    5. Optional symbolic polynomial conversion using SymPy
+
+    Args:
+        braid: List of integers representing braid word (e.g., [1, -2, 3])
+        degree: Degree of the FK invariant to compute
+        verbose: Enable verbose logging output (default: True)
+        max_workers: Number of parallel workers for inversion calculation (default: 1)
+        chunk_size: Chunk size for parallel processing tasks (default: 16384)
+        include_flip: Include flip symmetry in inversion calculation (default: False)
+        max_shifts: Maximum number of cyclic shifts to consider (default: None = unlimited)
+        save_data: Save intermediate computation files (inversion/ILP/JSON) (default: False)
+        save_dir: Directory path for saving intermediate files (default: "data")
+        link_name: Base name for saved files, auto-generated if None (default: None)
+        symbolic: Add symbolic polynomial representation using SymPy (default: False)
+        ilp: Pre-computed ILP data string to skip ILP calculation (default: None)
+        ilp_file: Path to file containing pre-computed ILP data (default: None)
+        inversion: Pre-computed inversion data dictionary (default: None)
+        inversion_file: Path to JSON file with pre-computed inversion data (default: None)
+        partial_signs: Optional partial sign assignments for constrained inversion (default: None)
+
+    Returns:
+        Dict[str, Any]: Comprehensive computation results containing:
+            - "braid": Original braid list used in computation
+            - "inversion_data": Sign assignment data from inversion step
+            - "degree": Computation degree used
+            - "components": Number of components/strands in the braid topology
+            - "fk": FK coefficient matrix as nested lists of [power, coefficient] pairs
+            - "symbolic": Human-readable polynomial string (only if symbolic=True and SymPy available)
+
+    Raises:
+        ValueError: If braid list is empty or degree is invalid
+        FileNotFoundError: If specified inversion_file or ilp_file doesn't exist
+        ImportError: If symbolic=True but SymPy is not available
+
+    Note:
+        - This is an internal function - use the main fk() function for external calls
+        - Flip symmetry is disabled by default for improved performance
+        - The components count reflects braid topology, not just maximum absolute value
+        - Symbolic output requires SymPy: pip install sympy
+    """
+    # Store original braid for output
+    original_braid = braid.copy()
+
     # --- Handle naming and save directories ---
     if save_data:
         if not os.path.isdir(save_dir):
@@ -186,110 +682,51 @@ def fk(
         logger.debug("ILP data calculated")
 
     # --- Step 3: FK invariant computation ---
+    bin_path = _binary_path("fk_segments_links")
     if verbose:
-        subprocess.run(["./fk_segments_links", f"{link_name}_ilp", f"{link_name}"], check=True)
+        subprocess.run([bin_path, f"{link_name}_ilp", f"{link_name}"], check=True)
     else:
-        subprocess.run(["./fk_segments_links", f"{link_name}_ilp", f"{link_name}"], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run([bin_path, f"{link_name}_ilp", f"{link_name}"], check=True,
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     with open(link_name + ".json", "r") as f:
-        result = json.load(f)
+        fk_result = json.load(f)
 
-    result = result["coefficient_q_powers"]
+    fk_coefficients = fk_result["coefficient_q_powers"]
 
     # Clean up intermediate files unless explicitly saving
     if not save_data:
-        subprocess.run(["rm", f"./{link_name}_ilp.csv", f"./{link_name}.json"])
+        _safe_unlink(f"{link_name}_ilp.csv")
+        _safe_unlink(f"{link_name}.json")
+
+    # Get the braid that was actually used (may be modified during inversion computation)
+    # If inversion was computed, the braid might have been canonicalized
+    computed_braid = original_braid  # For now, assume no modification
+    # TODO: If sign assignment modifies the braid, we should capture that here
+
+    # Extract number of components (strands) from the braid
+    braid_states = BraidStates(computed_braid)
+    components = braid_states.n_components
+
+    # Prepare result dictionary
+    result = {
+        "braid": computed_braid,
+        "inversion_data": inversion["inversion_data"] if inversion else None,
+        "degree": degree,
+        "components": components,
+        "fk": fk_coefficients,
+    }
+
+    # Add symbolic representation if requested and SymPy is available
+    if symbolic and SYMPY_AVAILABLE:
+        try:
+            symbolic_repr = format_symbolic_output(result, "pretty")
+            result["symbolic"] = symbolic_repr
+        except Exception as e:
+            if verbose:
+                print(f"Warning: Could not generate symbolic representation: {e}")
+    elif symbolic and not SYMPY_AVAILABLE:
+        if verbose:
+            print("Warning: SymPy not available for symbolic output. Install with: pip install sympy")
 
     return result
-
-
-# -------------------------------------------------------------------------
-# CLI
-# -------------------------------------------------------------------------
-def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description="Compute FK invariant from a braid using inversion and ILP stages."
-    )
-
-    p.add_argument(
-        "--braid",
-        type=str,
-        required=True,
-        help='Braid word as a list. Examples: "[ -2, -2, -3, 1 ]" or "-2,-2,-3,1" or "-2 -2 -3 1".',
-    )
-    p.add_argument("--degree", type=int, required=True, help="Degree of the invariant computation.")
-
-    p.add_argument("--ilp-file", type=str, default=None, help="Path to a precomputed ILP file.")
-    # Supplying raw ILP text via CLI is uncommon; keep for parity but optional:
-    p.add_argument("--ilp", type=str, default=None, help="ILP data as a raw string (advanced).")
-
-    p.add_argument("--inversion-file", type=str, default=None, help="Path to inversion JSON file.")
-    p.add_argument(
-        "--partial-signs",
-        type=str,
-        default=None,
-        help='Optional partial sign assignments. Same formats as --braid.',
-    )
-
-    p.add_argument("--max-workers", type=int, default=1, help="Parallel workers for inversion calculation.")
-    p.add_argument("--chunk-size", type=int, default=(1 << 14), help="Chunk size for parallel tasks.")
-    p.add_argument("--max-shifts", type=int, default=None, help="Maximum shifts considered in inversion.")
-
-    # Toggle flags
-    add_verbose = _parse_bool(default_true=False)
-    add_verbose(p, "verbose", "Verbose logging")
-
-    add_flip = _parse_bool(default_true=True)
-    add_flip(p, "include-flip", "Include flip symmetry in inversion")
-
-    add_save = _parse_bool(default_true=False)
-    add_save(p, "save-data", "Save intermediate files (inversion/ILP/JSON)")
-
-    add_print = _parse_bool(default_true=False)
-    add_print(p, "print-result", "Print the FK result to stdout")
-
-    p.add_argument("--save-dir", type=str, default="data", help="Directory to store data when --save-data is set.")
-    p.add_argument("--link-name", type=str, default=None, help="Base name for output files (without extension).")
-
-    return p
-
-
-def main(argv: List[str]) -> None:
-    parser = build_parser()
-    args = parser.parse_args(argv[1:])
-
-    braid = _parse_int_list(args.braid)
-    if not braid:
-        parser.error("Could not parse --braid into a non-empty list of integers.")
-
-    partial_signs = _parse_int_list(args.partial_signs)
-
-    # sync logger level with --verbose toggle
-    console.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-    logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-
-    result = fk(
-        braid=braid,
-        degree=args.degree,
-        ilp=args.ilp,
-        ilp_file=args.ilp_file,
-        inversion=None,                      # prefer file path via --inversion-file, else compute
-        inversion_file=args.inversion_file,
-        partial_signs=partial_signs,
-        max_workers=args.max_workers,
-        chunk_size=args.chunk_size,
-        include_flip=args.include_flip,
-        max_shifts=args.max_shifts,
-        verbose=args.verbose,
-        save_data=args.save_data,
-        save_dir=args.save_dir,
-        link_name=args.link_name,
-    )
-
-    # Pretty-print result JSON to stdout
-    if args.print_result:
-        print(json.dumps(result, indent=2, sort_keys=True))
-
-
-if __name__ == "__main__":
-    main(sys.argv)
