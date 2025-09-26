@@ -70,10 +70,10 @@ EXAMPLES:
   max_workers: 4
   computations:
     - name: trefoil
-      braid: [1, -2, 1, -2]
+      braid: [1, 1, 1]
       degree: 2
     - name: figure_eight
-      braid: [1, -2, -1, 2]
+      braid: [1, -2, 1, -2]
       degree: 3
       preset: accurate
   EOF
@@ -169,12 +169,12 @@ BATCH PROCESSING:
     "computations": [
       {
         "name": "trefoil",
-        "braid": [1, -2, 1, -2],
+        "braid": [1, 1, 1],
         "degree": 2
       },
       {
         "name": "figure_eight",
-        "braid": [1, -2, -1, 2],
+        "braid": [1, -2, 1, -2],
         "degree": 3,
         "preset": "accurate"
       }
