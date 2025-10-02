@@ -281,6 +281,15 @@ Run 'fk -h' to see all available subcommands and improved help.
 # -------------------------------------------------------------------------
 # Helper functions
 # -------------------------------------------------------------------------
+def _looks_like_negative_braid(s: str) -> bool:
+    """Check if string looks like a braid with negative numbers."""
+    import re
+    # Pattern: starts with -, followed by digits/commas/more negative numbers
+    # Examples: -1, -1,2, -1,-2,-3, -2,3,-1
+    pattern = r'^-\d+(,-?\d+)*$'
+    return bool(re.match(pattern, s))
+
+
 def _print_result(result: dict, symbolic: bool = False) -> None:
     """Helper function to print result in requested format."""
     if symbolic:
@@ -385,5 +394,28 @@ def main(argv: Optional[List[str]] = None) -> None:
     else:
         # Legacy mode - parse as before for backward compatibility
         parser = build_legacy_parser()
-        args = parser.parse_args(argv[1:])
-        handle_advanced(args)
+        try:
+            args = parser.parse_args(argv[1:])
+            handle_advanced(args)
+        except SystemExit as e:
+            # Check if this might be due to negative numbers being treated as flags
+            # Look for patterns like -1, -1,2, -1,-2,-3 etc.
+            if len(argv) >= 3 and argv[1].startswith('-'):
+                # Check if it looks like a braid string with negative numbers
+                braid_str = argv[1]
+                if _looks_like_negative_braid(braid_str):
+                    # Try again with -- separator to treat negative numbers as positional args
+                    try:
+                        args = parser.parse_args(['--'] + argv[1:])
+                        handle_advanced(args)
+                    except SystemExit:
+                        # If it still fails, show helpful error message
+                        print(f"Error: Could not parse braid '{argv[1]}'. Try using quotes:", file=sys.stderr)
+                        print(f"  fk \"{argv[1]}\" {' '.join(argv[2:])}", file=sys.stderr)
+                        print("Or use the new subcommand interface:", file=sys.stderr)
+                        print(f"  fk simple \"{argv[1]}\" {' '.join(argv[2:])}", file=sys.stderr)
+                        raise
+                else:
+                    raise
+            else:
+                raise

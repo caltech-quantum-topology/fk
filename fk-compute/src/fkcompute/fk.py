@@ -137,11 +137,6 @@ def _load_config_file(config_path: str) -> Dict[str, Any]:
         else:
             return json.load(f)
 
-
-
-
-
-
 def _parse_bool(default_true: bool):
     """Return a function that adds --foo / --no-foo toggle flags for a bool."""
 
@@ -333,7 +328,7 @@ def _get_default_value(param_name: str):
         'max_workers': 1,
         'chunk_size': 1 << 14,
         'include_flip': False,
-        'verbose': True,
+        'verbose': False,
         'save_data': False,
         'save_dir': "data",
         'symbolic': False
