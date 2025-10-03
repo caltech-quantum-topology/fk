@@ -196,6 +196,34 @@ Batch mode supports:
         help="Path to JSON or YAML configuration file"
     )
 
+    # Variables command - print symbolic relations
+    variables_parser = subparsers.add_parser(
+        "variables",
+        help="Print symbolic relations for a braid",
+        description="""
+Print the symbolic relations and constraints for FK computation at a given degree.
+This shows the mathematical structure of the problem in human-readable form,
+including variable assignments, degree constraints, and relation inequalities.
+
+For fibered braids, inversion data will be computed automatically.
+For homogeneous braids, no additional data is needed.
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='Example: fk variables "[1,-2,3]" 2'
+    )
+    variables_parser.add_argument(
+        "braid",
+        type=str,
+        help='Braid word. Examples: "[1,-2,3]", "1,-2,3", or "1 -2 3"'
+    )
+    variables_parser.add_argument("degree", type=int, help="Computation degree")
+    variables_parser.add_argument(
+        "-f", "--outfile",
+        type=str,
+        default=None,
+        help="Output file to save symbolic relations (optional)"
+    )
+
     # Legacy compute command (backward compatibility)
     legacy_parser = subparsers.add_parser(
         "compute",
@@ -334,6 +362,50 @@ def handle_config(args) -> None:
     _print_result(result, False)  # Config mode doesn't currently support CLI symbolic flag
 
 
+def handle_variables(args) -> None:
+    """Handle variables command."""
+    from .braidstates_links import BraidStates
+    from .relations_links import full_reduce, print_symbolic_relations
+    from .braids import is_homogeneous_braid
+
+    braid = _parse_int_list(args.braid)
+    if not braid:
+        raise ValueError("Could not parse braid into a non-empty list of integers")
+
+    # Determine if braid is homogeneous or fibered
+    is_homogeneous = is_homogeneous_braid(braid)
+
+    if is_homogeneous:
+        # Homogeneous braid - no inversion data needed
+        braid_states = BraidStates(braid)
+        all_relations = braid_states.get_state_relations()
+        relations = full_reduce(all_relations)
+        print_symbolic_relations(args.degree, relations, braid_states, args.outfile)
+    else:
+        # Fibered braid - compute inversion data automatically
+        print("Computing inversion data for fibered braid...")
+
+        # Use the FK function to compute inversion data
+        result = fk(braid, args.degree, verbose=False, save_data=False)
+
+        if 'inversion_data' not in result:
+            raise ValueError("Could not compute inversion data for this braid")
+
+        # Extract inversion data and set up braid states
+        inversion_data = result['inversion_data']
+        braid_states = BraidStates(braid)
+        braid_states.strand_signs = inversion_data
+        braid_states.compute_matrices()
+
+        if braid_states.validate():
+            braid_states.generate_position_assignments()
+            all_relations = braid_states.get_state_relations()
+            relations = full_reduce(all_relations)
+            print_symbolic_relations(args.degree, relations, braid_states, args.outfile)
+        else:
+            raise ValueError("Invalid inversion data computed for this braid")
+
+
 def handle_advanced(args) -> None:
     """Handle advanced/compute/legacy commands."""
     braid = _parse_int_list(args.braid)
@@ -375,7 +447,7 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     # Check if using help flag or subcommands
     has_help = len(argv) > 1 and argv[1] in ['-h', '--help']
-    has_subcommand = len(argv) > 1 and argv[1] in ['simple', 'preset', 'config', 'advanced', 'compute']
+    has_subcommand = len(argv) > 1 and argv[1] in ['simple', 'preset', 'config', 'advanced', 'compute', 'variables']
 
     if has_help or has_subcommand:
         parser = build_parser()
@@ -387,6 +459,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             handle_preset(args)
         elif args.command == 'config':
             handle_config(args)
+        elif args.command == 'variables':
+            handle_variables(args)
         elif args.command in ['advanced', 'compute']:
             handle_advanced(args)
         else:

@@ -1,3 +1,4 @@
+# from fkcompute.braidstates_links import BraidStates  # Removed to avoid circular import
 from fkcompute.utils import sort_any
 from fkcompute.states import StateLiteral, ZERO_STATE, NUNITY_STATE
 
@@ -1471,6 +1472,109 @@ def condition_assignments(degree, relations, braid_states):
     return filtered
 
 
+def print_symbolic_relations(degree, relations, braid_states, write_to=None, verbose=False):
+    """Print the reduced relations in human-readable SymPy format"""
+
+    check = czech_sign_assignment(degree, relations, braid_states)
+    if check is None:
+        print("No valid sign assignment exists for this degree!")
+        return None
+
+    criteria = check['criteria']
+    multiples = check['multiples']
+    singlesigns = check['single_signs']
+    assignment = check['assignment']
+
+    print(f"=== SYMBOLIC VARIABLES RELATIONS AT DEGREE {degree} ===\n")
+
+    # Print braid information
+    print(f"Braid: {braid_states.braid}")
+    print(f"Number of components: {braid_states.n_components}")
+    print(f"Writhe: {braid_states.writhe}")
+    if hasattr(braid_states, 'strand_signs') and braid_states.strand_signs:
+        print(f"Inversion data: {braid_states.strand_signs}")
+    print()
+
+    # Print variable assignments
+    print("=== VARIABLE ASSIGNMENTS ===")
+    for state, expr in sorted(assignment.items()):
+        if isinstance(expr, int):
+            print(f"{state} = {expr}")
+        else:
+            print(f"{state} = {expr}")
+    print()
+
+    # Print variable signs
+    print("=== VARIABLE SIGNS ===")
+    for var, sign in sorted(singlesigns.items(), key=lambda x: x[0].index() if hasattr(x[0], 'index') else 0):
+        sign_str = "+" if sign == 1 else "-"
+        print(f"{var}: {sign_str}")
+    print()
+
+    # Print degree criteria (constraints for each component)
+    print("=== DEGREE CONSTRAINTS ===")
+    for component, constraint in sorted(criteria.items()):
+        if constraint.is_constant():
+            print(f"Component {component}: 0 ≤ {constraint.constant()}")
+        else:
+            print(f"Component {component}: 0 ≤ {constraint}")
+    print()
+
+    # Print inequality constraints from relations
+    print("=== RELATION INEQUALITIES ===")
+    if multiples:
+        for i, ineq in enumerate(multiples):
+            if ineq.is_constant():
+                print(f"Inequality {i+1}: 0 ≤ {ineq.constant()}")
+            else:
+                print(f"Inequality {i+1}: 0 ≤ {ineq}")
+    else:
+        print("No inequality constraints from relations")
+    print()
+
+    # Print original relations for context
+    print("=== ORIGINAL RELATIONS ===")
+    for i, relation in enumerate(relations):
+        print(f"{i+1}. {relation}")
+    print()
+
+    # Print free variables
+    free_vars = [var for var, expr in assignment.items()
+                 if isinstance(expr, Symbol) and not expr.is_constant()]
+    print("=== FREE VARIABLES ===")
+    if free_vars:
+        print(f"Free variables: {free_vars}")
+    else:
+        print("All variables are determined by relations")
+    print()
+
+    if write_to:
+        # Save to file as well
+        import sys
+        from io import StringIO
+
+        # Capture the output
+        old_stdout = sys.stdout
+        sys.stdout = captured_output = StringIO()
+
+        # Re-run the printing to capture it
+        print_symbolic_relations(degree, relations, braid_states, None, verbose)
+
+        # Restore stdout and save to file
+        sys.stdout = old_stdout
+        content = captured_output.getvalue()
+
+        with open(write_to, 'w') as f:
+            f.write(content)
+        print(f"Relations saved to {write_to}")
+
+    return {
+        "criteria": criteria,
+        "multiples": multiples,
+        "single_signs": singlesigns,
+        "assignment": assignment
+    }
+
 def ilp(degree, relations, braid_states, write_to=None, verbose=False):
 
     check = czech_sign_assignment(degree, relations, braid_states)
@@ -1682,3 +1786,4 @@ def stratified_condition_assignments(weight, relations, braid_states):
     return filtered
 
 # there is a redundancy in the above solver: you are checking all criteria when only those with only nonpathological variables can start a complete bounding
+

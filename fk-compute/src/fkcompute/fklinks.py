@@ -1,5 +1,5 @@
 from fkcompute.braidstates_links import BraidStates
-from fkcompute.relations_links import full_reduce, ilp
+from fkcompute.relations_links import full_reduce, ilp, print_symbolic_relations
 from fkcompute.braids import is_homogeneous_braid
 import argparse
 
@@ -12,13 +12,16 @@ def braid_type(braid):
     else:
         return BRAID_TYPE_FIBERED
 
-def FK(braid, degree, outfile, inversion_data=None):
+def FK(braid, degree, outfile, inversion_data=None, variables=False):
     braid_type_ = braid_type(braid)
     if braid_type_ == BRAID_TYPE_HOMEGENOUS:
         braid_states = BraidStates(braid)
         all_relations = braid_states.get_state_relations()
         relations = full_reduce(all_relations)
-        solution = ilp(degree, relations, braid_states, outfile)
+        if variables:
+            print_symbolic_relations(degree, relations, braid_states, outfile)
+        else:
+            solution = ilp(degree, relations, braid_states, outfile)
     elif braid_type_ == BRAID_TYPE_FIBERED:
         if inversion_data == None:
             raise Exception("You must supply inversion data for fibered knots!")
@@ -29,7 +32,10 @@ def FK(braid, degree, outfile, inversion_data=None):
             braid_states.generate_position_assignments()
             all_relations = braid_states.get_state_relations()
             relations = full_reduce(all_relations)
-            ilp(degree, relations, braid_states, outfile)
+            if variables:
+                print_symbolic_relations(degree, relations, braid_states, outfile)
+            else:
+                ilp(degree, relations, braid_states, outfile)
         else:
             raise Exception("The inversion data input doesn't seem to be valid. May you make sure you've input it correctly?")
 
@@ -43,6 +49,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--signs', help='Sign assignment.')
     parser.add_argument('-p', '--partial', help='Sign assignment.')
     parser.add_argument('-b', '--braid', help="The braid.")
+    parser.add_argument('--variables', action='store_true', help='Print symbolic relations instead of computing FK homology.')
     args = parser.parse_args()
 
     if args.outfile == None:
@@ -72,8 +79,8 @@ if __name__ == "__main__":
             raise Exception("Inversion data not found!")
         sign_assignment = None
     if args.partial == None:
-        FK(braid, degree=args.degree, file_title=args.outfile, verbose=args.verbose, inversion_data=sign_assignment)
+        FK(braid, degree=args.degree, outfile=args.outfile, inversion_data=sign_assignment, variables=args.variables)
     elif args.partial == '1':
         FKlabels(braid=braid, degree=args.degree, file_title=args.outfile, inversion_data=sign_assignment)
     elif args.partial == '2':
-        FK(braid, degree=args.degree, file_title=args.outfile, verbose=args.verbose, inversion_data=sign_assignment, states_precomputed=True)
+        FK(braid, degree=args.degree, outfile=args.outfile, inversion_data=sign_assignment, variables=args.variables)
