@@ -150,6 +150,7 @@ class Symbol():
     def __init__(self, index=0):
         self.var = np.zeros(index + 1)
         self.var[-1] = 1
+
     def __add__(self, b):
         if isinstance(b, int) or isinstance(b, float):
             sym = copy.deepcopy(self)
@@ -342,7 +343,7 @@ class Symbol():
                 break
         return hash(tuple(to_hash))
     def __repr__(self):
-        syms = [''] + list(ascii_lowercase) + list(ascii_uppercase)
+        syms = [''] + list(ascii_lowercase.replace("q","").replace("x","").replace("y","").replace("w","").replace("z","")) + list(ascii_uppercase)
         string = ''
         for index in range(len(self.var)):
             if self.var[index] != 0:
@@ -371,7 +372,7 @@ class Symbol():
             string = '0'
         return string
     def __str__(self):
-        syms = [''] + list(ascii_lowercase) + list(ascii_uppercase)
+        syms = [''] + list(ascii_lowercase.replace("q","").replace("x","").replace("y","").replace("w","").replace("z","")) + list(ascii_uppercase)
         string = ''
         for index in range(len(self.var)):
             if self.var[index] != 0:
