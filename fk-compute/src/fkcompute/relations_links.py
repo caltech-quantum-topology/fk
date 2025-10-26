@@ -1,4 +1,3 @@
-# from fkcompute.braidstates_links import BraidStates  # Removed to avoid circular import
 from fkcompute.utils import sort_any
 from fkcompute.states import StateLiteral, ZERO_STATE, NUNITY_STATE
 
@@ -1002,6 +1001,57 @@ def subs(expr):
             out[key] = value
     return out
 
+def R1R2_first (in2, out1):
+    return (out1 + in2 + 1) / 4
+
+def R1R2_second (in1, out2, inverted):
+    if inverted:
+        return (3 * in1 - out2 + 1) / 4
+    return (3 * out2 - in1 + 1) / 4
+
+def R3R4_first (in2, out1, inverted):
+    if inverted:
+        return (in2 - 3 * out1 + 1) / 4
+    return (out1 - 3 * in2 + 1) / 4
+
+def R3R4_second(in1, out2):
+    return (out2 + in1 + 1) / 4
+
+def generate_criteria(assignment, braid_states, exp_signs):
+    criteria = {}
+        
+    conditions = {val:zero for val in range(braid_states.n_components)}
+    for index in range(0, braid_states.n_strands): # starting at 0 seems to be correct for links with >= 2 components
+       conditions[braid_states.closed_strand_components[index]] -= 1/2
+
+    for index in range(braid_states.n_crossings):
+        crossing_type = braid_states.r_matrices[index]
+        in1 = braid_states.top_input_state_locations[index]
+        in2 = (in1[0] + 1, in1[1])
+        out1 = (in1[0], in1[1] + 1)
+        out2 = (out1[0] + 1, out1[1])
+        in1 = braid_states.get_state(in1)
+        in2 = braid_states.get_state(in2)
+        out1 = braid_states.get_state(out1)
+        out2 = braid_states.get_state(out2)
+        if crossing_type == "R1" or crossing_type == "R2":
+            conditions[braid_states.top_crossing_components[index]] += R1R2_first(assignment[in2],
+                                                                                  assignment[out1])
+            conditions[braid_states.bottom_crossing_components[index]] +=  R1R2_second(assignment[in1],
+                                                                                       assignment[out2],
+                                                                                       exp_signs[braid_states.bottom_crossing_components[index]])
+        elif crossing_type == "R3" or crossing_type == "R4":
+            conditions[braid_states.top_crossing_components[index]] -= R3R4_first(assignment[in2],
+                                                                                  assignment[out1],
+                                                                                  exp_signs[braid_states.top_crossing_components[index]]) 
+            conditions[braid_states.bottom_crossing_components[index]] -= R3R4_second(assignment[in1],
+                                                                                      assignment[out2])
+        else:
+            raise Exception("Crossing type is not one of the four acceptable values: 'R1', 'R2', 'R3', or 'R4'.")
+
+    return criteria
+
+
 def minimum_degree_symbolic(assignment, braid_states, verbose=False):
     conditions = {val:zero for val in range(braid_states.n_components)}
     for index in range(0, braid_states.n_strands): # starting at 0 seems to be correct for links with >= 2 components
@@ -1288,8 +1338,8 @@ def reduce_inequalities_symbolic(multiples, singles, singlesigns, depth=-1):
             multiples.pop(index)
     return multiples
 
-def process_assignment(assignment, braid_states, relations):
-    criteria = minimum_degree_symbolic(assignment, braid_states)
+def process_assignment(assignment, braid_states, relations, exp_signs):
+    criteria = generate_criteria(assignment, braid_states, exp_signs)
     singles, multiples = inequality_manager(relations, assignment, braid_states)
     singlesigns = {}
     for entry in singles:
@@ -1392,9 +1442,21 @@ def bounding(expr, bounding_expression_indices, bounding_inequalities, degree, s
                 bounding_inequalities.pop(index)
     return assignments
 
-def check_sign_assignment(degree, relations, braid_states):
+def check_sign_assignment(degree, relations, braid_states, fk_case = {"case": 1}):
     assignment = symbolic_variable_assignment(relations, braid_states)
-    criteria, multiples, singlesigns = process_assignment(assignment, braid_states, relations)
+
+    if fk_case["case"] == 1:
+        exp_signs = {0: False, 1: False}
+    elif fk_case["case"] == 2:
+        exp_signs = {0: True, 1: False}
+    elif fk_case["case"] == 3:
+        exp_signs = {0: True, 1: False}
+    elif fk_case["case"] == 4:
+        exp_signs = {0: False, 1: True}
+    elif fk_case["case"] == 5:
+        exp_signs = {0: False, 1: True}
+
+    criteria, multiples, singlesigns = process_assignment(assignment, braid_states, relations, exp_signs)
     for value in criteria.values():
         multiples.append(degree - value)
     if not integral_bounded(multiples, singlesigns):
@@ -1406,19 +1468,31 @@ def check_sign_assignment(degree, relations, braid_states):
             "assignment" : assignment,       # symbolic assignment
         }
 
-def czech_sign_assignment(degree, relations, braid_states, verbose=False):
+def czech_sign_assignment(degree, relations, braid_states, verbose=False, fk_case = {"case": 1}):
     assignment = symbolic_variable_assignment(relations, braid_states)
-    criteria, multiples, singlesigns = process_assignment(assignment, braid_states, relations)
+
+    if fk_case["case"] == 1:
+        exp_signs = {0: False, 1: False}
+    elif fk_case["case"] == 2:
+        exp_signs = {0: True, 1: False}
+    elif fk_case["case"] == 3:
+        exp_signs = {0: True, 1: False}
+    elif fk_case["case"] == 4:
+        exp_signs = {0: False, 1: True}
+    elif fk_case["case"] == 5:
+        exp_signs = {0: False, 1: True}
+    criteria, multiples, singlesigns = process_assignment(assignment, braid_states, relations, exp_signs)
 
     if verbose:
         for value in criteria.values():
             print(expression_minimum(value, singlesigns))
-    # quit()
-
+    
     for (key, value) in criteria.items():
-        criteria[key] = degree - value
-    if not integral_bounded(multiples + list(criteria.values()), singlesigns):
-        return None
+        invert = exp_signs[key]
+        criteria[key] = degree - (1-2*int(invert))*value
+
+    #if not integral_bounded(multiples + list(criteria.values()), singlesigns):
+    #    return None
     return {
             "criteria" : criteria,          # inequalities from degree bounding
             "multiples" : multiples,        
@@ -1451,7 +1525,6 @@ def total_weight(assignment, braid_states):
     return acc
 
 def condition_assignments(degree, relations, braid_states):
-
     check = check_sign_assignment(degree, relations, braid_states)
     if check is None:
         return None
@@ -1576,9 +1649,9 @@ def print_symbolic_relations(degree, relations, braid_states, write_to=None, ver
         "assignment": assignment
     }
 
-def ilp(degree, relations, braid_states, write_to=None, verbose=False):
+def ilp(degree, relations, braid_states, fk_case = {"case": 1}, write_to=None, verbose=False):
 
-    check = czech_sign_assignment(degree, relations, braid_states)
+    check = czech_sign_assignment(degree, relations, braid_states, fk_case)
     if check is None:
         return None
 
