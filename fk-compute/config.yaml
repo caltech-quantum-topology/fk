@@ -1,8 +1,3 @@
-preset: fast
-computations:
-  - name: trefoil
-    braid: [1,1,1]
-    degree: 5
-  - name: figure8
-    braid: [1,-2,1,-2]
-    degree: 5
+braid: [1,1,1]
+degree: 5
+save_data: True

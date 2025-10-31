@@ -9,12 +9,12 @@
 #include <string>
 #include <vector>
 
-#include "bilvector.hpp"
-#include "linalg.hpp"
-#include "multivariable_polynomial.hpp"
-#include "qalg_links.hpp"
-#include "solution_pool_1a_double_links.hpp"
-#include "string_to_int.hpp"
+#include "fk/bilvector.hpp"
+#include "fk/linalg.hpp"
+#include "fk/multivariable_polynomial.hpp"
+#include "fk/qalg_links.hpp"
+#include "fk/solution_pool_1a_double_links.hpp"
+#include "fk/string_to_int.hpp"
 
 class FK {
 private:
@@ -49,57 +49,6 @@ private:
             computeDotProduct(variableAssignments[i][j], angles);
       }
     }
-    // std::vector<int> point = {};
-    // for (auto x : angles) {
-    //     std::cout << x << " ";
-    //     point.push_back(x);
-    // }
-    // point[0] = 1;
-    // point[1] = 0;
-    // std::cout << "\n" << crossings << "\n";
-    // std::cout << prefactors << "\n";
-    // for (int i = 0; i < crossings + 1; i++) {
-    //     for (int j = 0; j < prefactors + 1; j++) {
-    //         std::cout << computeDotProduct(assignment[i][j], point) << " ";
-    //     }
-    //     std::cout << "separatus";
-    //     std::cout << std::endl;
-    // }
-    // exit(0);
-    // std::cout << "\n";
-    // for (auto x : numerical_assignment) {
-    //     for (auto y : x) {
-    //         std::cout << y << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
-    // std::cout << std::endl;
-    // for (auto x : matrices) {
-    //     std::cout << x[1][1] << " ";
-    // }
-    // std::cout << std::endl;
-    // for (auto x : r) {
-    //     std::cout << x << " ";
-    // }
-    // std::cout << std::endl;
-    // // exit(0);
-    // std::cout << "The below " << "\n";
-    // for (auto x : assignment[0][1]) {
-    //     std::cout << x << " ";
-    // }
-    // std::cout << "\n";
-    // std::cout << numericalAssignments[0][1] << "\n";
-
-    // for (auto x : assignment) {
-    //     for (auto y : x) {
-    //         for (auto z : y) {
-    //             std::cout << z << " ";
-    //         }
-    //         std::cout << std::endl;
-    //     }
-    //     std::cout << std::endl;
-    // }
-    // exit(0);
 
     double qPowerAccumulatorDouble = (writhe - prefactors) / 2.0;
     std::vector<double> xPowerAccumulatorDouble(components, 0);

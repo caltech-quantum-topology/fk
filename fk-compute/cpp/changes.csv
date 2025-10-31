@@ -1,0 +1,175 @@
+File,Type,Old Name,New Name,Description
+fk_segments_links.cpp,function,f,computeNumericalAssignment,Computes numerical assignments from angles and processes crossing data
+fk_segments_links.cpp,function,write,writeResultsToJson,Writes computation results to JSON file
+fk_segments_links.cpp,variable,acc,accumulator,Accumulator for FK computation results
+fk_segments_links.cpp,variable,r,crossingRelations,Vector storing crossing relation types
+fk_segments_links.cpp,variable,matrices,crossingMatrices,Matrices defining crossing structures
+fk_segments_links.cpp,variable,i,parameter_i,Matrix parameter i for crossing calculations
+fk_segments_links.cpp,variable,j,parameter_j,Matrix parameter j for crossing calculations
+fk_segments_links.cpp,variable,k,parameter_k,Matrix parameter k for crossing calculations
+fk_segments_links.cpp,variable,m,parameter_m,Matrix parameter m for crossing calculations
+fk_segments_links.cpp,variable,t,topComponent,Top crossing component index
+fk_segments_links.cpp,variable,b,bottomComponent,Bottom crossing component index
+fk_segments_links.cpp,variable,q_acc_double,qAccumulatorDouble,Q-power accumulator as double
+fk_segments_links.cpp,variable,x_acc_double,xAccumulatorDouble,X-power accumulator as double array
+fk_segments_links.cpp,variable,x_acc,xAccumulator,X-power accumulator as integer array
+fk_segments_links.cpp,variable,X_MAX,maxXDegrees,Maximum X degrees for each component
+fk_segments_links.cpp,variable,prod,totalProductSize,Total product size for term vector
+fk_segments_links.cpp,variable,term,polynomialTerms,Vector of polynomial terms represented as bilvectors
+fk_segments_links.cpp,variable,init,initialCoefficient,Initial coefficient value
+fk_segments_links.cpp,variable,ind,crossingIndex,Index for crossing iteration
+fk_segments_links.cpp,variable,infile_,inputFileName,Input file name parameter
+fk_segments_links.cpp,variable,outfile_,outputFileName,Output file name parameter
+fk_segments_links.cpp,variable,file_,fileName,File name for output
+qalg_links.hpp,function,pp_q_binom_,computePositiveQBinomialHelper,Helper function for positive q-binomial coefficient computation
+qalg_links.hpp,function,pp_q_binom,computePositiveQBinomial,Computes positive q-binomial coefficients
+qalg_links.hpp,function,np_q_binom_,computeNegativeQBinomialHelper,Helper function for negative q-binomial coefficient computation
+qalg_links.hpp,function,np_q_binom,computeNegativeQBinomial,Computes negative q-binomial coefficients
+qalg_links.hpp,function,x_q_pochhammer,computeXQPochhammer,Computes x-q-Pochhammer symbol
+qalg_links.hpp,function,x_q_inv_pochhammer,computeXQInversePochhammer,Computes inverse x-q-Pochhammer symbol
+qalg_links.hpp,parameter,i,upperLimit,Upper limit parameter for binomial computation
+qalg_links.hpp,parameter,j,lowerLimit,Lower limit parameter for binomial computation
+qalg_links.hpp,variable,Q_MAX_DEGREE,maxQDegree,Maximum degree in q for binomial computation
+qalg_links.hpp,variable,Q_DEGREE_DELTA,qDegreeDelta,Q degree delta for negative binomial
+qalg_links.hpp,variable,binom,binomialCoefficients,Vector storing binomial coefficients
+qalg_links.hpp,variable,term_,temporaryTerm,Temporary term storage for computation
+qalg_links.hpp,parameter,up,upperBound,Upper bound for Pochhammer computation
+qalg_links.hpp,parameter,low,lowerBound,Lower bound for Pochhammer computation
+qalg_links.hpp,parameter,component,componentIndex,Component index for multivariable computation
+qalg_links.hpp,parameter,components,totalComponents,Total number of components
+qalg_links.hpp,parameter,lengths,componentLengths,Lengths of each component
+qalg_links.hpp,parameter,blocks,blockSizes,Block sizes for indexing
+qalg_links.hpp,variable,z,iterationVariable,Loop iteration variable
+qalg_links.hpp,variable,w,widthVariable,Width iteration variable
+qalg_links.hpp,variable,r,rankVariable,Rank variable for inverse Pochhammer
+linalg.hpp,function,mult,multiplyMatrixVector,Multiplies matrix by vector
+linalg.hpp,function,multT,multiplyMatrixVectorTranspose,Multiplies transposed matrix by vector
+linalg.hpp,function,dot,computeDotProduct,Computes dot product with offset
+linalg.hpp,function,matrix_index_column_recurse,matrixIndexColumnRecursive,Recursive helper for matrix column indexing
+linalg.hpp,function,matrix_index_column,matrixIndexColumn,Performs matrix column indexing operation
+linalg.hpp,function,offset_addition_recurse,offsetAdditionRecursive,Recursive helper for offset addition
+linalg.hpp,function,offset_addition,performOffsetAddition,Performs offset addition between bilvector arrays
+linalg.hpp,parameter,matrix,inputMatrix,Input matrix for multiplication
+linalg.hpp,parameter,vector,inputVector,Input vector for multiplication
+linalg.hpp,variable,out,resultVector,Result vector from matrix operations
+linalg.hpp,variable,acc,accumulator,Accumulator for computation
+linalg.hpp,parameter,dim,dimensions,Number of dimensions
+linalg.hpp,parameter,slice,sliceIndex,Index of slice to operate on
+linalg.hpp,parameter,value,sliceValue,Value for the slice
+linalg.hpp,parameter,index,currentIndex,Current recursion index
+linalg.hpp,parameter,term,polynomialTerms,Polynomial terms array
+linalg.hpp,parameter,r,rankOffset,Rank offset for indexing
+linalg.hpp,parameter,z,zVariable,Z variable for computation
+linalg.hpp,parameter,sign,signMultiplier,Sign multiplier for addition
+linalg.hpp,parameter,blocks,blockSizes,Block sizes for indexing
+linalg.hpp,parameter,a,targetArray,Target array for offset addition
+linalg.hpp,parameter,b,sourceArray,Source array for offset addition
+linalg.hpp,parameter,offsets,offsetVector,Vector of offsets for addition
+linalg.hpp,parameter,bilvector_offset,bilvectorOffset,Offset for bilvector indexing
+linalg.hpp,parameter,lengths,arrayLengths,Lengths of arrays in each dimension
+linalg.hpp,parameter,a_blocks,targetBlocks,Block sizes for target array
+linalg.hpp,parameter,b_blocks,sourceBlocks,Block sizes for source array
+btree.hpp,function,private_update,updateNodeRecursively,Recursively updates tree nodes
+btree.hpp,function,private_contains,searchNodeRecursively,Recursively searches tree nodes
+btree.hpp,function,update,insertVector,Inserts vector into B-tree
+btree.hpp,function,contains,containsVector,Checks if vector exists in B-tree
+btree.hpp,function,get_children_values,getChildrenValues,Returns children values
+btree.hpp,function,get_children_pointers,getChildrenPointers,Returns children pointers
+btree.hpp,variable,children_values,childrenValues,Values stored in child nodes
+btree.hpp,variable,children_pointers,childrenPointers,Pointers to child nodes
+btree.hpp,parameter,v,inputVector,Input vector to insert or search
+btree.hpp,parameter,size,vectorSize,Size of vector being processed
+btree.hpp,variable,btr_ptr,childTreePointer,Pointer to child B-tree node
+bilvector.hpp,function,nsize,getNegativeSize,Returns size of negative index storage
+bilvector.hpp,function,psize,getPositiveSize,Returns size of positive index storage
+bilvector.hpp,function,get_nnvectors,getNegativeVectorCount,Returns count of negative vectors
+bilvector.hpp,function,get_npvectors,getPositiveVectorCount,Returns count of positive vectors
+bilvector.hpp,function,get_max_nindex,getMaxNegativeIndex,Returns maximum negative index accessed
+bilvector.hpp,function,get_max_pindex,getMaxPositiveIndex,Returns maximum positive index accessed
+bilvector.hpp,function,get_component_size,getComponentSize,Returns component size
+bilvector.hpp,variable,component_size,componentSize,Size of each component vector
+bilvector.hpp,variable,nnvectors,negativeVectorCount,Count of negative index vectors
+bilvector.hpp,variable,npvectors,positiveVectorCount,Count of positive index vectors
+bilvector.hpp,variable,max_nindex,maxNegativeIndex,Maximum negative index accessed
+bilvector.hpp,variable,max_pindex,maxPositiveIndex,Maximum positive index accessed
+bilvector.hpp,variable,default_,defaultValue,Default value for uninitialized elements
+bilvector.hpp,variable,nvectors,negativeVectors,List of negative index vectors
+bilvector.hpp,variable,pvectors,positiveVectors,List of positive index vectors
+bilvector.hpp,parameter,initial_nnvectors,initialNegativeVectorCount,Initial count of negative vectors
+bilvector.hpp,parameter,initial_npvectors,initialPositiveVectorCount,Initial count of positive vectors
+bilvector.hpp,parameter,component_size_,componentSize,Component size parameter
+bilvector.hpp,parameter,default__,defaultValue,Default value parameter
+bilvector.hpp,parameter,index,accessIndex,Index for array access
+solution_pool_1a_double_links.hpp,function,recurse_2,recursivelyProcessBounds,Recursively processes variable bounds
+solution_pool_1a_double_links.hpp,function,recurse_1,recursivelyProcessCriteria,Recursively processes criteria bounds
+solution_pool_1a_double_links.hpp,function,pooling,solveIntegerLinearProgram,Solves integer linear programming problem
+solution_pool_1a_double_links.hpp,parameter,criteria,inequalityCriteria,Criteria inequalities for ILP
+solution_pool_1a_double_links.hpp,parameter,bounds,variableBounds,Bounds for variables
+solution_pool_1a_double_links.hpp,parameter,supporting_inequalities,supportingInequalities,Supporting inequality constraints
+solution_pool_1a_double_links.hpp,parameter,point,currentPoint,Current point in solution space
+solution_pool_1a_double_links.hpp,parameter,function,callbackFunction,Callback function for valid points
+solution_pool_1a_double_links.hpp,parameter,new_criteria,newCriteria,Updated criteria during recursion
+solution_pool_1a_double_links.hpp,parameter,degrees,criteriaConstantTerms,Constant terms in criteria
+solution_pool_1a_double_links.hpp,parameter,first,primaryBounds,Primary variable bounds
+solution_pool_1a_double_links.hpp,parameter,main_inequalities,primaryInequalities,Primary inequality constraints
+solution_pool_1a_double_links.hpp,variable,inequality,inequalityIndex,Index of current inequality
+solution_pool_1a_double_links.hpp,variable,upper,upperBound,Upper bound for variable
+solution_pool_1a_double_links.hpp,variable,cond,conditionSatisfied,Boolean indicating if conditions are satisfied
+solution_pool_1a_double_links.hpp,variable,var_index,variableIndex,Index of variable being processed
+solution_pool_1a_double_links.hpp,variable,main_index,criteriaIndex,Index of criteria being processed
+solution_pool_1a_double_links.hpp,variable,slope,criteriaSlope,Slope coefficient in criteria
+solution_pool_1a_double_links.hpp,variable,new_degrees,updatedConstantTerms,Updated constant terms after variable assignment
+solution_pool_1a_double_links.hpp,variable,mains,primaryInequalityCount,Count of primary inequalities
+solution_pool_1a_double_links.hpp,variable,size,variableCount,Number of variables plus one
+solution_pool_1a_double_links.hpp,variable,support,totalInequalityCount,Total count of all inequalities
+solution_pool_1a_double_links.hpp,variable,visited,visitedStates,B-tree tracking visited states
+solution_pool_1a_double_links.hpp,variable,bounded_v,boundedVariables,Boolean array of bounded variables
+solution_pool_1a_double_links.hpp,variable,bounded,boundedVariableCount,Count of bounded variables
+solution_pool_1a_double_links.hpp,variable,condition,canBoundVariable,Boolean indicating if variable can be bounded
+solution_pool_1a_double_links.hpp,variable,locally_bounded,locallyBoundedVariables,Local array of bounded variables
+solution_pool_1a_double_links.hpp,variable,useful,isUsefulInequality,Boolean indicating if inequality is useful for bounding
+solution_pool_1a_double_links.hpp,variable,queue,processingQueue,Queue of criteria to process
+string_to_int.hpp,function,string_to_int,parseStringToInteger,Parses string to integer with sign handling
+string_to_int.hpp,function,string_to_double,parseStringToDouble,Parses string to double with decimal point handling
+string_to_int.hpp,parameter,s,inputString,Input string to parse
+string_to_int.hpp,variable,acc,accumulator,Accumulator for building numeric value
+string_to_int.hpp,variable,negate,isNegative,Boolean indicating if number is negative
+string_to_int.hpp,variable,start,startIndex,Starting index for parsing
+string_to_int.hpp,variable,decindex,decimalPointIndex,Index of decimal point in string
+testing.cpp,function,write_bilvector_to_json,writeBilvectorToJson,Writes bilvector results to JSON file
+testing.cpp,parameter,term,bilvectorTerms,Vector of bilvector terms to write
+testing.cpp,parameter,filename,outputFileName,Output file name
+testing.cpp,parameter,test_name,testName,Name of the test case
+testing.cpp,variable,file,outputFile,Output file stream
+testing.cpp,variable,first_write,isFirstWrite,Boolean for JSON formatting
+testing.cpp,variable,components,componentCount,Number of components
+testing.cpp,variable,lengths,componentLengths,Lengths of each component
+testing.cpp,variable,blocks,blockStructure,Block structure for computation
+testing.cpp,variable,prod,productSize,Product size for term vector allocation
+fk_segments_links.cpp,variable,r,crossingRelationTypes,Vector storing crossing relation types (1-4) for each crossing
+fk_segments_links.cpp,variable,matrices,crossingMatrices,Matrices defining crossing structures with coordinate pairs
+fk_segments_links.cpp,variable,acc,resultAccumulator,Final accumulator storing computation results as bilvectors
+fk_segments_links.cpp,variable,acc_blocks,accumulatorBlockSizes,Block sizes for result accumulator indexing
+fk_segments_links.cpp,variable,assignment,variableAssignments,Assignment of variables to linear combinations
+fk_segments_links.cpp,variable,numerical_assignment,numericalAssignments,Numerical values of variable assignments
+fk_segments_links.cpp,variable,q_acc_double,qPowerAccumulatorDouble,Q-power accumulator as floating point
+fk_segments_links.cpp,variable,x_acc_double,xPowerAccumulatorDouble,X-power accumulator array as floating point
+fk_segments_links.cpp,variable,init,initialCoefficient,Initial coefficient for polynomial computation
+fk_segments_links.cpp,variable,ind,crossingIndex,Index for iterating through crossings
+fk_segments_links.cpp,variable,i,matrixParam_i,Matrix parameter i from crossing calculations
+fk_segments_links.cpp,variable,j,matrixParam_j,Matrix parameter j from crossing calculations
+fk_segments_links.cpp,variable,k,matrixParam_k,Matrix parameter k from crossing calculations
+fk_segments_links.cpp,variable,m,matrixParam_m,Matrix parameter m from crossing calculations
+fk_segments_links.cpp,variable,t,topComponent,Top crossing component index
+fk_segments_links.cpp,variable,b,bottomComponent,Bottom crossing component index
+fk_segments_links.cpp,variable,q_acc,qPowerAccumulator,Q-power accumulator as integer
+fk_segments_links.cpp,variable,x_acc,xPowerAccumulator,X-power accumulator array as integer
+fk_segments_links.cpp,variable,X_MAX,maxXDegrees,Maximum X degrees for each component
+fk_segments_links.cpp,variable,blocks,blockSizes,Block sizes for polynomial term indexing
+fk_segments_links.cpp,variable,prod,totalProductSize,Total product size for polynomial terms allocation
+fk_segments_links.cpp,variable,term,polynomialTerms,Vector of polynomial terms as bilvectors
+fk_segments_links.cpp,function,f,computeNumericalAssignment,Computes numerical assignments from angles
+fk_segments_links.cpp,function,write,writeResultsToJson,Writes computation results to JSON file
+fk_segments_links.cpp,variable,file_,fileName,Output file name parameter
+fk_segments_links.cpp,variable,file,outputFile,Output file stream
+fk_segments_links.cpp,variable,first_write,isFirstWrite,Boolean flag for JSON formatting
