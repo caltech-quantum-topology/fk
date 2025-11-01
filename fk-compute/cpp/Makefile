@@ -16,7 +16,6 @@ $(shell mkdir -p $(BUILD_DIR))
 
 # Source files
 SOURCES = $(SRC_DIR)/fk_segments_links.cpp \
-          $(SRC_DIR)/multivariable_polynomial.cpp \
           $(SRC_DIR)/qalg_links.cpp \
           $(SRC_DIR)/linalg.cpp \
           $(SRC_DIR)/solution_pool_1a_double_links.cpp \
@@ -48,11 +47,11 @@ $(MAIN_TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Polynomial example executable
-$(EXAMPLE_TARGET): $(BUILD_DIR)/polynomial_example.o $(BUILD_DIR)/multivariable_polynomial.o
+$(EXAMPLE_TARGET): $(BUILD_DIR)/polynomial_example.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Arithmetic test executable
-$(ARITHMETIC_TEST_TARGET): $(BUILD_DIR)/arithmetic_test.o $(BUILD_DIR)/multivariable_polynomial.o
+$(ARITHMETIC_TEST_TARGET): $(BUILD_DIR)/arithmetic_test.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Testing executable
@@ -78,7 +77,6 @@ $(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp $(HEADERS)
 
 # Specific dependencies for object files
 $(BUILD_DIR)/fk_segments_links.o: $(SRC_DIR)/fk_segments_links.cpp $(HEADERS)
-$(BUILD_DIR)/multivariable_polynomial.o: $(SRC_DIR)/multivariable_polynomial.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/qalg_links.o: $(SRC_DIR)/qalg_links.cpp $(INCLUDE_DIR)/fk/qalg_links.hpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/linalg.o: $(SRC_DIR)/linalg.cpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/solution_pool_1a_double_links.o: $(SRC_DIR)/solution_pool_1a_double_links.cpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp $(INCLUDE_DIR)/fk/btree.hpp

@@ -235,9 +235,11 @@ private:
                             components, maxXDegrees, blockSizes);
       }
     }
-    performOffsetAddition(result.getCoefficients(), polynomialTerms,
+    auto& resultCoeffs = result.getCoefficients();
+    performOffsetAddition(resultCoeffs, polynomialTerms,
                           xPowerAccumulator, qPowerAccumulator, components,
                           maxXDegrees, 1, accumulatorBlockSizes, blockSizes);
+    result.syncFromDenseVector(resultCoeffs);
   }
   void writeResultsToJson(std::string fileName) {
     result.exportToJson(fileName);
@@ -409,9 +411,12 @@ public:
     // std::cout << accumulatorBlockSizes.size() << " " <<
     // increment_offset.size() << " " << components << " " << maxima.size() <<
     // "\n";
-    performOffsetAddition(result.getCoefficients(), result.getCoefficients(),
+    auto& resultCoeffs1 = result.getCoefficients();
+    auto& resultCoeffs2 = result.getCoefficients();
+    performOffsetAddition(resultCoeffs1, resultCoeffs2,
                           increment_offset, 0, components, maxima, -1,
                           accumulatorBlockSizes, accumulatorBlockSizes);
+    result.syncFromDenseVector(resultCoeffs1);
     writeResultsToJson(outfile_);
 
     // for (int w = 0; w < degree + 1; w++) {
