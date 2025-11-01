@@ -9,20 +9,28 @@
 
 #include "fk/btree.hpp"
 
-void recurse_2(std::vector<std::vector<double>> &criteria,
-               std::list<std::array<int, 2>> bounds,
-               std::vector<std::vector<double>> supporting_inequalities,
-               std::vector<int> point,
-               const std::function<void(const std::vector<int> &)> &function);
+// Modern iterative versions of the algorithms
+void enumeratePoints(std::vector<std::vector<double>>& criteria,
+                    std::list<std::array<int, 2>> bounds,
+                    std::vector<std::vector<double>> supporting_inequalities,
+                    std::vector<int> point,
+                    const std::function<void(const std::vector<int>&)>& function);
 
-void recurse_1(std::vector<std::vector<double>> &new_criteria,
-               std::vector<double> degrees,
-               std::vector<std::vector<double>> &criteria,
-               std::list<std::array<int, 2>> first,
-               std::list<std::array<int, 2>> bounds,
-               std::vector<std::vector<double>> supporting_inequalities,
-               std::vector<int> point,
-               const std::function<void(const std::vector<int> &)> &function);
+void assignVariables(std::vector<std::vector<double>>& new_criteria,
+                    std::vector<double> degrees,
+                    std::vector<std::vector<double>>& criteria,
+                    std::list<std::array<int, 2>> first,
+                    std::list<std::array<int, 2>> bounds,
+                    std::vector<std::vector<double>> supporting_inequalities,
+                    std::vector<int> point,
+                    const std::function<void(const std::vector<int>&)>& function);
+
+// Helper function to process a set of criteria
+bool processCriteria(const std::vector<std::vector<double>>& criteria,
+                    const std::vector<std::vector<double>>& main_inequalities,
+                    const std::vector<std::vector<double>>& supporting_inequalities,
+                    const std::function<void(const std::vector<int>&)>& function,
+                    int size);
 
 // NEED TO HANDLE CASE WHEN CRITERION-BOUNDED VARIABLES OVERLAP, LEADING TO
 // INCONSISTENCIES BETWEEN CRITERIA
