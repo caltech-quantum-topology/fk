@@ -23,7 +23,8 @@ private:
   std::vector<bool> trivial_angles_;
   std::vector<int> nontrivial_map;
   std::vector<int> inversion_data;
-  MultivariablePolynomial result{1, 1}; // Initialize with dummy values, will be reassigned
+  MultivariablePolynomial result{
+      1, 1}; // Initialize with dummy values, will be reassigned
   std::vector<std::vector<std::vector<int>>> variableAssignments;
   std::vector<std::vector<int>> numericalAssignments;
   std::vector<int> top_crossing_components = {};
