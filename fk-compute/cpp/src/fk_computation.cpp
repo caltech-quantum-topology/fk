@@ -482,12 +482,10 @@ void FKComputation::compute(const FKConfiguration &config,
 
   initializeEngine();
 
-  // ====================================================================
-
   // Find valid criteria
   auto valid_criteria = findValidCriteria();
   if (!valid_criteria.is_valid) {
-    return;
+    throw std::runtime_error("No valid criteria found");
   }
 
   // Assign variables to get list of variable assignments
@@ -496,9 +494,7 @@ void FKComputation::compute(const FKConfiguration &config,
   // Collect all points from each variable assignment
   std::vector<std::vector<int>> all_points;
   for (const auto& assignment : assignments) {
-    auto criteria_copy_for_enum = assignment.criteria;
-    auto points = enumeratePoints(criteria_copy_for_enum, assignment.bounds,
-                                 assignment.supporting_inequalities, assignment.point);
+    auto points = enumeratePoints(assignment);
     all_points.insert(all_points.end(), points.begin(), points.end());
   }
 
@@ -507,9 +503,7 @@ void FKComputation::compute(const FKConfiguration &config,
     engine_->computeForAngles(point);
   }
 
-
-  // ====================================================================
-  // Final offset addition (from original implementation)
+  // Final offset addition
   std::vector<int> increment_offset(config_.components, 0);
   increment_offset[0] = 1;
   std::vector<int> maxima(config_.components, config_.degree - 1);
@@ -563,24 +557,21 @@ bool FKComputation::satisfiesConstraints(const std::vector<int>& point,
   return true;
 }
 
-std::vector<std::vector<int>> FKComputation::enumeratePoints(std::vector<std::vector<double>>& criteria,
-                    std::list<std::array<int, 2>> bounds,
-                    std::vector<std::vector<double>> supporting_inequalities,
-                    std::vector<int> point) {
+std::vector<std::vector<int>> FKComputation::enumeratePoints(const AssignmentResult& assignment) {
 
   std::vector<std::vector<int>> valid_points;
 
-  if (bounds.empty()) {
+  if (assignment.bounds.empty()) {
     // Base case: check constraints and add point if valid
-    if (satisfiesConstraints(point, supporting_inequalities) &&
-        satisfiesConstraints(point, criteria)) {
-      valid_points.push_back(point);
+    if (satisfiesConstraints(assignment.point, assignment.supporting_inequalities) &&
+        satisfiesConstraints(assignment.point, assignment.criteria)) {
+      valid_points.push_back(assignment.point);
     }
     return valid_points;
   }
 
   // Convert bounds list to vector for easier iteration
-  std::vector<std::array<int, 2>> bounds_vec(bounds.begin(), bounds.end());
+  std::vector<std::array<int, 2>> bounds_vec(assignment.bounds.begin(), assignment.bounds.end());
 
   // Stack to manage iteration state
   struct IterationFrame {
@@ -594,20 +585,20 @@ std::vector<std::vector<int>> FKComputation::enumeratePoints(std::vector<std::ve
 
   // Initialize first frame
   IterationFrame initial_frame;
-  initial_frame.point = point;
+  initial_frame.point = assignment.point;
   initial_frame.bound_index = 0;
   initial_frame.current_value = 0;
 
   // Calculate upper bound for first variable
   int index = bounds_vec[0][0];
   int inequality = bounds_vec[0][1];
-  int upper = static_cast<int>(supporting_inequalities[inequality][0]);
-  for (size_t i = 0; i < point.size(); i++) {
+  int upper = static_cast<int>(assignment.supporting_inequalities[inequality][0]);
+  for (size_t i = 0; i < assignment.point.size(); i++) {
     if (static_cast<int>(i) != index) {
-      upper += static_cast<int>(supporting_inequalities[inequality][1 + i]) * point[i];
+      upper += static_cast<int>(assignment.supporting_inequalities[inequality][1 + i]) * assignment.point[i];
     }
   }
-  upper /= -static_cast<int>(supporting_inequalities[inequality][1 + index]);
+  upper /= -static_cast<int>(assignment.supporting_inequalities[inequality][1 + index]);
   initial_frame.upper_bound = upper;
 
   stack.push(initial_frame);
@@ -625,8 +616,8 @@ std::vector<std::vector<int>> FKComputation::enumeratePoints(std::vector<std::ve
 
     if (current.bound_index == bounds_vec.size() - 1) {
       // Last variable - check constraints and add point if valid
-      if (satisfiesConstraints(current.point, supporting_inequalities) &&
-          satisfiesConstraints(current.point, criteria)) {
+      if (satisfiesConstraints(current.point, assignment.supporting_inequalities) &&
+          satisfiesConstraints(current.point, assignment.criteria)) {
         valid_points.push_back(current.point);
       }
       current.current_value++;
@@ -640,13 +631,13 @@ std::vector<std::vector<int>> FKComputation::enumeratePoints(std::vector<std::ve
       // Calculate upper bound for next variable
       int next_index = bounds_vec[next_frame.bound_index][0];
       int next_inequality = bounds_vec[next_frame.bound_index][1];
-      int next_upper = static_cast<int>(supporting_inequalities[next_inequality][0]);
+      int next_upper = static_cast<int>(assignment.supporting_inequalities[next_inequality][0]);
       for (size_t i = 0; i < next_frame.point.size(); i++) {
         if (static_cast<int>(i) != next_index) {
-          next_upper += static_cast<int>(supporting_inequalities[next_inequality][1 + i]) * next_frame.point[i];
+          next_upper += static_cast<int>(assignment.supporting_inequalities[next_inequality][1 + i]) * next_frame.point[i];
         }
       }
-      next_upper /= -static_cast<int>(supporting_inequalities[next_inequality][1 + next_index]);
+      next_upper /= -static_cast<int>(assignment.supporting_inequalities[next_inequality][1 + next_index]);
       next_frame.upper_bound = next_upper;
 
       current.current_value++;

@@ -223,10 +223,7 @@ private:
     bool satisfiesConstraints(const std::vector<int>& point,
                              const std::vector<std::vector<double>>& constraints);
 
-    std::vector<std::vector<int>> enumeratePoints(std::vector<std::vector<double>>& criteria,
-                        std::list<std::array<int, 2>> bounds,
-                        std::vector<std::vector<double>> supporting_inequalities,
-                        std::vector<int> point);
+    std::vector<std::vector<int>> enumeratePoints(const AssignmentResult& assignment);
 
     std::vector<AssignmentResult> assignVariables(const ValidatedCriteria& valid_criteria);
 
