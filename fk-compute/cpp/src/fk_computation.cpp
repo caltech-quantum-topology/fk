@@ -8,11 +8,14 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <list>
+#include <queue>
+#include <set>
 #include <sstream>
+#include <stack>
 #include <stdexcept>
 
 namespace fk {
-
 // FKConfiguration implementation
 bool FKConfiguration::isValid() const {
   if (degree <= 0 || components <= 0 || crossings < 0 || prefactors < 0) {

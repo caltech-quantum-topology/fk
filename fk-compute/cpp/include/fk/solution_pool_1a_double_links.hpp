@@ -15,26 +15,21 @@ struct AssignmentResult {
   std::list<std::array<int, 2>> bounds;
   std::vector<std::vector<double>> supporting_inequalities;
   std::vector<int> point;
-  bool is_ready;
-
-  AssignmentResult() : is_ready(false) {}
 };
 
 // Modern iterative versions of the algorithms
-void enumeratePoints(std::vector<std::vector<double>>& criteria,
+std::vector<std::vector<int>> enumeratePoints(std::vector<std::vector<double>>& criteria,
                     std::list<std::array<int, 2>> bounds,
                     std::vector<std::vector<double>> supporting_inequalities,
-                    std::vector<int> point,
-                    const std::function<void(const std::vector<int>&)>& function);
+                    std::vector<int> point);
 
-void assignVariables(std::vector<std::vector<double>>& new_criteria,
+std::vector<AssignmentResult> assignVariables(std::vector<std::vector<double>>& new_criteria,
                     std::vector<double> degrees,
                     std::vector<std::vector<double>>& criteria,
                     std::list<std::array<int, 2>> first,
                     std::list<std::array<int, 2>> bounds,
                     std::vector<std::vector<double>> supporting_inequalities,
-                    std::vector<int> point,
-                    const std::function<void(const std::vector<int>&)>& function);
+                    std::vector<int> point);
 
 // Helper function to process a set of criteria
 bool processCriteria(const std::vector<std::vector<double>>& criteria,

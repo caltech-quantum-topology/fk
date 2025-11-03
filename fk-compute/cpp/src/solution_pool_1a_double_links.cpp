@@ -31,19 +31,20 @@ bool satisfiesConstraints(const std::vector<int>& point,
 }
 
 // Iterative version of recurse_2
-void enumeratePoints(std::vector<std::vector<double>>& criteria,
+std::vector<std::vector<int>> enumeratePoints(std::vector<std::vector<double>>& criteria,
                     std::list<std::array<int, 2>> bounds,
                     std::vector<std::vector<double>> supporting_inequalities,
-                    std::vector<int> point,
-                    const std::function<void(const std::vector<int>&)>& function) {
+                    std::vector<int> point) {
+
+  std::vector<std::vector<int>> valid_points;
 
   if (bounds.empty()) {
-    // Base case: check constraints and call function if valid
+    // Base case: check constraints and add point if valid
     if (satisfiesConstraints(point, supporting_inequalities) &&
         satisfiesConstraints(point, criteria)) {
-      function(point);
+      valid_points.push_back(point);
     }
-    return;
+    return valid_points;
   }
 
   // Convert bounds list to vector for easier iteration
@@ -91,10 +92,10 @@ void enumeratePoints(std::vector<std::vector<double>>& criteria,
     current.point[bounds_vec[current.bound_index][0]] = current.current_value;
 
     if (current.bound_index == bounds_vec.size() - 1) {
-      // Last variable - check constraints and call function
+      // Last variable - check constraints and add point if valid
       if (satisfiesConstraints(current.point, supporting_inequalities) &&
           satisfiesConstraints(current.point, criteria)) {
-        function(current.point);
+        valid_points.push_back(current.point);
       }
       current.current_value++;
     } else {
@@ -120,6 +121,8 @@ void enumeratePoints(std::vector<std::vector<double>>& criteria,
       stack.push(next_frame);
     }
   }
+
+  return valid_points;
 }
 
 // State structure for iterative variable assignment
@@ -137,18 +140,24 @@ struct VariableAssignmentState {
 };
 
 // Iterative version of recurse_1
-void assignVariables(std::vector<std::vector<double>>& new_criteria,
+std::vector<AssignmentResult> assignVariables(std::vector<std::vector<double>>& new_criteria,
                     std::vector<double> degrees,
                     std::vector<std::vector<double>>& criteria,
                     std::list<std::array<int, 2>> first,
                     std::list<std::array<int, 2>> bounds,
                     std::vector<std::vector<double>> supporting_inequalities,
-                    std::vector<int> point,
-                    const std::function<void(const std::vector<int>&)>& function) {
+                    std::vector<int> point) {
+
+  std::vector<AssignmentResult> assignments;
 
   if (first.empty()) {
-    enumeratePoints(criteria, bounds, supporting_inequalities, point, function);
-    return;
+    AssignmentResult result;
+    result.criteria = criteria;
+    result.bounds = bounds;
+    result.supporting_inequalities = supporting_inequalities;
+    result.point = point;
+    assignments.push_back(result);
+    return assignments;
   }
 
   // Convert first list to vector for easier iteration
@@ -194,9 +203,13 @@ void assignVariables(std::vector<std::vector<double>>& new_criteria,
     new_degrees[main_idx] = current.degrees[main_idx] - current.current_value * slope;
 
     if (current.current_var_index == first_vec.size() - 1) {
-      // Last variable - proceed to enumeration
-      enumeratePoints(current.criteria, current.bounds,
-                     current.supporting_inequalities, current.point, function);
+      // Last variable - create assignment result
+      AssignmentResult result;
+      result.criteria = current.criteria;
+      result.bounds = current.bounds;
+      result.supporting_inequalities = current.supporting_inequalities;
+      result.point = current.point;
+      assignments.push_back(result);
       current.current_value++;
     } else {
       // More variables to assign
@@ -220,6 +233,8 @@ void assignVariables(std::vector<std::vector<double>>& new_criteria,
       stack.push(next_state);
     }
   }
+
+  return assignments;
 }
 
 // Helper function to identify bounded variables
@@ -456,9 +471,23 @@ void pooling(std::vector<std::vector<double>> main_inequalities,
     return;
   }
 
-  // Assign variables and enumerate points
+  // Assign variables to get list of variable assignments
   auto criteria_copy = valid_criteria.criteria;
-  assignVariables(criteria_copy, valid_criteria.degrees, criteria_copy,
-                 valid_criteria.first_bounds, valid_criteria.additional_bounds,
-                 supporting_inequalities, valid_criteria.initial_point, function);
+  auto assignments = assignVariables(criteria_copy, valid_criteria.degrees, criteria_copy,
+                                    valid_criteria.first_bounds, valid_criteria.additional_bounds,
+                                    supporting_inequalities, valid_criteria.initial_point);
+
+  // Collect all points from each variable assignment
+  std::vector<std::vector<int>> all_points;
+  for (const auto& assignment : assignments) {
+    auto criteria_copy_for_enum = assignment.criteria;
+    auto points = enumeratePoints(criteria_copy_for_enum, assignment.bounds,
+                                 assignment.supporting_inequalities, assignment.point);
+    all_points.insert(all_points.end(), points.begin(), points.end());
+  }
+
+  // Run the function on all collected points
+  for (const auto& point : all_points) {
+    function(point);
+  }
 }
