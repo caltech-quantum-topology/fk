@@ -9,6 +9,17 @@
 
 #include "fk/btree.hpp"
 
+// Structure to hold assignment results
+struct AssignmentResult {
+  std::vector<std::vector<double>> criteria;
+  std::list<std::array<int, 2>> bounds;
+  std::vector<std::vector<double>> supporting_inequalities;
+  std::vector<int> point;
+  bool is_ready;
+
+  AssignmentResult() : is_ready(false) {}
+};
+
 // Modern iterative versions of the algorithms
 void enumeratePoints(std::vector<std::vector<double>>& criteria,
                     std::list<std::array<int, 2>> bounds,

@@ -2,6 +2,7 @@
 
 #include <queue>
 #include <stack>
+#include <set>
 
 // State structure for iterative enumeration
 struct EnumerationState {
@@ -93,7 +94,6 @@ void enumeratePoints(std::vector<std::vector<double>>& criteria,
       // Last variable - check constraints and call function
       if (satisfiesConstraints(current.point, supporting_inequalities) &&
           satisfiesConstraints(current.point, criteria)) {
-        std::cout<<"Satisfies Constraints"<<std::endl;
         function(current.point);
       }
       current.current_value++;
@@ -312,126 +312,153 @@ std::vector<double> extractDegrees(const std::vector<std::vector<double>>& inequ
   return degrees;
 }
 
-// Helper function to process a set of criteria
-bool processCriteria(const std::vector<std::vector<double>>& criteria,
-                    const std::vector<std::vector<double>>& main_inequalities,
-                    const std::vector<std::vector<double>>& supporting_inequalities,
-                    const std::function<void(const std::vector<int>&)>& function,
-                    int size) {
+// Structure to hold validated criteria ready for variable assignment
+struct ValidatedCriteria {
+  std::vector<std::vector<double>> criteria;
+  std::vector<double> degrees;
+  std::list<std::array<int, 2>> first_bounds;
+  std::list<std::array<int, 2>> additional_bounds;
+  std::vector<int> initial_point;
+  bool is_valid;
+
+  ValidatedCriteria() : is_valid(false) {}
+};
+
+
+// Simple function to check if criteria are valid (just returns bool)
+bool validCriteria(const std::vector<std::vector<double>>& criteria,
+                   const std::vector<std::vector<double>>& supporting_inequalities,
+                   int size) {
 
   auto bounded_info = identifyBoundedVariables(criteria, size);
 
-  if (bounded_info.bounded_count > 0) {
-    std::list<std::array<int, 2>> bounds;
+  if (bounded_info.bounded_count == 0) {
+    return false; // Not valid - no bounded variables
+  }
 
-    if (bounded_info.bounded_count == size - 1) {
-      std::vector<double> degrees = extractDegrees(main_inequalities);
-      std::vector<int> point(size - 1, 0);
+  if (bounded_info.bounded_count == size - 1) {
+    return true; // We have enough bounded variables
+  }
 
-      // Make a copy of criteria that can be modified
-      std::vector<std::vector<double>> criteria_copy = criteria;
-      assignVariables(criteria_copy, degrees, criteria_copy, bounded_info.first, bounds,
-                     supporting_inequalities, point, function);
-      return true;
+  // Try to find additional bounds
+  auto additional_bounds = findAdditionalBounds(bounded_info.bounded_v, bounded_info.bounded_count,
+                                               size, supporting_inequalities);
+
+  return (bounded_info.bounded_count == size - 1); // Valid if we now have enough
+}
+
+// Find valid criteria through breadth-first search
+ValidatedCriteria findValidCriteria(const std::vector<std::vector<double>>& main_inequalities,
+                                   const std::vector<std::vector<double>>& supporting_inequalities) {
+
+  if (main_inequalities.empty()) {
+    return ValidatedCriteria(); // Return invalid criteria
+  }
+
+  const int mains = main_inequalities.size();
+  const int size = main_inequalities[0].size();
+  const double COMBINATION_FACTOR = 0.5;  // Was hardcoded /2.0
+
+  // Helper function to build ValidatedCriteria from valid criteria
+  auto buildValidatedCriteria = [&](const std::vector<std::vector<double>>& criteria) -> ValidatedCriteria {
+    ValidatedCriteria result;
+    auto bounded_info = identifyBoundedVariables(criteria, size);
+
+    result.criteria = criteria;
+    result.degrees = extractDegrees(main_inequalities);
+    result.first_bounds = bounded_info.first;
+    result.initial_point = std::vector<int>(size - 1, 0);
+    result.is_valid = true;
+
+    // Add additional bounds if needed
+    if (bounded_info.bounded_count < size - 1) {
+      result.additional_bounds = findAdditionalBounds(bounded_info.bounded_v, bounded_info.bounded_count,
+                                                     size, supporting_inequalities);
     }
+    return result;
+  };
 
-    bounds = findAdditionalBounds(bounded_info.bounded_v, bounded_info.bounded_count,
-                                 size, supporting_inequalities);
+  // Combine all inequalities for processing
+  std::vector<std::vector<double>> all_inequalities = supporting_inequalities;
+  all_inequalities.insert(all_inequalities.end(), main_inequalities.begin(), main_inequalities.end());
 
-    if (bounded_info.bounded_count == size - 1) {
-      std::vector<double> degrees = extractDegrees(main_inequalities);
-      std::vector<int> point(size - 1, 0);
+  // Use a single set to track visited criterion configurations more efficiently
+  std::set<std::vector<std::vector<double>>> visited_criteria;
 
-      // Make a copy of criteria that can be modified
-      std::vector<std::vector<double>> criteria_copy = criteria;
-      assignVariables(criteria_copy, degrees, criteria_copy, bounded_info.first, bounds,
-                     supporting_inequalities, point, function);
-      return true;
+  // Queue for breadth-first exploration of criterion space
+  std::queue<std::vector<std::vector<double>>> criteria_queue;
+
+  // Start with the main inequalities
+  visited_criteria.insert(main_inequalities);
+  criteria_queue.push(main_inequalities);
+
+  // Check initial criteria first
+  if (validCriteria(main_inequalities, supporting_inequalities, size)) {
+    return buildValidatedCriteria(main_inequalities);
+  }
+
+  // Search for satisfactory criteria
+  while (!criteria_queue.empty()) {
+    auto current_criteria = std::move(criteria_queue.front());
+    criteria_queue.pop();
+
+    // Try combining each criterion with each inequality
+    for (int criterion_idx = 0; criterion_idx < mains; ++criterion_idx) {
+      for (const auto& inequality : all_inequalities) {
+
+        // Check if this combination could be beneficial (has opposing signs)
+        bool potentially_beneficial = false;
+        for (int var_idx = 1; var_idx < size; ++var_idx) {
+          if (current_criteria[criterion_idx][var_idx] > 0 && inequality[var_idx] < 0) {
+            potentially_beneficial = true;
+            break;
+          }
+        }
+
+        if (!potentially_beneficial) continue;
+
+        // Create new criterion by linear combination
+        auto new_criteria = current_criteria;
+        for (int var_idx = 0; var_idx < size; ++var_idx) {
+          new_criteria[criterion_idx][var_idx] += inequality[var_idx] * COMBINATION_FACTOR;
+        }
+
+        // Skip if we've seen this configuration before
+        if (visited_criteria.find(new_criteria) != visited_criteria.end()) {
+          continue;
+        }
+
+        // Mark as visited
+        visited_criteria.insert(new_criteria);
+
+        // Check if these criteria are valid
+        if (validCriteria(new_criteria, supporting_inequalities, size)) {
+          return buildValidatedCriteria(new_criteria);  // Found valid criteria
+        }
+
+        // Add to queue for further exploration
+        criteria_queue.push(std::move(new_criteria));
+      }
     }
   }
 
-  return false;
+  // No valid criteria found
+  return ValidatedCriteria();
 }
 
 void pooling(std::vector<std::vector<double>> main_inequalities,
              std::vector<std::vector<double>> supporting_inequalities,
              const std::function<void(const std::vector<int>&)>& function) {
 
-  int mains = main_inequalities.size();
-  int size = main_inequalities[0].size();
-
-  // Add main inequalities to supporting inequalities
-  for (const auto& x : main_inequalities) {
-    supporting_inequalities.push_back(x);
-  }
-  int support = supporting_inequalities.size();
-
-  // Initialize visited tracking
-  std::vector<btree<double>> visited(mains);
-  for (int i = 0; i < mains; i++) {
-    visited[i].insertVector(main_inequalities[i]);
-  }
-
-  // Try to process the initial criteria
-  if (processCriteria(main_inequalities, main_inequalities, supporting_inequalities,
-                     function, size)) {
+  // Find valid criteria
+  auto valid_criteria = findValidCriteria(main_inequalities, supporting_inequalities);
+  if (!valid_criteria.is_valid) {
     return;
   }
 
-  // Initialize criteria and queue for iterative processing
-  std::vector<std::vector<double>> criteria(mains, std::vector<double>(size));
-  std::vector<std::vector<double>> new_criteria(mains, std::vector<double>(size));
-  std::queue<std::vector<std::vector<double>>> processing_queue;
-  processing_queue.push(main_inequalities);
-
-  // Main processing loop
-  while (!processing_queue.empty()) {
-    criteria = processing_queue.front();
-    processing_queue.pop();
-
-    // Try different supporting inequalities
-    for (int i = 0; i < support; i++) {
-      bool found_improvement = false;
-
-      // Check each main criterion
-      for (int q = 0; q < mains && !found_improvement; q++) {
-        // Check each variable coefficient
-        for (int j = 1; j < size; j++) {
-          if (criteria[q][j] > 0 && supporting_inequalities[i][j] < 0) {
-            // Create new criteria by combining with supporting inequality
-            for (int k = 0; k < size; k++) {
-              new_criteria[q][k] = criteria[q][k] + supporting_inequalities[i][k] / 2.0;
-            }
-
-            // Check if this new criterion set has been visited
-            bool is_new = false;
-            for (int visdex = 0; visdex < mains; visdex++) {
-              if (!visited[visdex].containsVector(new_criteria[visdex])) {
-                is_new = true;
-                break;
-              }
-            }
-
-            if (is_new) {
-              // Mark as visited
-              for (int s = 0; s < mains; s++) {
-                visited[s].insertVector(new_criteria[s]);
-              }
-
-              // Try to process new criteria
-              if (processCriteria(new_criteria, main_inequalities, supporting_inequalities,
-                                function, size)) {
-                return;
-              }
-
-              // Add to queue for further processing
-              processing_queue.push(new_criteria);
-              found_improvement = true;
-            }
-            break;
-          }
-        }
-      }
-    }
-  }
+  // Assign variables and enumerate points
+  auto criteria_copy = valid_criteria.criteria;
+  assignVariables(criteria_copy, valid_criteria.degrees, criteria_copy,
+                 valid_criteria.first_bounds, valid_criteria.additional_bounds,
+                 supporting_inequalities, valid_criteria.initial_point, function);
 }
