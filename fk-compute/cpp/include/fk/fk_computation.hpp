@@ -5,6 +5,10 @@
 #include <string>
 #include <memory>
 #include <functional>
+#include <array>
+#include <list>
+#include <queue>
+#include <set>
 
 namespace fk {
 
@@ -166,6 +170,93 @@ private:
 
     void initializeEngine();
     void runPooledComputation();
+
+    // Pooling functionality - moved from solution_pool_1a_double_links.cpp
+    struct EnumerationState {
+        std::vector<std::vector<double>> criteria;
+        std::list<std::array<int, 2>> bounds;
+        std::vector<std::vector<double>> supporting_inequalities;
+        std::vector<int> point;
+        int current_bound_index;
+        int current_value;
+        int upper_bound;
+    };
+
+    struct VariableAssignmentState {
+        std::vector<std::vector<double>> new_criteria;
+        std::vector<double> degrees;
+        std::vector<std::vector<double>> criteria;
+        std::list<std::array<int, 2>> first;
+        std::list<std::array<int, 2>> bounds;
+        std::vector<std::vector<double>> supporting_inequalities;
+        std::vector<int> point;
+        size_t current_var_index;
+        int current_value;
+        int max_value;
+    };
+
+    struct BoundedVariables {
+        std::vector<int> bounded_v;
+        int bounded_count;
+        std::list<std::array<int, 2>> first;
+    };
+
+    struct ValidatedCriteria {
+        std::vector<std::vector<double>> criteria;
+        std::vector<double> degrees;
+        std::list<std::array<int, 2>> first_bounds;
+        std::list<std::array<int, 2>> additional_bounds;
+        std::vector<int> initial_point;
+        bool is_valid;
+
+        ValidatedCriteria() : is_valid(false) {}
+    };
+
+    struct AssignmentResult {
+        std::vector<std::vector<double>> criteria;
+        std::list<std::array<int, 2>> bounds;
+        std::vector<std::vector<double>> supporting_inequalities;
+        std::vector<int> point;
+    };
+
+    // Private pooling methods
+    bool satisfiesConstraints(const std::vector<int>& point,
+                             const std::vector<std::vector<double>>& constraints);
+
+    std::vector<std::vector<int>> enumeratePoints(std::vector<std::vector<double>>& criteria,
+                        std::list<std::array<int, 2>> bounds,
+                        std::vector<std::vector<double>> supporting_inequalities,
+                        std::vector<int> point);
+
+    std::vector<AssignmentResult> assignVariables(std::vector<std::vector<double>>& new_criteria,
+                        std::vector<double> degrees,
+                        std::vector<std::vector<double>>& criteria,
+                        std::list<std::array<int, 2>> first,
+                        std::list<std::array<int, 2>> bounds,
+                        std::vector<std::vector<double>> supporting_inequalities,
+                        std::vector<int> point);
+
+    BoundedVariables identifyBoundedVariables(const std::vector<std::vector<double>>& inequalities,
+                                             int size);
+
+    std::list<std::array<int, 2>> findAdditionalBounds(
+        std::vector<int>& bounded_v,
+        int& bounded_count,
+        int size,
+        const std::vector<std::vector<double>>& supporting_inequalities);
+
+    std::vector<double> extractDegrees(const std::vector<std::vector<double>>& inequalities);
+
+    bool validCriteria(const std::vector<std::vector<double>>& criteria,
+                       const std::vector<std::vector<double>>& supporting_inequalities,
+                       int size);
+
+    ValidatedCriteria findValidCriteria(const std::vector<std::vector<double>>& main_inequalities,
+                                       const std::vector<std::vector<double>>& supporting_inequalities);
+
+    void pooling(std::vector<std::vector<double>> main_inequalities,
+                 std::vector<std::vector<double>> supporting_inequalities,
+                 const std::function<void(const std::vector<int>&)>& function);
 };
 
 } // namespace fk

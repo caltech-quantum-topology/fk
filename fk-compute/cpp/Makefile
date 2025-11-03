@@ -19,7 +19,6 @@ SOURCES = $(SRC_DIR)/fk_segments_links.cpp \
           $(SRC_DIR)/multivariable_polynomial.cpp \
           $(SRC_DIR)/qalg_links.cpp \
           $(SRC_DIR)/linalg.cpp \
-          $(SRC_DIR)/solution_pool_1a_double_links.cpp \
           $(SRC_DIR)/checkpoint.cpp \
           $(SRC_DIR)/parallel_pool.cpp \
           $(SRC_DIR)/string_to_int.cpp \
@@ -33,7 +32,6 @@ OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
           $(INCLUDE_DIR)/fk/qalg_links.hpp \
           $(INCLUDE_DIR)/fk/linalg.hpp \
-          $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp \
           $(INCLUDE_DIR)/fk/checkpoint.hpp \
           $(INCLUDE_DIR)/fk/parallel_pool.hpp \
           $(INCLUDE_DIR)/fk/string_to_int.hpp \
@@ -103,31 +101,31 @@ $(FK_COMPUTATION_TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # FK computation test executable
-$(FK_TEST_TARGET): $(BUILD_DIR)/fk_computation_test.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/solution_pool_1a_double_links.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+$(FK_TEST_TARGET): $(BUILD_DIR)/fk_computation_test.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Trefoil FK example executable
-$(TREFOIL_EXAMPLE_TARGET): $(BUILD_DIR)/trefoil_fk_example.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/solution_pool_1a_double_links.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+$(TREFOIL_EXAMPLE_TARGET): $(BUILD_DIR)/trefoil_fk_example.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Trefoil simple example executable
-$(TREFOIL_SIMPLE_TARGET): $(BUILD_DIR)/trefoil_simple_example.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/solution_pool_1a_double_links.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+$(TREFOIL_SIMPLE_TARGET): $(BUILD_DIR)/trefoil_simple_example.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Trefoil demo executable
-$(TREFOIL_DEMO_TARGET): $(BUILD_DIR)/trefoil_demo.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/solution_pool_1a_double_links.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+$(TREFOIL_DEMO_TARGET): $(BUILD_DIR)/trefoil_demo.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Trefoil complete example executable
-$(TREFOIL_COMPLETE_TARGET): $(BUILD_DIR)/trefoil_complete_example.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/solution_pool_1a_double_links.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+$(TREFOIL_COMPLETE_TARGET): $(BUILD_DIR)/trefoil_complete_example.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # FK Main executable (refactored API)
-$(FK_MAIN_TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/solution_pool_1a_double_links.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+$(FK_MAIN_TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Parser comparison test executable
-$(PARSER_TEST_TARGET): $(BUILD_DIR)/parser_comparison_test.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/solution_pool_1a_double_links.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+$(PARSER_TEST_TARGET): $(BUILD_DIR)/parser_comparison_test.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Testing executable
@@ -171,7 +169,7 @@ $(BUILD_DIR)/arithmetic_test.o: $(TEST_DIR)/arithmetic_test.cpp $(INCLUDE_DIR)/f
 $(BUILD_DIR)/example.o: $(EXAMPLE_DIR)/example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 $(BUILD_DIR)/inequality_example.o: $(EXAMPLE_DIR)/inequality_example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/inequality_solver.hpp
 $(BUILD_DIR)/inequality_solver.o: $(SRC_DIR)/inequality_solver.cpp $(INCLUDE_DIR)/fk/inequality_solver.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
-$(BUILD_DIR)/fk_computation.o: $(SRC_DIR)/fk_computation.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp
+$(BUILD_DIR)/fk_computation.o: $(SRC_DIR)/fk_computation.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 $(BUILD_DIR)/fk_computation_test.o: $(EXAMPLE_DIR)/fk_computation_test.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/trefoil_fk_example.o: $(EXAMPLE_DIR)/trefoil_fk_example.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/trefoil_simple_example.o: $(EXAMPLE_DIR)/trefoil_simple_example.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
