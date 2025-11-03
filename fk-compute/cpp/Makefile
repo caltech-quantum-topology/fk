@@ -60,12 +60,15 @@ PARSER_TEST_TARGET = parser_comparison_test
 TEST_TARGET = testing
 FK_MAIN_TARGET = fk_main
 
-# Default target
-all: $(MAIN_TARGET) $(EXAMPLE_TARGET)
+# Default target - now builds main.cpp
+all: $(FK_MAIN_TARGET) $(EXAMPLE_TARGET)
 
-# Alias for fk_main (prevent built-in rule)
+# Main target is now fk_main (from main.cpp) - explicit rule to override built-in
 main: $(FK_MAIN_TARGET)
-	@echo "Built $(FK_MAIN_TARGET) successfully"
+	@echo "✓ Built main executable: $(FK_MAIN_TARGET)"
+
+# Prevent Make from using built-in rule for main
+.PHONY: main
 
 # Main FK computation executable
 $(MAIN_TARGET): $(OBJECTS)
@@ -146,6 +149,10 @@ $(BUILD_DIR)/%.o: $(EXAMPLE_DIR)/%.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp $(HEADERS)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Rule for root directory files (like main.cpp)
+$(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Specific dependencies for object files
