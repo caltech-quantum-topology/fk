@@ -29,15 +29,6 @@ int main() {
         // Progress tracking
         auto start_time = std::chrono::high_resolution_clock::now();
 
-        auto progress_callback = [&start_time](double progress) {
-            printProgressBar(progress);
-
-            if (progress == 1.0) {
-                auto end_time = std::chrono::high_resolution_clock::now();
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-                std::cout << "\nComputation completed in " << duration.count() << " ms" << std::endl;
-            }
-        };
 
         std::cout << "Input file: examples/trefoil_ilp.csv" << std::endl;
         std::cout << "Output file: trefoil_result.json" << std::endl << std::endl;
@@ -45,7 +36,7 @@ int main() {
         std::cout << "Starting FK computation..." << std::endl;
 
         // Run the computation with progress tracking
-        computation.compute("examples/trefoil_ilp", "trefoil_result", progress_callback);
+        computation.compute("examples/trefoil_ilp", "trefoil_result");
 
         std::cout << std::endl << "=== Computation Results ===" << std::endl;
 

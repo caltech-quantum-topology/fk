@@ -463,100 +463,29 @@ void FKResultWriter::writeToText(const MultivariablePolynomial &result,
 
 // FKComputation implementation
 void FKComputation::compute(const std::string &input_filename,
-                            const std::string &output_filename,
-                            std::function<void(double)> progress_callback) {
-  if (progress_callback)
-    progress_callback(0.1);
+                            const std::string &output_filename) {
+  FKConfiguration config = parser_.parseFromFile(input_filename);
 
-  config_ = parser_.parseFromFile(input_filename);
-
-  if (progress_callback)
-    progress_callback(0.2);
-
-  initializeEngine();
-
-  if (progress_callback)
-    progress_callback(0.3);
-
-  runPooledComputation(progress_callback);
-
-  if (progress_callback)
-    progress_callback(0.9);
-
-  writer_.writeToJson(engine_->getResult(), output_filename);
-
-  if (progress_callback)
-    progress_callback(1.0);
+  // Call the config-based compute method
+  compute(config, output_filename);
 }
 
 void FKComputation::compute(const FKConfiguration &config,
-                            const std::string &output_filename,
-                            std::function<void(double)> progress_callback) {
+                            const std::string &output_filename) {
   if (!config.isValid()) {
     throw std::runtime_error("Invalid configuration provided");
   }
 
   config_ = config;
 
-  if (progress_callback)
-    progress_callback(0.2);
-
   initializeEngine();
 
-  if (progress_callback)
-    progress_callback(0.3);
-
-  runPooledComputation(progress_callback);
-
-  if (progress_callback)
-    progress_callback(0.9);
-
-  writer_.writeToJson(engine_->getResult(), output_filename);
-
-  if (progress_callback)
-    progress_callback(1.0);
-}
-
-const MultivariablePolynomial &FKComputation::getLastResult() const {
-  if (!engine_) {
-    throw std::runtime_error("No computation has been performed yet");
-  }
-  return engine_->getResult();
-}
-
-void FKComputation::initializeEngine() {
-  engine_ = std::make_unique<FKComputationEngine>(config_);
-}
-
-void FKComputation::runPooledComputation(
-    std::function<void(double)> progress_callback) {
   std::function<void(const std::vector<int> &)> computation_function =
       [this](const std::vector<int> &angles) {
         engine_->computeForAngles(angles);
       };
 
-  // Progress tracking wrapper
-  if (false) {
-    double base_progress = 0.3;
-    double computation_range = 0.6;
-
-    std::function<void(const std::vector<int> &)> wrapped_function =
-        [this, computation_function, progress_callback, base_progress,
-         computation_range](const std::vector<int> &angles) {
-          computation_function(angles);
-          // This is a simplified progress update - in reality you'd need to
-          // track how many computations have been completed
-          static double current_progress = base_progress;
-          current_progress +=
-              computation_range * 0.01; // Increment by small amount
-          if (current_progress < base_progress + computation_range) {
-            progress_callback(current_progress);
-          }
-        };
-    pooling(config_.criteria, config_.inequalities, wrapped_function);
-  } else {
-    pooling(config_.criteria, config_.inequalities, computation_function);
-  }
+  pooling(config_.criteria, config_.inequalities, computation_function);
 
   // Final offset addition (from original implementation)
   std::vector<int> increment_offset(config_.components, 0);
@@ -581,6 +510,18 @@ void FKComputation::runPooledComputation(
 
   const_cast<MultivariablePolynomial &>(engine_->getResult())
       .syncFromDenseVector(result_coeffs1);
+
+  writer_.writeToJson(engine_->getResult(), output_filename);
 }
 
+const MultivariablePolynomial &FKComputation::getLastResult() const {
+  if (!engine_) {
+    throw std::runtime_error("No computation has been performed yet");
+  }
+  return engine_->getResult();
+}
+
+void FKComputation::initializeEngine() {
+  engine_ = std::make_unique<FKComputationEngine>(config_);
+}
 } // namespace fk

@@ -9,26 +9,13 @@ void printUsage(const char* program_name) {
     std::cout << "  input_file   Input CSV filename (without .csv extension)\n";
     std::cout << "  output_file  Output JSON filename (without .json extension)\n";
     std::cout << "\nOptions:\n";
-    std::cout << "  --progress   Show progress during computation\n";
     std::cout << "  --verbose    Show detailed configuration information\n";
     std::cout << "  --help       Show this help message\n";
     std::cout << "\nExamples:\n";
     std::cout << "  " << program_name << " trefoil_ilp trefoil_output\n";
-    std::cout << "  " << program_name << " input output --progress --verbose\n";
+    std::cout << "  " << program_name << " input output --verbose\n";
 }
 
-void printProgress(double progress) {
-    int barWidth = 50;
-    std::cout << "\rProgress: [";
-    int pos = static_cast<int>(barWidth * progress);
-    for (int i = 0; i < barWidth; ++i) {
-        if (i < pos) std::cout << "=";
-        else if (i == pos) std::cout << ">";
-        else std::cout << " ";
-    }
-    std::cout << "] " << std::fixed << std::setprecision(1) << (progress * 100.0) << "%";
-    std::cout.flush();
-}
 
 void printConfiguration(const fk::FKConfiguration& config) {
     std::cout << "\n=== FK Configuration ===\n";
@@ -111,14 +98,11 @@ int main(int argc, char* argv[]) {
     // Parse command line arguments
     std::string input_file = argv[1];
     std::string output_file = argv[2];
-    bool show_progress = false;
     bool verbose = false;
 
     for (int i = 3; i < argc; ++i) {
         std::string arg = argv[i];
-        if (arg == "--progress") {
-            show_progress = true;
-        } else if (arg == "--verbose") {
+        if (arg == "--verbose") {
             verbose = true;
         } else if (arg == "--help") {
             printUsage(argv[0]);
@@ -141,20 +125,11 @@ int main(int argc, char* argv[]) {
         // Create FK computation instance
         fk::FKComputation computation;
 
-        // Set up progress callback if requested
-        std::function<void(double)> progress_callback = nullptr;
-        if (show_progress) {
-            progress_callback = printProgress;
-        }
-
         // Perform computation
         std::cout << "Starting FK computation...\n";
 
-        computation.compute(input_file, output_file, progress_callback);
+        computation.compute(input_file, output_file);
 
-        if (show_progress) {
-            std::cout << "\n"; // New line after progress bar
-        }
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);

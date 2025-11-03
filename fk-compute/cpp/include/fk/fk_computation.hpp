@@ -136,21 +136,17 @@ public:
      * Run complete FK computation from input file to output file
      * @param input_filename Input CSV file (without extension)
      * @param output_filename Output file (without extension)
-     * @param progress_callback Optional callback for progress updates
      */
     void compute(const std::string& input_filename,
-                const std::string& output_filename,
-                std::function<void(double)> progress_callback = nullptr);
+                const std::string& output_filename);
 
     /**
      * Run computation with custom configuration
      * @param config Custom configuration
      * @param output_filename Output file
-     * @param progress_callback Optional progress callback
      */
     void compute(const FKConfiguration& config,
-                const std::string& output_filename,
-                std::function<void(double)> progress_callback = nullptr);
+                const std::string& output_filename);
 
     /**
      * Get the last computed result
@@ -169,7 +165,7 @@ private:
     FKResultWriter writer_;
 
     void initializeEngine();
-    void runPooledComputation(std::function<void(double)> progress_callback);
+    void runPooledComputation();
 };
 
 } // namespace fk

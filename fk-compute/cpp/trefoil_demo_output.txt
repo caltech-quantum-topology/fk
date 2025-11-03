@@ -1,5 +1,0 @@
-FK Computation Result
-====================
-
-Multivariable Polynomial P(q, x1):
--3*q^-1 + 1*q^0 + 2*q^1*x1

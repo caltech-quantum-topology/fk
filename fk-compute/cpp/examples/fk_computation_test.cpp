@@ -8,10 +8,6 @@ int main() {
         // Create FK computation instance
         fk::FKComputation computation;
 
-        // Test with progress callback
-        auto progress_callback = [](double progress) {
-            std::cout << "Progress: " << static_cast<int>(progress * 100) << "%" << std::endl;
-        };
 
         std::cout << "Testing input file parsing..." << std::endl;
 

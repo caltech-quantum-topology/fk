@@ -102,12 +102,7 @@ int main() {
         fk::FKComputation computation;
 
         // Progress callback to show computation progress
-        auto progress_callback = [](double progress) {
-            std::cout << "\rProgress: " << std::fixed << std::setprecision(1)
-                      << (progress * 100.0) << "%" << std::flush;
-        };
-
-        computation.compute(config, "trefoil_demo_output", progress_callback);
+        computation.compute(config, "trefoil_demo_output");
         std::cout << "\n✓ FK computation completed successfully" << std::endl;
 
         // Step 5: Display the computed result
