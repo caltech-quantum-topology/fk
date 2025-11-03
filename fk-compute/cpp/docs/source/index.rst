@@ -14,7 +14,7 @@ FK Computation C++ Library Documentation
 
 Welcome to the FK Computation C++ Library documentation! This library provides high-performance
 implementations for FK computations and related algebraic topology operations with advanced
-parallel processing, checkpointing, and sparse polynomial capabilities.
+parallel processing and sparse polynomial capabilities.
 
 .. note::
    This library is designed for mathematical research and high-performance scientific computing.
@@ -32,7 +32,6 @@ Quick Start
 
    # Run examples
    make run-parallel-demo --benchmark
-   make run-checkpoint-demo
 
 Key Features
 ------------
@@ -50,7 +49,6 @@ Key Features
    - Zero-copy operations and move semantics
 
 🛡️ **Reliability**
-   - Fault-tolerant computation with binary checkpointing
    - Thread-safe concurrent data structures
    - Comprehensive error handling and recovery
    - Backward compatibility with legacy formats
@@ -75,7 +73,6 @@ The FK Computation library is built around several core components:
        B --> E[Sparse Storage]
        B --> F[Bilvector]
        C --> G[Constraint Solving]
-       C --> H[Checkpointing]
        D --> I[Work Queue]
        D --> J[Thread Pool]
 
@@ -120,7 +117,6 @@ Table of Contents
    api/polynomials
    api/solution_pools
    api/parallel
-   api/checkpointing
    api/data_structures
    api/utilities
 

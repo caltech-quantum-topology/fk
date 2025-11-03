@@ -73,28 +73,8 @@ Tutorial 3: Parallel Processing
 - Monitoring parallel performance
 - Troubleshooting parallel issues
 
-Tutorial 4: Fault Tolerance
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Goal**: Build robust long-running computations.
-
-**Prerequisites**: Tutorial 3 completed.
-
-**Time**: 30 minutes
-
-.. toctree::
-   :maxdepth: 1
-
-   tutorial_04_checkpointing
-
-**What you'll learn:**
-
-- Setting up automatic checkpointing
-- Handling interruptions gracefully
-- Resuming computations
-- Best practices for reliability
-
-Tutorial 5: Advanced Data Structures
+Tutorial 4: Advanced Data Structures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Goal**: Master the library's specialized data structures.
@@ -106,7 +86,7 @@ Tutorial 5: Advanced Data Structures
 .. toctree::
    :maxdepth: 1
 
-   tutorial_05_data_structures
+   tutorial_04_data_structures
 
 **What you'll learn:**
 
@@ -115,7 +95,7 @@ Tutorial 5: Advanced Data Structures
 - Custom hash functions
 - Memory optimization techniques
 
-Tutorial 6: Performance Optimization
+Tutorial 5: Performance Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Goal**: Optimize your code for maximum performance.
@@ -127,7 +107,7 @@ Tutorial 6: Performance Optimization
 .. toctree::
    :maxdepth: 1
 
-   tutorial_06_optimization
+   tutorial_05_optimization
 
 **What you'll learn:**
 
@@ -252,10 +232,9 @@ Intermediate Path: Performance and Reliability
 **Sequence**:
 
 1. Tutorial 3: Parallel Processing (25 min)
-2. Tutorial 4: Fault Tolerance (30 min)
-3. Mini: Monitor Memory Usage (10 min)
-4. Specialized: Numerical Stability (20 min)
-5. Workshop 2: Medium Computational Challenge (2 hours)
+2. Mini: Monitor Memory Usage (10 min)
+3. Specialized: Numerical Stability (20 min)
+4. Workshop 2: Medium Computational Challenge (2 hours)
 
 **Learning Outcomes**:
 

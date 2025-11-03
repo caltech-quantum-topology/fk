@@ -70,55 +70,6 @@ parallelPooling
 
    **Performance**: Linear speedup for problems with >1000 solutions
 
-parallelPoolingWithCheckpoints
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. cpp:function:: void parallelPoolingWithCheckpoints(std::vector<std::vector<double>> main_inequalities, std::vector<std::vector<double>> supporting_inequalities, const std::function<void(const std::vector<int>&)>& callback, const std::string& checkpoint_file, bool resume_from_checkpoint = false, size_t checkpoint_interval = 1000, int num_threads = 0)
-
-   Execute parallel computation with automatic checkpointing for fault tolerance.
-
-   :param main_inequalities: Primary constraint matrix
-   :param supporting_inequalities: Additional constraint matrix
-   :param callback: Function called for each solution found
-   :param checkpoint_file: Path to checkpoint file
-   :param resume_from_checkpoint: Resume from existing checkpoint if available
-   :param checkpoint_interval: Save checkpoint every N solutions
-   :param num_threads: Number of threads (0 = auto-detect)
-
-   **Example**:
-
-   .. code-block:: cpp
-
-      #include <csignal>
-
-      // Setup graceful interruption
-      std::signal(SIGINT, [](int) {
-          std::cout << "Interrupting computation..." << std::endl;
-          // Checkpoint will be saved automatically
-          std::exit(0);
-      });
-
-      auto callback = [](const std::vector<int>& solution) {
-          // Process solution
-      };
-
-      try {
-          parallelPoolingWithCheckpoints(
-              main_inequalities,
-              supporting_inequalities,
-              callback,
-              "computation.ckpt",  // checkpoint file
-              true,                // resume if exists
-              500,                 // checkpoint every 500 solutions
-              16                   // use 16 threads
-          );
-      } catch (const std::exception& e) {
-          std::cout << "Computation saved to checkpoint" << std::endl;
-      }
-
-   **Fault Tolerance**: Computation can be resumed from any checkpoint
-
-   **File Format**: Binary format optimized for size and speed
 
 Core Infrastructure Classes
 ---------------------------
@@ -582,12 +533,11 @@ Best Practices
 
 1. **Use appropriate thread counts**: More threads ≠ faster for small problems
 2. **Minimize callback overhead**: Keep solution processing lightweight
-3. **Enable checkpointing**: For computations > 1 hour
 4. **Monitor memory usage**: Large problems can exhaust memory
 
 **Reliability**
 
-1. **Handle interruptions gracefully**: Use signal handlers with checkpointing
+1. **Handle interruptions gracefully**: Use proper signal handlers
 2. **Validate results**: Compare solution counts between runs
 3. **Test with different thread counts**: Ensure correctness across configurations
 4. **Use timeouts**: For computations with unknown bounds

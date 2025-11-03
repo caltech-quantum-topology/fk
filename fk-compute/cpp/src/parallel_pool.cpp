@@ -76,67 +76,13 @@ size_t WorkQueue::getQueueSize() const {
   return queue_.size();
 }
 
-// ParallelCheckpointState implementation
-ParallelCheckpointState::ParallelCheckpointState()
-    : operations_processed_(0), solutions_found_(0) {
-  checkpoint_state_.version = 1;
-  checkpoint_state_.total_processed = 0;
-  checkpoint_state_.solutions_found = 0;
-}
-
-void ParallelCheckpointState::updateState(
-    const std::queue<std::vector<std::vector<double>>>& processing_queue,
-    const std::vector<std::vector<std::vector<double>>>& visited_solutions,
-    const std::vector<std::vector<double>>& main_inequalities,
-    const std::vector<std::vector<double>>& supporting_inequalities) {
-
-  std::lock_guard<std::mutex> lock(state_mutex_);
-
-  // Update checkpoint state
-  checkpoint_state_.main_inequalities = main_inequalities;
-  checkpoint_state_.supporting_inequalities = supporting_inequalities;
-  checkpoint_state_.visited_solutions = visited_solutions;
-  checkpoint_state_.total_processed = operations_processed_.load();
-  checkpoint_state_.solutions_found = solutions_found_.load();
-
-  // Clear and rebuild processing queue
-  while (!checkpoint_state_.processing_queue.empty()) {
-    checkpoint_state_.processing_queue.pop();
-  }
-
-  std::queue<std::vector<std::vector<double>>> temp_queue = processing_queue;
-  while (!temp_queue.empty()) {
-    checkpoint_state_.processing_queue.push(temp_queue.front());
-    temp_queue.pop();
-  }
-}
-
-CheckpointState ParallelCheckpointState::getCheckpointState() const {
-  std::lock_guard<std::mutex> lock(state_mutex_);
-  return checkpoint_state_;
-}
-
-void ParallelCheckpointState::incrementOperations() {
-  operations_processed_.fetch_add(1);
-}
-
-void ParallelCheckpointState::incrementSolutions() {
-  solutions_found_.fetch_add(1);
-}
-
-size_t ParallelCheckpointState::getOperationsProcessed() const {
-  return operations_processed_.load();
-}
-
-size_t ParallelCheckpointState::getSolutionsFound() const {
-  return solutions_found_.load();
-}
 
 // ParallelWorker implementation
 ParallelWorker::ParallelWorker(int id, WorkQueue* queue, ThreadSafeSolutionCollector* collector,
-                               ParallelCheckpointState* state, std::atomic<bool>* stop_flag)
+                               std::atomic<size_t>* operations_processed, std::atomic<size_t>* solutions_found,
+                               std::atomic<bool>* stop_flag)
     : worker_id_(id), work_queue_(queue), solution_collector_(collector),
-      checkpoint_state_(state), should_stop_(stop_flag) {}
+      operations_processed_(operations_processed), solutions_found_(solutions_found), should_stop_(stop_flag) {}
 
 void ParallelWorker::run() {
   WorkItem item;
@@ -146,7 +92,7 @@ void ParallelWorker::run() {
       work_queue_->incrementActiveWorkers();
       processWorkItem(item);
       work_queue_->decrementActiveWorkers();
-      checkpoint_state_->incrementOperations();
+      operations_processed_->fetch_add(1);
     } else if (work_queue_->isFinished() && work_queue_->getActiveWorkers() == 0) {
       break;
     }
@@ -157,7 +103,7 @@ void ParallelWorker::processWorkItem(const WorkItem& item) {
   // Create a local solution collector function that forwards to the thread-safe collector
   auto local_solution_handler = [this](const std::vector<int>& solution) {
     solution_collector_->addSolution(solution);
-    checkpoint_state_->incrementSolutions();
+    solutions_found_->fetch_add(1);
   };
 
   // Process the criteria using the existing processCriteria function
@@ -210,13 +156,14 @@ ThreadPool::~ThreadPool() {
   stop();
 }
 
-void ThreadPool::start(ThreadSafeSolutionCollector* collector, ParallelCheckpointState* checkpoint_state) {
+void ThreadPool::start(ThreadSafeSolutionCollector* collector, std::atomic<size_t>* operations_processed,
+                       std::atomic<size_t>* solutions_found) {
   should_stop_.store(false);
 
   // Create worker objects and threads
   for (int i = 0; i < num_threads_; i++) {
     worker_objects_.emplace_back(
-        std::make_unique<ParallelWorker>(i, &work_queue_, collector, checkpoint_state, &should_stop_));
+        std::make_unique<ParallelWorker>(i, &work_queue_, collector, operations_processed, solutions_found, &should_stop_));
 
     workers_.emplace_back([this, i]() {
       worker_objects_[i]->run();
@@ -282,13 +229,14 @@ void parallelPooling(
   // Create thread pool and collectors
   ThreadPool thread_pool(num_threads);
   ThreadSafeSolutionCollector solution_collector(function);
-  ParallelCheckpointState checkpoint_state;
+  std::atomic<size_t> operations_processed(0);
+  std::atomic<size_t> solutions_found(0);
 
   std::cout << "Starting parallel computation with " << thread_pool.getNumThreads()
             << " threads..." << std::endl;
 
   // Start thread pool
-  thread_pool.start(&solution_collector, &checkpoint_state);
+  thread_pool.start(&solution_collector, &operations_processed, &solutions_found);
 
   // Try to process the initial criteria
   if (processCriteria(main_inequalities, main_inequalities, supporting_inequalities,
@@ -315,8 +263,8 @@ void parallelPooling(
   while (!thread_pool.isFinished()) {
     std::this_thread::sleep_for(std::chrono::seconds(5));
 
-    size_t current_operations = checkpoint_state.getOperationsProcessed();
-    size_t current_solutions = checkpoint_state.getSolutionsFound();
+    size_t current_operations = operations_processed.load();
+    size_t current_solutions = solutions_found.load();
 
     auto current_time = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(current_time - start_time).count();
@@ -339,26 +287,9 @@ void parallelPooling(
   auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
 
   std::cout << "Parallel computation completed:" << std::endl;
-  std::cout << "  Total operations: " << checkpoint_state.getOperationsProcessed() << std::endl;
-  std::cout << "  Total solutions: " << checkpoint_state.getSolutionsFound() << std::endl;
+  std::cout << "  Total operations: " << operations_processed.load() << std::endl;
+  std::cout << "  Total solutions: " << solutions_found.load() << std::endl;
   std::cout << "  Total time: " << total_time << "ms" << std::endl;
   std::cout << "  Threads used: " << thread_pool.getNumThreads() << std::endl;
 }
 
-// Parallel version with checkpointing
-void parallelPoolingWithCheckpoints(
-    std::vector<std::vector<double>> main_inequalities,
-    std::vector<std::vector<double>> supporting_inequalities,
-    const std::function<void(const std::vector<int>&)>& function,
-    const std::string& checkpoint_file,
-    bool resume_from_checkpoint,
-    size_t checkpoint_interval,
-    int num_threads) {
-
-  // For now, delegate to the simpler version and add checkpoint integration later
-  // This is a complex integration that would require careful synchronization
-  std::cout << "Note: Checkpointing with parallel execution is complex and not yet fully implemented." << std::endl;
-  std::cout << "Using parallel execution without checkpointing..." << std::endl;
-
-  parallelPooling(main_inequalities, supporting_inequalities, function, num_threads);
-}

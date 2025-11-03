@@ -75,6 +75,7 @@ public:
      * @return Computed polynomial result
      */
     MultivariablePolynomial computeForAngles(const std::vector<int>& angles);
+    MultivariablePolynomial computeForAngles_new(const std::vector<int>& angles);
 
     /**
      * Get the current accumulated result
@@ -129,6 +130,70 @@ public:
 };
 
 /**
+ * Checkpoint state for FK computation
+ * Holds all necessary data to resume computation from a saved point
+ */
+struct CheckpointState {
+    int resume_count;                              // Number of times computation has been resumed
+    FKConfiguration config;                        // Configuration needed for engine recreation
+    std::vector<std::vector<int>> remaining_points; // Points not yet processed
+    MultivariablePolynomial accumulated_result;    // Current accumulated result
+    int total_points_count;                        // Total points for progress tracking
+
+    CheckpointState() : resume_count(0), config(), remaining_points(),
+                       accumulated_result(1, 10), total_points_count(0) {}
+    CheckpointState(const FKConfiguration& cfg, int total_count)
+        : resume_count(0), config(cfg), remaining_points(),
+          accumulated_result(cfg.components, cfg.degree), total_points_count(total_count) {}
+};
+
+/**
+ * Checkpoint manager for saving and loading computation state
+ * Handles file I/O and state serialization
+ */
+class CheckpointManager {
+public:
+    /**
+     * Constructor for creating a new checkpoint
+     * @param state Initial checkpoint state to save
+     */
+    explicit CheckpointManager(const CheckpointState& state);
+
+    /**
+     * Constructor for loading existing checkpoint
+     * @param checkpoint_path Path to existing checkpoint file
+     */
+    explicit CheckpointManager(const std::string& checkpoint_path);
+
+    /**
+     * Save current checkpoint state
+     * @param state State to save
+     * @return true if successful, false otherwise
+     */
+    bool save(const CheckpointState& state);
+
+    /**
+     * Load checkpoint state
+     * @return Loaded checkpoint state
+     */
+    CheckpointState load();
+
+    /**
+     * Get the checkpoint filename
+     * @return Checkpoint filename
+     */
+    const std::string& getFilename() const { return checkpoint_filename_; }
+
+private:
+    std::string checkpoint_filename_;
+    bool is_existing_checkpoint_;
+
+    std::string generateUniqueFilename();
+    void saveToJson(const CheckpointState& state, const std::string& filename);
+    CheckpointState loadFromJson(const std::string& filename);
+};
+
+/**
  * Main FK computation orchestrator
  * Coordinates parsing, computation, and output
  */
@@ -162,6 +227,25 @@ public:
      */
     const FKConfiguration& getLastConfiguration() const { return config_; }
 
+    /**
+     * Run FK computation with periodic checkpointing
+     * @param input_filename Input CSV file (without extension)
+     * @param output_filename Output file (without extension)
+     * @param checkpoint_period How often to save checkpoints (number of points processed)
+     * @return Path to checkpoint file for potential resumption
+     */
+    std::string computeWithCheckpointing(const std::string& input_filename,
+                                       const std::string& output_filename,
+                                       int checkpoint_period = 1000);
+
+    /**
+     * Resume FK computation from checkpoint
+     * @param checkpoint_path Path to checkpoint file
+     * @param output_filename Output file (without extension)
+     */
+    void resumeFromCheckpoint(const std::string& checkpoint_path,
+                            const std::string& output_filename);
+
 private:
     FKConfiguration config_;
     std::unique_ptr<FKComputationEngine> engine_;
@@ -170,6 +254,11 @@ private:
 
     void initializeEngine();
     void runPooledComputation();
+
+    // Checkpoint helper methods
+    CheckpointState saveCheckpoint(const std::vector<std::vector<int>>& remaining_points,
+                                 int total_points) const;
+    void loadCheckpoint(const CheckpointState& state);
 
     // Pooling functionality - moved from solution_pool_1a_double_links.cpp
     struct EnumerationState {

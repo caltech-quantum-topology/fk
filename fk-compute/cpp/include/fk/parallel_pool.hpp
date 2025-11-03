@@ -1,6 +1,5 @@
 #pragma once
 
-#include "fk/checkpoint.hpp"
 #include "fk/solution_pool_1a_double_links.hpp"
 
 #include <atomic>
@@ -65,30 +64,6 @@ public:
   size_t getQueueSize() const;
 };
 
-/**
- * Thread-safe checkpoint state for parallel execution
- */
-class ParallelCheckpointState {
-private:
-  mutable std::mutex state_mutex_;
-  CheckpointState checkpoint_state_;
-  std::atomic<size_t> operations_processed_;
-  std::atomic<size_t> solutions_found_;
-
-public:
-  ParallelCheckpointState();
-
-  void updateState(const std::queue<std::vector<std::vector<double>>>& processing_queue,
-                   const std::vector<std::vector<std::vector<double>>>& visited_solutions,
-                   const std::vector<std::vector<double>>& main_inequalities,
-                   const std::vector<std::vector<double>>& supporting_inequalities);
-
-  CheckpointState getCheckpointState() const;
-  void incrementOperations();
-  void incrementSolutions();
-  size_t getOperationsProcessed() const;
-  size_t getSolutionsFound() const;
-};
 
 /**
  * Parallel worker thread class
@@ -98,12 +73,14 @@ private:
   int worker_id_;
   WorkQueue* work_queue_;
   ThreadSafeSolutionCollector* solution_collector_;
-  ParallelCheckpointState* checkpoint_state_;
+  std::atomic<size_t>* operations_processed_;
+  std::atomic<size_t>* solutions_found_;
   std::atomic<bool>* should_stop_;
 
 public:
   ParallelWorker(int id, WorkQueue* queue, ThreadSafeSolutionCollector* collector,
-                 ParallelCheckpointState* state, std::atomic<bool>* stop_flag);
+                 std::atomic<size_t>* operations_processed, std::atomic<size_t>* solutions_found,
+                 std::atomic<bool>* stop_flag);
 
   void run();
 
@@ -126,7 +103,8 @@ public:
   ThreadPool(int num_threads = -1);  // -1 = use hardware concurrency
   ~ThreadPool();
 
-  void start(ThreadSafeSolutionCollector* collector, ParallelCheckpointState* checkpoint_state);
+  void start(ThreadSafeSolutionCollector* collector, std::atomic<size_t>* operations_processed,
+             std::atomic<size_t>* solutions_found);
   void stop();
   void addWork(const WorkItem& item);
   bool isFinished() const;
@@ -135,18 +113,6 @@ public:
   int getNumThreads() const;
 };
 
-/**
- * Parallel version of pooling with checkpointing
- */
-void parallelPoolingWithCheckpoints(
-    std::vector<std::vector<double>> main_inequalities,
-    std::vector<std::vector<double>> supporting_inequalities,
-    const std::function<void(const std::vector<int>&)>& function,
-    const std::string& checkpoint_file = "",
-    bool resume_from_checkpoint = false,
-    size_t checkpoint_interval = 1000,
-    int num_threads = -1  // -1 = use hardware concurrency
-);
 
 /**
  * Parallel version without checkpointing for simple cases

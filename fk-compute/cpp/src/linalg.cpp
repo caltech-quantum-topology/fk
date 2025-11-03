@@ -1,4 +1,5 @@
 #include "fk/linalg.hpp"
+#include <iostream>
 
 std::vector<int>
 multiplyMatrixVector(std::vector<std::vector<int>> &inputMatrix,

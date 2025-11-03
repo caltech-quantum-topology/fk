@@ -78,7 +78,6 @@ The library provides several build targets for different use cases:
    make all                    # Build main executable and examples
    make fk_segments_links      # Main FK computation executable
    make polynomial_example     # Polynomial operations demo
-   make checkpoint_demo        # Checkpointing demonstration
    make parallel_demo          # Parallel processing benchmark
 
 **Testing Targets**
@@ -88,7 +87,6 @@ The library provides several build targets for different use cases:
    make run-test              # Run comprehensive test suite
    make run-arithmetic        # Test polynomial arithmetic
    make run-parallel-demo     # Benchmark parallel performance
-   make run-checkpoint-demo   # Test fault tolerance
 
 **Development Targets**
 
@@ -161,7 +159,6 @@ Expected output:
    ✓ Polynomial arithmetic tests passed
    ✓ Solution pool algorithms passed
    ✓ Parallel processing tests passed
-   ✓ Checkpointing system tests passed
 
    === Parallel Performance Test ===
    Hardware threads detected: 24
@@ -239,7 +236,6 @@ Troubleshooting
 *High memory usage*:
 
 - Use sparse polynomial representation (default)
-- Enable checkpointing for large computations
 - Monitor with: ``ps aux | grep fk_segments_links``
 
 Development Installation

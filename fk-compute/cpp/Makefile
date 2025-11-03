@@ -19,7 +19,6 @@ SOURCES = $(SRC_DIR)/fk_segments_links.cpp \
           $(SRC_DIR)/multivariable_polynomial.cpp \
           $(SRC_DIR)/qalg_links.cpp \
           $(SRC_DIR)/linalg.cpp \
-          $(SRC_DIR)/checkpoint.cpp \
           $(SRC_DIR)/parallel_pool.cpp \
           $(SRC_DIR)/string_to_int.cpp \
           $(SRC_DIR)/inequality_solver.cpp \
@@ -32,7 +31,6 @@ OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
           $(INCLUDE_DIR)/fk/qalg_links.hpp \
           $(INCLUDE_DIR)/fk/linalg.hpp \
-          $(INCLUDE_DIR)/fk/checkpoint.hpp \
           $(INCLUDE_DIR)/fk/parallel_pool.hpp \
           $(INCLUDE_DIR)/fk/string_to_int.hpp \
           $(INCLUDE_DIR)/fk/bilvector.hpp \
@@ -43,7 +41,6 @@ HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
 # Main targets
 MAIN_TARGET = fk_segments_links
 POLYNOMIAL_EXAMPLE_TARGET = polynomial_example
-CHECKPOINT_DEMO_TARGET = checkpoint_demo
 PARALLEL_DEMO_TARGET = parallel_demo
 ARITHMETIC_TEST_TARGET = arithmetic_test
 EXAMPLE_TARGET = example
@@ -57,6 +54,8 @@ TREFOIL_COMPLETE_TARGET = trefoil_complete_example
 PARSER_TEST_TARGET = parser_comparison_test
 TEST_TARGET = testing
 FK_MAIN_TARGET = fk_main
+CHECKPOINT_DEMO_TARGET = checkpoint_demo
+CHECKPOINT_RESUME_DEMO_TARGET = checkpoint_resume_demo
 
 # Default target - now builds main.cpp
 all: $(FK_MAIN_TARGET) $(EXAMPLE_TARGET)
@@ -76,12 +75,9 @@ $(MAIN_TARGET): $(OBJECTS)
 $(POLYNOMIAL_EXAMPLE_TARGET): $(BUILD_DIR)/polynomial_example.o $(BUILD_DIR)/multivariable_polynomial.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-# Checkpoint demo executable
-$(CHECKPOINT_DEMO_TARGET): $(BUILD_DIR)/checkpoint_demo.o $(BUILD_DIR)/checkpoint.o $(BUILD_DIR)/solution_pool_1a_double_links.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Parallel demo executable
-$(PARALLEL_DEMO_TARGET): $(BUILD_DIR)/parallel_demo.o $(BUILD_DIR)/parallel_pool.o $(BUILD_DIR)/solution_pool_1a_double_links.o $(BUILD_DIR)/checkpoint.o
+$(PARALLEL_DEMO_TARGET): $(BUILD_DIR)/parallel_demo.o $(BUILD_DIR)/parallel_pool.o $(BUILD_DIR)/solution_pool_1a_double_links.o
 	$(CXX) $(CXXFLAGS) -pthread -o $@ $^
 
 # Arithmetic test executable
@@ -132,6 +128,14 @@ $(PARSER_TEST_TARGET): $(BUILD_DIR)/parser_comparison_test.o $(BUILD_DIR)/fk_com
 $(TEST_TARGET): $(BUILD_DIR)/testing.o $(filter-out $(BUILD_DIR)/fk_segments_links.o,$(OBJECTS))
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
+# Checkpoint demo executable
+$(CHECKPOINT_DEMO_TARGET): $(BUILD_DIR)/checkpoint_demo.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+# Checkpoint resume demo executable
+$(CHECKPOINT_RESUME_DEMO_TARGET): $(BUILD_DIR)/checkpoint_resume_demo.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
 # Debug versions
 debug: CXXFLAGS += $(DEBUG_FLAGS)
 debug: clean $(MAIN_TARGET)
@@ -156,14 +160,12 @@ $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 # Specific dependencies for object files
 $(BUILD_DIR)/fk_segments_links.o: $(SRC_DIR)/fk_segments_links.cpp $(HEADERS)
 $(BUILD_DIR)/multivariable_polynomial.o: $(SRC_DIR)/multivariable_polynomial.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
-$(BUILD_DIR)/checkpoint.o: $(SRC_DIR)/checkpoint.cpp $(INCLUDE_DIR)/fk/checkpoint.hpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp
 $(BUILD_DIR)/parallel_pool.o: $(SRC_DIR)/parallel_pool.cpp $(INCLUDE_DIR)/fk/parallel_pool.hpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp
 $(BUILD_DIR)/qalg_links.o: $(SRC_DIR)/qalg_links.cpp $(INCLUDE_DIR)/fk/qalg_links.hpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/linalg.o: $(SRC_DIR)/linalg.cpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/solution_pool_1a_double_links.o: $(SRC_DIR)/solution_pool_1a_double_links.cpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp $(INCLUDE_DIR)/fk/btree.hpp
 $(BUILD_DIR)/string_to_int.o: $(SRC_DIR)/string_to_int.cpp $(INCLUDE_DIR)/fk/string_to_int.hpp
 $(BUILD_DIR)/polynomial_example.o: $(EXAMPLE_DIR)/polynomial_example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
-$(BUILD_DIR)/checkpoint_demo.o: $(EXAMPLE_DIR)/checkpoint_demo.cpp $(INCLUDE_DIR)/fk/checkpoint.hpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp
 $(BUILD_DIR)/parallel_demo.o: $(EXAMPLE_DIR)/parallel_demo.cpp $(INCLUDE_DIR)/fk/parallel_pool.hpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp
 $(BUILD_DIR)/arithmetic_test.o: $(TEST_DIR)/arithmetic_test.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 $(BUILD_DIR)/example.o: $(EXAMPLE_DIR)/example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
@@ -178,10 +180,12 @@ $(BUILD_DIR)/trefoil_complete_example.o: $(EXAMPLE_DIR)/trefoil_complete_example
 $(BUILD_DIR)/parser_comparison_test.o: $(TEST_DIR)/parser_comparison_test.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp $(INCLUDE_DIR)/fk/string_to_int.hpp
 $(BUILD_DIR)/main.o: main.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/testing.o: $(TEST_DIR)/testing.cpp $(HEADERS)
+$(BUILD_DIR)/checkpoint_demo.o: checkpoint_demo.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
+$(BUILD_DIR)/checkpoint_resume_demo.o: checkpoint_resume_demo.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 
 # Utility targets
 clean:
-	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(CHECKPOINT_DEMO_TARGET) $(PARALLEL_DEMO_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARGET)
+	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(PARALLEL_DEMO_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARGET) $(CHECKPOINT_DEMO_TARGET) $(CHECKPOINT_RESUME_DEMO_TARGET)
 
 # Clean only object files
 clean-obj:
@@ -194,8 +198,6 @@ run: $(MAIN_TARGET)
 run-example: $(EXAMPLE_TARGET)
 	./$(EXAMPLE_TARGET)
 
-run-checkpoint-demo: $(CHECKPOINT_DEMO_TARGET)
-	./$(CHECKPOINT_DEMO_TARGET) --help
 
 run-parallel-demo: $(PARALLEL_DEMO_TARGET)
 	./$(PARALLEL_DEMO_TARGET)
@@ -240,7 +242,6 @@ help:
 	@echo "  all          - Build main executable and example (default)"
 	@echo "  fk_segments_links - Build main FK computation executable"
 	@echo "  polynomial_example - Build polynomial example"
-	@echo "  checkpoint_demo - Build checkpoint demonstration"
 	@echo "  parallel_demo   - Build parallel processing demonstration"
 	@echo "  arithmetic_test - Build arithmetic operations test"
 	@echo "  testing      - Build testing executable"
@@ -250,7 +251,6 @@ help:
 	@echo "  clean-obj    - Remove only object files"
 	@echo "  run          - Build and run main executable"
 	@echo "  run-example  - Build and run polynomial example"
-	@echo "  run-checkpoint-demo - Build and run checkpoint demo (shows help)"
 	@echo "  run-parallel-demo - Build and run parallel demo"
 	@echo "  run-arithmetic - Build and run arithmetic test"
 	@echo "  run-test     - Build and run testing executable"
@@ -261,4 +261,4 @@ help:
 	@echo "  help         - Show this help message"
 
 # Phony targets
-.PHONY: all debug debug-example clean clean-obj run run-example run-checkpoint-demo run-test run-arithmetic install format check structure help
+.PHONY: all debug debug-example clean clean-obj run run-example run-test run-arithmetic install format check structure help
