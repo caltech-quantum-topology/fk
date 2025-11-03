@@ -228,13 +228,7 @@ private:
                         std::vector<std::vector<double>> supporting_inequalities,
                         std::vector<int> point);
 
-    std::vector<AssignmentResult> assignVariables(std::vector<std::vector<double>>& new_criteria,
-                        std::vector<double> degrees,
-                        std::vector<std::vector<double>>& criteria,
-                        std::list<std::array<int, 2>> first,
-                        std::list<std::array<int, 2>> bounds,
-                        std::vector<std::vector<double>> supporting_inequalities,
-                        std::vector<int> point);
+    std::vector<AssignmentResult> assignVariables(const ValidatedCriteria& valid_criteria);
 
     BoundedVariables identifyBoundedVariables(const std::vector<std::vector<double>>& inequalities,
                                              int size);
@@ -251,8 +245,7 @@ private:
                        const std::vector<std::vector<double>>& supporting_inequalities,
                        int size);
 
-    ValidatedCriteria findValidCriteria(const std::vector<std::vector<double>>& main_inequalities,
-                                       const std::vector<std::vector<double>>& supporting_inequalities);
+    ValidatedCriteria findValidCriteria();
 
     void pooling(std::vector<std::vector<double>> main_inequalities,
                  std::vector<std::vector<double>> supporting_inequalities,
