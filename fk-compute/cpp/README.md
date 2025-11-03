@@ -1,154 +1,199 @@
-# FK Computation Project
+# fkcompute
 
-A C++ implementation for computing FK with multivariable polynomial support and arithmetic operations.
+Compute the **FK invariant** for braids using inversion, ILP reduction, and a compiled helper binary.
 
-## Project Structure
+This package bundles both Python logic and C++ executables to make the computation portable and easy to use from the command line or within Python code.
 
-```
-├── include/fk/           # Header files (.hpp)
-│   ├── bilvector.hpp            # Bidirectional vector template class
-│   ├── btree.hpp                # Binary tree template class
-│   ├── linalg.hpp               # Linear algebra operations
-│   ├── multivariable_polynomial.hpp  # Multivariable polynomial class
-│   ├── qalg_links.hpp           # Q-algebra and binomial operations
-│   ├── solution_pool_1a_double_links.hpp  # ILP solution pooling
-│   └── string_to_int.hpp        # String parsing utilities
-├── src/                  # Source files (.cpp)
-│   ├── fk_segments_links.cpp    # Main FK computation implementation
-│   ├── linalg.cpp               # Linear algebra implementations
-│   ├── multivariable_polynomial.cpp  # Polynomial operations
-│   ├── qalg_links.cpp           # Q-algebra implementations
-│   ├── solution_pool_1a_double_links.cpp  # ILP solver
-│   └── string_to_int.cpp        # String parsing implementations
-├── tests/                # Test files
-│   ├── arithmetic_test.cpp      # Polynomial arithmetic tests
-│   └── testing.cpp              # Q-algebra function tests
-├── examples/             # Example programs
-│   └── polynomial_example.cpp   # Polynomial usage demonstration
-├── build/                # Generated object files (created automatically)
-├── docs/                 # Documentation (for future use)
-├── Makefile              # Build configuration
-└── README.md             # This file
-```
-
-## Building the Project
-
-### Prerequisites
-- C++17 compatible compiler (g++ recommended)
-- Make utility
-
-### Quick Start
-```bash
-# Build main executable and example
-make
-
-# Build and run polynomial example
-make run-example
-
-# Build and run arithmetic tests
-make run-arithmetic
-
-# Build main FK computation
-make fk_segments_links
-
-# Clean all generated files
-make clean
-```
-
-### Available Make Targets
-
-**Build Targets:**
-- `all` - Build main executable and example (default)
-- `fk_segments_links` - Build main FK computation executable
-- `polynomial_example` - Build polynomial example
-- `arithmetic_test` - Build arithmetic operations test
-- `testing` - Build testing executable
-
-**Debug Builds:**
-- `debug` - Build main executable with debug flags
-- `debug-example` - Build example with debug flags
-
-**Run Targets:**
-- `run` - Build and run main executable
-- `run-example` - Build and run polynomial example
-- `run-arithmetic` - Build and run arithmetic test
-- `run-test` - Build and run testing executable
-
-**Utility Targets:**
-- `clean` - Remove all generated files
-- `clean-obj` - Remove only object files
-- `check` - Verify all files compile
-- `format` - Format code with clang-format (if available)
-- `structure` - Show project directory structure
-- `help` - Show all available targets
+---
 
 ## Features
 
-### Multivariable Polynomial Support
-- Polynomials in variables q, x₁, x₂, ..., xₙ
-- Arbitrary positive/negative q powers using bilvector storage
-- Configurable maximum degrees for each x variable
-- Sparse representation for efficiency
+### Core Functionality
+- **FK Invariant Computation**: Calculate FK invariants for braids using advanced inversion and ILP reduction algorithms
+- **Optimized Performance**: Uses compiled C++ helper binary (`fk_segments_links`) for maximum speed
+- **Parallel Processing**: Multi-threaded inversion calculations with configurable worker count
+- **Multiple Interfaces**: Command-line tool, Python API, and configuration file support
 
-### Arithmetic Operations
-- Addition (`+`, `+=`)
-- Subtraction (`-`, `-=`)
-- Multiplication (`*`, `*=`)
-- Compatibility checking for polynomial operations
-- Support for negative coefficients
+### New Symbolic Output
+- **Human-Readable Polynomials**: Convert FK results to symbolic mathematical expressions using SymPy
+- **Adaptive Variables**: Automatic variable naming based on braid topology (x for 1D, x,y for 2D, a,b,c... for 3D+)
+- **Organized Format**: Terms collected by powers for improved readability
 
-### Core Components
-- **bilvector**: Template class for bidirectional indexing
-- **btree**: Binary tree for efficient substring search
-- **FK Class**: Main FK computation
-- **Q-algebra**: Q-binomial and Pochhammer symbol calculations
-- **Linear Algebra**: Matrix operations and transformations
-- **ILP Solver**: Integer linear programming for solution pooling
+### Command-Line Interface
+- **Multiple Usage Modes**:
+  - `fk simple` - Quick computations with minimal options
+  - `fk preset` - Predefined configurations (fast, accurate, parallel)
+  - `fk config` - Configuration file support (JSON/YAML)
+  - `fk advanced` - Full parameter control
+- **Batch Processing**: Process multiple braids from configuration files
+- **Smart Defaults**: Flip symmetry disabled by default for better performance
 
-### JSON Export
-- Export polynomials to JSON format
-- Metadata preservation (variable count, max degrees)
-- Compatible with existing data processing workflows
+### Enhanced Output
+- **Components Field**: Automatic detection of braid topology components
+- **Clean Output**: No debug messages unless verbose mode is enabled
+- **Multiple Formats**: JSON output or symbolic polynomial representation
+- **Progress Tracking**: Real-time progress for batch computations
 
-## Example Usage
+### Configuration & Presets
+- **Preset Configurations**:
+  - `fast` - Single-threaded, optimized for speed
+  - `accurate` - Multi-core, comprehensive computation with data saving
+  - `parallel` - High parallelism for multi-core systems
+- **Flexible Config Files**: JSON/YAML support with global defaults and per-computation overrides
+- **Advanced Parameters**: Fine control over ILP, inversion, workers, and more
 
-```cpp
-#include "fk/multivariable_polynomial.hpp"
+---
 
-// Create polynomial in q, x1, x2 with max degree 3
-MultivariablePolynomial poly(2, 3);
+## Installation
 
-// Set coefficients: 5*q^2*x1^1*x2^2
-poly.setCoefficient(2, {1, 2}, 5);
+You'll need a working C++ toolchain (GCC/Clang on Linux/macOS, MSVC on Windows).
+Then install directly:
 
-// Arithmetic operations
-MultivariablePolynomial poly2(2, 3);
-poly2.setCoefficient(1, {0, 1}, 3);
-
-auto sum = poly + poly2;  // Addition
-auto product = poly * poly2;  // Multiplication
-
-// Export to JSON
-poly.exportToJson("output");
+```bash
+pip install .
 ```
 
-## Development
+### Man Page Installation
 
-### Code Style
-- C++17 standard
-- Header-only template classes for performance
-- Clear separation of interface (.hpp) and implementation (.cpp)
-- Comprehensive error handling with exceptions
+After installation, you can install the man page for the `fk` command:
 
-### Testing
-The project includes comprehensive tests:
-- Polynomial arithmetic verification
-- Q-algebra function validation
-- Error handling and edge cases
-- Performance benchmarks
+```bash
+# Install man page (attempts user-local first, then system-wide)
+fk-install-man
+```
 
-### Contributing
-1. Follow the existing code style
-2. Add tests for new features
-3. Update documentation as needed
-4. Use `make format` to maintain consistent formatting
+Or install manually:
+
+```bash
+# Manual installation (requires sudo for system-wide)
+sudo cp fk.1 /usr/local/share/man/man1/
+sudo mandb
+```
+
+Once installed, view the manual with:
+
+```bash
+man fk
+```
+
+---
+
+## Quick Start
+
+### Simple Usage
+```bash
+# Basic FK computation
+fk simple "[1,-2,3]" 2
+
+# With symbolic polynomial output
+fk simple "[1,-2,3]" 2 --symbolic
+```
+
+### Preset Usage
+```bash
+# Fast computation (single-threaded)
+fk preset "[1,-2,1,-2]" 3 --preset fast
+
+# Accurate computation (multi-core, saves data)
+fk preset "[1,-2,1,-2]" 3 --preset accurate --symbolic
+
+# Parallel optimized computation
+fk preset "[1,-2,1,-2]" 3 --preset parallel
+```
+
+### Configuration File Usage
+Create a configuration file `example.json`:
+```json
+{
+  "braid": [1, -2, 3],
+  "degree": 2,
+  "preset": "accurate",
+  "max_workers": 8,
+  "symbolic": true
+}
+```
+
+Then run:
+```bash
+fk config example.json
+```
+
+### Batch Processing
+Create a batch configuration `batch.yaml`:
+```yaml
+preset: fast
+max_workers: 4
+computations:
+  - name: trefoil
+    braid: [1, 1, 1]
+    degree: 2
+  - name: figure_eight
+    braid: [1, -2, 1, -2]
+    degree: 3
+    preset: accurate
+```
+
+Run the batch:
+```bash
+fk config batch.yaml
+```
+
+### Advanced Usage
+```bash
+# Full parameter control
+fk advanced "[1,-2,3]" 2 \
+  --max-workers 8 \
+  --verbose \
+  --save-data \
+  --symbolic \
+  --save-dir results
+```
+
+---
+
+## Output Formats
+
+### Standard JSON Output
+```json
+{
+  "braid": [1, -2, 3],
+  "components": 4,
+  "degree": 2,
+  "fk": [
+    [[-1, 1], [0, -1]],
+    [[1, -1], [2, 1]]
+  ],
+  "inversion_data": {...}
+}
+```
+
+### Symbolic Polynomial Output
+When using `--symbolic` flag, you'll see human-readable mathematical expressions:
+```
+q - q³ + x²(-q² + q⁶)
+```
+
+### Braid Input Formats
+All these formats are equivalent:
+- JSON style: `"[1, -2, -3, 1]"`
+- Comma-separated: `"1,-2,-3,1"`
+- Space-separated: `"1 -2 -3 1"`
+
+---
+
+## Dependencies
+
+### Required
+- Python ≥ 3.9
+- NumPy ≥ 1.20
+- Gurobi ≥ 9.5 (for ILP solving)
+- C++ toolchain for compilation
+
+### Optional
+- SymPy ≥ 1.10 (for symbolic output)
+- PyYAML (for YAML configuration files)
+
+Install symbolic dependencies:
+```bash
+pip install sympy pyyaml
+```

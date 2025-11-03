@@ -144,6 +144,15 @@ public:
   void print(int maxTerms = 10) const;
 
   /**
+   * Evaluate polynomial at a given point, returning a polynomial in q
+   * @param point Vector of values for x₁, x₂, ..., xₙ (must match numXVariables)
+   * @return bilvector<int> representing the resulting polynomial in q
+   * @throws std::invalid_argument if point dimension doesn't match numXVariables
+   * @throws std::domain_error if division by zero occurs (negative exponent with zero value)
+   */
+  bilvector<int> evaluate(const std::vector<int>& point) const;
+
+  /**
    * Check if two polynomials are compatible for arithmetic operations
    */
   void checkCompatibility(const MultivariablePolynomial &other) const;

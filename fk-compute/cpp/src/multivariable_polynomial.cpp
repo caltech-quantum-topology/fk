@@ -463,6 +463,45 @@ MultivariablePolynomial &MultivariablePolynomial::operator*=(const Multivariable
   return *this;
 }
 
+bilvector<int> MultivariablePolynomial::evaluate(const std::vector<int>& point) const {
+  if (point.size() != static_cast<size_t>(numXVariables)) {
+    throw std::invalid_argument("Point dimension must match number of variables");
+  }
+
+  bilvector<int> result(0, 0, 1, 0);
+
+  for (const auto& [xPowers, qPoly] : coeffs_) {
+    int termValue = 1;
+
+    for (size_t i = 0; i < xPowers.size(); ++i) {
+      if (xPowers[i] > 0) {
+        for (int exp = 0; exp < xPowers[i]; ++exp) {
+          termValue *= point[i];
+        }
+      } else if (xPowers[i] < 0) {
+        if (point[i] == 0) {
+          throw std::domain_error("Division by zero: negative exponent with zero value at variable " + std::to_string(i));
+        }
+        for (int exp = 0; exp > xPowers[i]; --exp) {
+          if (termValue % point[i] != 0) {
+            throw std::domain_error("Division would result in non-integer coefficient");
+          }
+          termValue /= point[i];
+        }
+      }
+    }
+
+    for (int qPower = qPoly.getMaxNegativeIndex(); qPower <= qPoly.getMaxPositiveIndex(); ++qPower) {
+      int coefficient = qPoly[qPower];
+      if (coefficient != 0) {
+        result[qPower] += coefficient * termValue;
+      }
+    }
+  }
+
+  return result;
+}
+
 // Friend functions for binary operations
 MultivariablePolynomial operator+(const MultivariablePolynomial &lhs,
                                  const MultivariablePolynomial &rhs) {

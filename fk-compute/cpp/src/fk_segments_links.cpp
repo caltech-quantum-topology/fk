@@ -43,11 +43,20 @@ private:
   int crossings;
   int degree;
   void computeNumericalAssignment(const std::vector<int> &angles) {
+    std::cout<<"Computing for angles: "<<std::endl;
+    for (auto angle : angles){   std::cout<<angle<<std::endl;  }
+
     for (int i = 0; i < crossings + 1; i++) {
       for (int j = 0; j < prefactors + 1; j++) {
         numericalAssignments[i][j] =
             computeDotProduct(variableAssignments[i][j], angles);
       }
+    }
+    std::cout << "Numerical assignments:" << std::endl;
+    for (size_t i = 0; i < numericalAssignments.size(); i++) {
+        for (size_t j = 0; j < numericalAssignments[i].size(); j++) {
+            std::cout << "assignments[" << i << "][" << j << "] = " << numericalAssignments[i][j] << std::endl;
+        }
     }
 
     double qPowerAccumulatorDouble = (writhe - prefactors) / 2.0;
@@ -110,6 +119,7 @@ private:
         }
       }
     }
+
     std::cout << "qPowerAccumulatorDouble : " << qPowerAccumulatorDouble
               << "\n";
     int qPowerAccumulator = static_cast<int>(std::floor(
@@ -142,15 +152,30 @@ private:
     std::vector<bilvector<int>> polynomialTerms(
         totalProductSize,
         bilvector<int>(0, 1, 20, 0)); // error is the degree issue; modifying
+    //
+
     polynomialTerms[0][0] = initialCoefficient;
     for (int crossingIndex = 0; crossingIndex < crossings; crossingIndex++) {
-      if (crossingRelationTypes[crossingIndex] == 1) {
         int param_i =
             numericalAssignments[crossingMatrices[crossingIndex][0][0]]
                                 [crossingMatrices[crossingIndex][0][1]];
         int param_m =
             numericalAssignments[crossingMatrices[crossingIndex][3][0]]
                                 [crossingMatrices[crossingIndex][3][1]];
+        int param_j =
+            numericalAssignments[crossingMatrices[crossingIndex][1][0]]
+                                [crossingMatrices[crossingIndex][1][1]];
+        int param_k =
+            numericalAssignments[crossingMatrices[crossingIndex][2][0]]
+                                [crossingMatrices[crossingIndex][2][1]];
+        int relation_type = crossingRelationTypes[crossingIndex];
+       std::cout<< "relation_type "<<relation_type<<std::endl;
+       std::cout<< "param_i "<<param_i<<std::endl;
+       std::cout<< "param_j "<<param_j<<std::endl;
+       std::cout<< "param_k "<<param_k<<std::endl;
+       std::cout<< "param_m "<<param_m<<std::endl;
+
+      if (relation_type == 1) {
         if (param_i > 0) {
           computePositiveQBinomial(polynomialTerms, param_i, param_i - param_m,
                                    false);
@@ -158,29 +183,11 @@ private:
           computeNegativeQBinomial(polynomialTerms, param_i, param_i - param_m,
                                    false);
         }
-      } else if (crossingRelationTypes[crossingIndex] == 2) {
-        int param_i =
-            numericalAssignments[crossingMatrices[crossingIndex][0][0]]
-                                [crossingMatrices[crossingIndex][0][1]];
-        int param_m =
-            numericalAssignments[crossingMatrices[crossingIndex][3][0]]
-                                [crossingMatrices[crossingIndex][3][1]];
-        computeNegativeQBinomial(polynomialTerms, param_i, param_m, false);
-      } else if (crossingRelationTypes[crossingIndex] == 3) {
-        int param_j =
-            numericalAssignments[crossingMatrices[crossingIndex][1][0]]
-                                [crossingMatrices[crossingIndex][1][1]];
-        int param_k =
-            numericalAssignments[crossingMatrices[crossingIndex][2][0]]
-                                [crossingMatrices[crossingIndex][2][1]];
+      } else if (relation_type == 2) {
+      computeNegativeQBinomial(polynomialTerms, param_i, param_m, false);
+      } else if (relation_type == 3) {
         computeNegativeQBinomial(polynomialTerms, param_j, param_k, true);
       } else {
-        int param_j =
-            numericalAssignments[crossingMatrices[crossingIndex][1][0]]
-                                [crossingMatrices[crossingIndex][1][1]];
-        int param_k =
-            numericalAssignments[crossingMatrices[crossingIndex][2][0]]
-                                [crossingMatrices[crossingIndex][2][1]];
         if (param_j > 0) {
           computePositiveQBinomial(polynomialTerms, param_j, param_j - param_k,
                                    true);
@@ -190,51 +197,66 @@ private:
         }
       }
     }
+    for (size_t i = 0; i < polynomialTerms.size(); i++) {
+      int max_pos = polynomialTerms[i].getMaxPositiveIndex();
+      int max_neg = polynomialTerms[i].getMaxNegativeIndex();
+      std::cout << "polynomialTerms[" << i << "]: ";
+      for (int j = max_neg; j <= max_pos; j++) {
+        std::cout << polynomialTerms[i][j] << " ";
+      }
+      std::cout << std::endl;
+    }
+
     for (int crossingIndex = 0; crossingIndex < crossings; crossingIndex++) {
-      if (crossingRelationTypes[crossingIndex] == 1) {
-        int bottomComp = bottom_crossing_components[crossingIndex];
+        int relation_type = crossingRelationTypes[crossingIndex];
         int param_j =
             numericalAssignments[crossingMatrices[crossingIndex][1][0]]
                                 [crossingMatrices[crossingIndex][1][1]];
         int param_k =
             numericalAssignments[crossingMatrices[crossingIndex][2][0]]
                                 [crossingMatrices[crossingIndex][2][1]];
+        int param_i =
+            numericalAssignments[crossingMatrices[crossingIndex][0][0]]
+                                [crossingMatrices[crossingIndex][0][1]];
+        int param_m =
+            numericalAssignments[crossingMatrices[crossingIndex][3][0]]
+                                [crossingMatrices[crossingIndex][3][1]];
+        int bottomComp = bottom_crossing_components[crossingIndex];
+        int topComp = top_crossing_components[crossingIndex];
+
+       std::cout<<"================================================="<<std::endl;
+       std::cout<< "relation_type "<<relation_type<<std::endl;
+       std::cout<< "param_i "<<param_i<<std::endl;
+       std::cout<< "param_j "<<param_j<<std::endl;
+       std::cout<< "param_k "<<param_k<<std::endl;
+       std::cout<< "param_m "<<param_m<<std::endl;
+       std::cout<< "topComp "<<topComp<<std::endl;
+       std::cout<< "bottomComp "<<bottomComp<<std::endl;
+       std::cout<< "maxXDegrees: "<<std::endl;
+       for (auto d: maxXDegrees){
+            std::cout<<"\t"<<d<<std::endl;
+       }
+       std::cout<< "blockSizes: "<<std::endl;
+       for (auto d: blockSizes){
+            std::cout<<"\t"<<d<<std::endl;
+       }
+      if (crossingRelationTypes[crossingIndex] == 1) {
         computeXQPochhammer(polynomialTerms, param_k, param_j + 1, bottomComp,
                             components, maxXDegrees, blockSizes);
       } else if (crossingRelationTypes[crossingIndex] == 2) {
-        int bottomComp = bottom_crossing_components[crossingIndex];
-        int param_j =
-            numericalAssignments[crossingMatrices[crossingIndex][1][0]]
-                                [crossingMatrices[crossingIndex][1][1]];
-        int param_k =
-            numericalAssignments[crossingMatrices[crossingIndex][2][0]]
-                                [crossingMatrices[crossingIndex][2][1]];
         computeXQInversePochhammer(polynomialTerms, param_j, param_k + 1,
                                    bottomComp, components, maxXDegrees,
                                    blockSizes);
       } else if (crossingRelationTypes[crossingIndex] == 3) {
-        int topComp = top_crossing_components[crossingIndex];
-        int param_i =
-            numericalAssignments[crossingMatrices[crossingIndex][0][0]]
-                                [crossingMatrices[crossingIndex][0][1]];
-        int param_m =
-            numericalAssignments[crossingMatrices[crossingIndex][3][0]]
-                                [crossingMatrices[crossingIndex][3][1]];
         computeXQInversePochhammer(polynomialTerms, param_i, param_m + 1,
                                    topComp, components, maxXDegrees,
                                    blockSizes);
       } else {
-        int topComp = top_crossing_components[crossingIndex];
-        int param_i =
-            numericalAssignments[crossingMatrices[crossingIndex][0][0]]
-                                [crossingMatrices[crossingIndex][0][1]];
-        int param_m =
-            numericalAssignments[crossingMatrices[crossingIndex][3][0]]
-                                [crossingMatrices[crossingIndex][3][1]];
         computeXQPochhammer(polynomialTerms, param_m, param_i + 1, topComp,
                             components, maxXDegrees, blockSizes);
       }
     }
+
     auto& resultCoeffs = result.getCoefficients();
     performOffsetAddition(resultCoeffs, polynomialTerms,
                           xPowerAccumulator, qPowerAccumulator, components,
@@ -391,7 +413,11 @@ public:
                                       (degree + 1));
     }
     std::function<void(const std::vector<int> &)> f_wrapper =
-        [this](const std::vector<int> &v) { computeNumericalAssignment(v); };
+        [this](const std::vector<int> &v) { 
+        std::cout<<"Launching wrapper"<<std::endl;
+        computeNumericalAssignment(v); 
+      };
+
     pooling(criteria, inequalities, f_wrapper);
     std::vector<int> increment_offset(components);
     increment_offset[0] = 1;

@@ -93,6 +93,7 @@ void enumeratePoints(std::vector<std::vector<double>>& criteria,
       // Last variable - check constraints and call function
       if (satisfiesConstraints(current.point, supporting_inequalities) &&
           satisfiesConstraints(current.point, criteria)) {
+        std::cout<<"Satisfies Constraints"<<std::endl;
         function(current.point);
       }
       current.current_value++;
