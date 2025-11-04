@@ -103,7 +103,8 @@ private:
     void accumulateResult(const std::vector<bilvector<int>>& polynomial_terms,
                          const std::vector<int>& x_power_accumulator,
                          int q_power_accumulator,
-                         const std::vector<int>& max_x_degrees);
+                         const std::vector<int>& max_x_degrees,
+                         const std::vector<int>& block_sizes);
 };
 
 /**

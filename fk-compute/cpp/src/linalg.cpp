@@ -146,7 +146,6 @@ void performOffsetAddition(std::vector<bilvector<int>> &targetArray,
     }
     return;
   }
-
   std::vector<int> indices(dimensions);
   std::vector<int> limits(dimensions);
 

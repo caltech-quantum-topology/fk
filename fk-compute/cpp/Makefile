@@ -19,7 +19,6 @@ SOURCES = $(SRC_DIR)/fk_segments_links.cpp \
           $(SRC_DIR)/multivariable_polynomial.cpp \
           $(SRC_DIR)/qalg_links.cpp \
           $(SRC_DIR)/linalg.cpp \
-          $(SRC_DIR)/parallel_pool.cpp \
           $(SRC_DIR)/string_to_int.cpp \
           $(SRC_DIR)/inequality_solver.cpp \
           $(SRC_DIR)/fk_computation.cpp
@@ -31,7 +30,6 @@ OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
           $(INCLUDE_DIR)/fk/qalg_links.hpp \
           $(INCLUDE_DIR)/fk/linalg.hpp \
-          $(INCLUDE_DIR)/fk/parallel_pool.hpp \
           $(INCLUDE_DIR)/fk/string_to_int.hpp \
           $(INCLUDE_DIR)/fk/bilvector.hpp \
           $(INCLUDE_DIR)/fk/btree.hpp \
@@ -41,7 +39,6 @@ HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
 # Main targets
 MAIN_TARGET = fk_segments_links
 POLYNOMIAL_EXAMPLE_TARGET = polynomial_example
-PARALLEL_DEMO_TARGET = parallel_demo
 ARITHMETIC_TEST_TARGET = arithmetic_test
 EXAMPLE_TARGET = example
 INEQUALITY_EXAMPLE_TARGET = inequality_example
@@ -77,7 +74,7 @@ $(POLYNOMIAL_EXAMPLE_TARGET): $(BUILD_DIR)/polynomial_example.o $(BUILD_DIR)/mul
 
 
 # Parallel demo executable
-$(PARALLEL_DEMO_TARGET): $(BUILD_DIR)/parallel_demo.o $(BUILD_DIR)/parallel_pool.o $(BUILD_DIR)/solution_pool_1a_double_links.o
+$(PARALLEL_DEMO_TARGET):  $(BUILD_DIR)/solution_pool_1a_double_links.o
 	$(CXX) $(CXXFLAGS) -pthread -o $@ $^
 
 # Arithmetic test executable
@@ -161,13 +158,11 @@ $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 # Specific dependencies for object files
 $(BUILD_DIR)/fk_segments_links.o: $(SRC_DIR)/fk_segments_links.cpp $(HEADERS)
 $(BUILD_DIR)/multivariable_polynomial.o: $(SRC_DIR)/multivariable_polynomial.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
-$(BUILD_DIR)/parallel_pool.o: $(SRC_DIR)/parallel_pool.cpp $(INCLUDE_DIR)/fk/parallel_pool.hpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp
 $(BUILD_DIR)/qalg_links.o: $(SRC_DIR)/qalg_links.cpp $(INCLUDE_DIR)/fk/qalg_links.hpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/linalg.o: $(SRC_DIR)/linalg.cpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/solution_pool_1a_double_links.o: $(SRC_DIR)/solution_pool_1a_double_links.cpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp $(INCLUDE_DIR)/fk/btree.hpp
 $(BUILD_DIR)/string_to_int.o: $(SRC_DIR)/string_to_int.cpp $(INCLUDE_DIR)/fk/string_to_int.hpp
 $(BUILD_DIR)/polynomial_example.o: $(EXAMPLE_DIR)/polynomial_example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
-$(BUILD_DIR)/parallel_demo.o: $(EXAMPLE_DIR)/parallel_demo.cpp $(INCLUDE_DIR)/fk/parallel_pool.hpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp
 $(BUILD_DIR)/arithmetic_test.o: $(TEST_DIR)/arithmetic_test.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 $(BUILD_DIR)/example.o: $(EXAMPLE_DIR)/example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 $(BUILD_DIR)/inequality_example.o: $(EXAMPLE_DIR)/inequality_example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/inequality_solver.hpp
@@ -200,8 +195,6 @@ run-example: $(EXAMPLE_TARGET)
 	./$(EXAMPLE_TARGET)
 
 
-run-parallel-demo: $(PARALLEL_DEMO_TARGET)
-	./$(PARALLEL_DEMO_TARGET)
 
 run-test: $(TEST_TARGET)
 	./$(TEST_TARGET)
@@ -243,7 +236,6 @@ help:
 	@echo "  all          - Build main executable and example (default)"
 	@echo "  fk_segments_links - Build main FK computation executable"
 	@echo "  polynomial_example - Build polynomial example"
-	@echo "  parallel_demo   - Build parallel processing demonstration"
 	@echo "  arithmetic_test - Build arithmetic operations test"
 	@echo "  testing      - Build testing executable"
 	@echo "  debug        - Build main executable with debug flags"
@@ -252,7 +244,6 @@ help:
 	@echo "  clean-obj    - Remove only object files"
 	@echo "  run          - Build and run main executable"
 	@echo "  run-example  - Build and run polynomial example"
-	@echo "  run-parallel-demo - Build and run parallel demo"
 	@echo "  run-arithmetic - Build and run arithmetic test"
 	@echo "  run-test     - Build and run testing executable"
 	@echo "  check        - Check that all files compile"

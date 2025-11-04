@@ -231,16 +231,13 @@ void FKComputationEngine::initializeAccumulatorBlockSizes() {
 
 MultivariablePolynomial
 FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
-  std::cout<<"Computing numerical assignment"<<std::endl;
   numerical_assignments_ = computeNumericalAssignments(angles);
-  std::cout<<"Numerical assignment computed"<<std::endl;
 
   // Calculate power accumulators
   double q_power_accumulator_double =
       (config_.writhe - config_.prefactors) / 2.0;
   std::vector<double> x_power_accumulator_double(config_.components, 0);
   int initial_coefficient = 1;
-  std::cout<<"Calculated power accumulators"<<std::endl;
 
   // Apply prefactor adjustments
   for (int i = 0; i < config_.prefactors; i++) {
@@ -248,7 +245,6 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     x_power_accumulator_double[config_.closed_strand_components[i]] -= 0.5;
   }
   x_power_accumulator_double[0] -= 0.5;
-  std::cout<<"Prefactor adjustments"<<std::endl;
 
   // Apply crossing adjustments
   for (int crossing_index = 0; crossing_index < config_.crossings;
@@ -292,7 +288,6 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
       }
     }
   }
-  std::cout<<"Crossing adjustments"<<std::endl;
 
   // Convert to integer power accumulators
   int q_power_accumulator =
@@ -313,8 +308,6 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   int total_product_size = block_sizes[config_.components - 1] *
                            (max_x_degrees[config_.components - 1] + 1);
 
-  std::cout<<"Integer power accumulators"<<std::endl;
-
   // Initialize polynomial terms
   std::vector<bilvector<int>> polynomial_terms(total_product_size,
                                                bilvector<int>(0, 1, 20, 0));
@@ -323,15 +316,11 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   MultivariablePolynomial poly(config_.components,0,max_x_degrees);
   poly.setCoefficient(0,std::vector<int>(config_.components,0),initial_coefficient);
 
-  std::cout<<"Polynomial terms"<<std::endl;
-
   // Perform crossing computations
   performCrossingComputations(polynomial_terms, max_x_degrees, block_sizes);
-  std::cout<<"Performed crossing computations"<<std::endl;
 
   // Accumulate result
-  accumulateResult(polynomial_terms, x_power_accumulator, q_power_accumulator, max_x_degrees);
-  std::cout<<"Accumulated result"<<std::endl;
+  accumulateResult(polynomial_terms, x_power_accumulator, q_power_accumulator, max_x_degrees, block_sizes);
 
   return result_;
 }
@@ -377,8 +366,6 @@ void FKComputationEngine::performCrossingComputations(
       } else {
         computeNegativeQBinomial(polynomial_terms, param_i, param_i - param_m,
                                  false);
-        std::cout<<"AAA"<<std::endl;
-        polynomial_terms[0].print();
       }
     } else if (relation_type == 2) {
       computeNegativeQBinomial(polynomial_terms, param_i, param_m, false);
@@ -391,8 +378,6 @@ void FKComputationEngine::performCrossingComputations(
       } else {
         computeNegativeQBinomial(polynomial_terms, param_j, param_j - param_k,
                                  true);
-        std::cout<<"BBB"<<std::endl;
-        polynomial_terms[0].print();
       }
     }
   }
@@ -437,19 +422,18 @@ void FKComputationEngine::performCrossingComputations(
 void FKComputationEngine::accumulateResult(
     const std::vector<bilvector<int>> &polynomial_terms,
     const std::vector<int> &x_power_accumulator, int q_power_accumulator,
-    const std::vector<int> &max_x_degrees) {
+    const std::vector<int> &max_x_degrees,
+    const std::vector<int> &block_sizes) {
   auto result_coeffs = result_.getCoefficients();
   std::vector<int> x_power_accumulator_copy =
       x_power_accumulator;                  // Make a mutable copy
   int components_copy = config_.components; // Make a mutable copy
   std::vector<bilvector<int>> polynomial_terms_copy =
       polynomial_terms; // Make a mutable copy
-  std::cout<<"Starting to perform offset addition"<<std::endl;
   performOffsetAddition(result_coeffs, polynomial_terms_copy,
                         x_power_accumulator_copy, q_power_accumulator,
                         components_copy, max_x_degrees, 1,
-                        accumulator_block_sizes_, accumulator_block_sizes_);
-  std::cout<<"Performed offset addition"<<std::endl;
+                        accumulator_block_sizes_, block_sizes);
 
   result_.syncFromDenseVector(result_coeffs);
 }
@@ -512,11 +496,9 @@ void FKComputation::compute(const FKConfiguration &config,
   if (!valid_criteria.is_valid) {
     throw std::runtime_error("No valid criteria found");
   }
-  std::cout<<"Found valid criteria"<<std::endl;
 
   // Assign variables to get list of variable assignments
   auto assignments = assignVariables(valid_criteria);
-  std::cout<<"Found assignments"<<std::endl;
 
   // Collect all points from each variable assignment
   std::vector<std::vector<int>> all_points;
@@ -524,18 +506,11 @@ void FKComputation::compute(const FKConfiguration &config,
     auto points = enumeratePoints(assignment);
     all_points.insert(all_points.end(), points.begin(), points.end());
   }
-  std::cout<<"Found valid points "<<all_points.size()<<std::endl;
 
 
   int i(0);
   // Run the function on all collected points
   for (const auto& point : all_points) {
-    std::cout<<++i<<std::endl;
-    std::cout<<"Point"<<std::endl;
-    for (const auto &p : point) {
-      std::cout<<p<<", ";
-    }
-    std::cout<<std::endl;
     engine_->computeForAngles(point);
   }
 
