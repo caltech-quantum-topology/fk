@@ -38,3 +38,5 @@ void computeXQInversePochhammer(std::vector<bilvector<int>> &polynomialTerms,
                                 int componentIndex, int totalComponents,
                                 std::vector<int> componentLengths,
                                 std::vector<int> blockSizes);
+
+bilvector<int> QBinomialPositive(int upperLimit, int lowerLimit);

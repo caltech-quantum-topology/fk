@@ -182,3 +182,44 @@ void computeXQInversePochhammer(std::vector<bilvector<int>> &polynomialTerms,
     }
   }
 }
+
+
+
+bilvector<int> QBinomialPositive(int upperLimit, int lowerLimit) {
+  int n = upperLimit;
+  int k = lowerLimit;
+
+  // Zero polynomial if out of range
+  if (k < 0 || n < 0 || k > n) {
+    return bilvector<int>(0, 1, 1, 0);  // all zero, only exponent 0 allocated
+  }
+
+  auto makeConstOne = []() {
+    bilvector<int> p(0, 1, 1, 0);  // exponent 0 only
+    p[0] = 1;
+    return p;
+  };
+
+  // C[i][j] = [i choose j]_q
+  std::vector<std::vector<bilvector<int>>> C(
+      n + 1, std::vector<bilvector<int>>(k + 1, bilvector<int>(0, 1, 1, 0)));
+
+  C[0][0] = makeConstOne();
+
+  for (int i = 1; i <= n; ++i) {
+    C[i][0] = makeConstOne();  // [i choose 0]_q = 1
+
+    int jMax = std::min(i, k);
+    for (int j = 1; j <= jMax; ++j) {
+      if (j == i) {
+        C[i][j] = makeConstOne();  // [i choose i]_q = 1
+      } else {
+        // [i choose j]_q = [i-1 choose j]_q + q^(i-j) [i-1 choose j-1]_q
+        bilvector<int> shifted = multiplyByQPower(C[i - 1][j - 1], i - j);
+        C[i][j] = C[i - 1][j] + shifted;
+      }
+    }
+  }
+
+  return C[n][k];
+}

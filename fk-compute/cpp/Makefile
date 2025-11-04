@@ -54,8 +54,7 @@ TREFOIL_COMPLETE_TARGET = trefoil_complete_example
 PARSER_TEST_TARGET = parser_comparison_test
 TEST_TARGET = testing
 FK_MAIN_TARGET = fk_main
-CHECKPOINT_DEMO_TARGET = checkpoint_demo
-CHECKPOINT_RESUME_DEMO_TARGET = checkpoint_resume_demo
+BILVECTOR_OPERATIONS = bilvector_operations
 
 # Default target - now builds main.cpp
 all: $(FK_MAIN_TARGET) $(EXAMPLE_TARGET)
@@ -128,13 +127,6 @@ $(PARSER_TEST_TARGET): $(BUILD_DIR)/parser_comparison_test.o $(BUILD_DIR)/fk_com
 $(TEST_TARGET): $(BUILD_DIR)/testing.o $(filter-out $(BUILD_DIR)/fk_segments_links.o,$(OBJECTS))
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-# Checkpoint demo executable
-$(CHECKPOINT_DEMO_TARGET): $(BUILD_DIR)/checkpoint_demo.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
-
-# Checkpoint resume demo executable
-$(CHECKPOINT_RESUME_DEMO_TARGET): $(BUILD_DIR)/checkpoint_resume_demo.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Debug versions
 debug: CXXFLAGS += $(DEBUG_FLAGS)
@@ -152,6 +144,10 @@ $(BUILD_DIR)/%.o: $(EXAMPLE_DIR)/%.cpp $(HEADERS)
 
 $(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Bilvector / multivariable polynomial operations demo
+$(BILVECTOR_OPERATIONS): $(BUILD_DIR)/bilvector_operations.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Rule for root directory files (like main.cpp)
 $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
@@ -185,7 +181,7 @@ $(BUILD_DIR)/checkpoint_resume_demo.o: checkpoint_resume_demo.cpp $(INCLUDE_DIR)
 
 # Utility targets
 clean:
-	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(PARALLEL_DEMO_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARGET) $(CHECKPOINT_DEMO_TARGET) $(CHECKPOINT_RESUME_DEMO_TARGET)
+	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(PARALLEL_DEMO_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS)
 
 # Clean only object files
 clean-obj:
@@ -261,4 +257,4 @@ help:
 	@echo "  help         - Show this help message"
 
 # Phony targets
-.PHONY: all debug debug-example clean clean-obj run run-example run-test run-arithmetic install format check structure help
+.PHONY: all debug debug-example clean clean-obj run run-example run-test run-arithmetic install format check structure help bilvector_operations

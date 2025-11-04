@@ -523,3 +523,145 @@ MultivariablePolynomial operator*(const MultivariablePolynomial &lhs,
   result *= rhs;
   return result;
 }
+
+MultivariablePolynomial &
+MultivariablePolynomial::operator+=(const bilvector<int> &qPoly) {
+  // Monomial x_1^0 x_2^0 ... x_n^0
+  std::vector<int> zeroXPowers(numXVariables, 0);
+
+  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
+    int coeff = qPoly[q];
+    if (coeff != 0) {
+      addToCoefficient(q, zeroXPowers, coeff);
+    }
+  }
+
+  return *this;
+}
+
+MultivariablePolynomial &
+MultivariablePolynomial::operator-=(const bilvector<int> &qPoly) {
+  std::vector<int> zeroXPowers(numXVariables, 0);
+
+  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
+    int coeff = qPoly[q];
+    if (coeff != 0) {
+      addToCoefficient(q, zeroXPowers, -coeff);
+    }
+  }
+
+  return *this;
+}
+
+MultivariablePolynomial &
+MultivariablePolynomial::operator*=(const bilvector<int> &qPoly) {
+  // If this polynomial is already zero, nothing to do
+  if (coeffs_.empty()) {
+    return *this;
+  }
+
+  // Check if qPoly is the zero polynomial
+  bool qPolyIsZero = true;
+  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
+    if (qPoly[q] != 0) {
+      qPolyIsZero = false;
+      break;
+    }
+  }
+
+  if (qPolyIsZero) {
+    clear();  // P * 0 = 0
+    return *this;
+  }
+
+  std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> result;
+
+  int factorMin = qPoly.getMaxNegativeIndex();
+  int factorMax = qPoly.getMaxPositiveIndex();
+
+  for (const auto &entry : coeffs_) {
+    const std::vector<int> &xPowers = entry.first;
+    const bilvector<int> &thisBilvec = entry.second;
+
+    int thisMin = thisBilvec.getMaxNegativeIndex();
+    int thisMax = thisBilvec.getMaxPositiveIndex();
+
+    // Start with a minimal bilvector; it grows as needed
+    bilvector<int> product(0, 1, 20, 0);
+
+    for (int qi = thisMin; qi <= thisMax; ++qi) {
+      int a = thisBilvec[qi];
+      if (a == 0) continue;
+
+      for (int qj = factorMin; qj <= factorMax; ++qj) {
+        int b = qPoly[qj];
+        if (b == 0) continue;
+
+        product[qi + qj] += a * b;
+      }
+    }
+
+    // Store only if product is not the zero polynomial
+    bool allZero = true;
+    for (int q = product.getMaxNegativeIndex(); q <= product.getMaxPositiveIndex(); ++q) {
+      if (product[q] != 0) {
+        allZero = false;
+        break;
+      }
+    }
+
+    if (!allZero) {
+      result.emplace(xPowers, std::move(product));
+    }
+  }
+
+  coeffs_ = std::move(result);
+  return *this;
+}
+
+MultivariablePolynomial operator+(const MultivariablePolynomial &lhs,
+                                 const bilvector<int> &rhs) {
+  MultivariablePolynomial result = lhs;
+  result += rhs;
+  return result;
+}
+
+MultivariablePolynomial operator+(const bilvector<int> &lhs,
+                                 const MultivariablePolynomial &rhs) {
+  MultivariablePolynomial result = rhs;
+  result += lhs;
+  return result;
+}
+
+MultivariablePolynomial operator-(const MultivariablePolynomial &lhs,
+                                 const bilvector<int> &rhs) {
+  MultivariablePolynomial result = lhs;
+  result -= rhs;
+  return result;
+}
+
+MultivariablePolynomial operator-(const bilvector<int> &lhs,
+                                 const MultivariablePolynomial &rhs) {
+  // Construct a polynomial with the same x-structure as rhs, then do lhs - rhs
+  MultivariablePolynomial result(rhs.getNumXVariables(),
+                                 /*degree (unused when maxDegrees provided)*/ 0,
+                                 rhs.getMaxXDegrees());
+
+  result += lhs;   // attach lhs(q) to x^0...0
+  result -= rhs;   // subtract rhs
+  return result;
+}
+
+MultivariablePolynomial operator*(const MultivariablePolynomial &lhs,
+                                 const bilvector<int> &rhs) {
+  MultivariablePolynomial result = lhs;
+  result *= rhs;
+  return result;
+}
+
+MultivariablePolynomial operator*(const bilvector<int> &lhs,
+                                 const MultivariablePolynomial &rhs) {
+  MultivariablePolynomial result = rhs;
+  result *= lhs;
+  return result;
+}

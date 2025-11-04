@@ -224,3 +224,39 @@ bilvector<T> &operator*=(bilvector<T> &lhs, const bilvector<T> &rhs) {
   lhs = lhs * rhs;
   return lhs;
 }
+
+
+// Multiply by q^power: shift exponents
+template <typename T>
+bilvector<T> multiplyByQPower(const bilvector<T> &poly, int power) {
+  if (power == 0) {
+    return poly;
+  }
+
+  int inMin = poly.getMaxNegativeIndex();
+  int inMax = poly.getMaxPositiveIndex();
+  int outMin = inMin + power;
+  int outMax = inMax + power;
+
+  int componentSize = poly.getComponentSize();
+
+  int negativeCount = 0;
+  if (outMin < 0) {
+    negativeCount = -outMin;
+  }
+
+  int positiveCount = 0;
+  if (outMax >= 0) {
+    positiveCount = outMax + 1;
+  }
+
+  bilvector<T> result(negativeCount, positiveCount, componentSize, T{});
+
+  for (int e = inMin; e <= inMax; ++e) {
+    T c = poly[e];
+    if (c == T{}) continue;
+    result[e + power] += c;
+  }
+
+  return result;
+}

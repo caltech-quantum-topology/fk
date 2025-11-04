@@ -9,7 +9,7 @@
  * Custom hash function for vector<int> keys
  */
 struct VectorHash {
-  std::size_t operator()(const std::vector<int>& v) const;
+  std::size_t operator()(const std::vector<int> &v) const;
 };
 
 /**
@@ -29,7 +29,7 @@ class MultivariablePolynomial {
 private:
   int numXVariables;            // Number of x variables (components)
   std::vector<int> maxXDegrees; // Max degrees (advisory only, not enforced)
-  std::vector<int> blockSizes;  // Block sizes (advisory only, for compatibility)
+  std::vector<int> blockSizes; // Block sizes (advisory only, for compatibility)
 
   // Sparse storage: map from x-exponent vector to q-polynomial
   std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> coeffs_;
@@ -42,7 +42,8 @@ public:
    * Constructor
    * @param numVariables Number of x variables
    * @param degree Maximum degree for each x variable (advisory only)
-   * @param maxDegrees Optional: different max degree for each variable (advisory only)
+   * @param maxDegrees Optional: different max degree for each variable
+   * (advisory only)
    */
   MultivariablePolynomial(int numVariables, int degree = 10,
                           const std::vector<int> &maxDegrees = {});
@@ -85,7 +86,7 @@ public:
   /**
    * Get read-only access to coefficient map (replaces getCoefficients)
    */
-  const std::unordered_map<std::vector<int>, bilvector<int>, VectorHash>&
+  const std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> &
   getCoefficientMap() const;
 
   /**
@@ -98,13 +99,13 @@ public:
    * Backward compatibility: Non-const version
    * WARNING: This creates a mutable copy that must be manually synced back
    */
-  std::vector<bilvector<int>>& getCoefficients();
+  std::vector<bilvector<int>> &getCoefficients();
 
   /**
    * Sync dense vector back to sparse representation
    * This must be called after any operations that modify the dense vector
    */
-  void syncFromDenseVector(const std::vector<bilvector<int>>& denseVector);
+  void syncFromDenseVector(const std::vector<bilvector<int>> &denseVector);
 
   /**
    * Get number of x variables
@@ -145,12 +146,15 @@ public:
 
   /**
    * Evaluate polynomial at a given point, returning a polynomial in q
-   * @param point Vector of values for x₁, x₂, ..., xₙ (must match numXVariables)
+   * @param point Vector of values for x₁, x₂, ..., xₙ (must match numXV
+   * riables)
    * @return bilvector<int> representing the resulting polynomial in q
-   * @throws std::invalid_argument if point dimension doesn't match numXVariables
-   * @throws std::domain_error if division by zero occurs (negative exponent with zero value)
+   * @throws std::invalid_argument if point dimension doesn't match
+   * numXVariables
+   * @throws std::domain_error if division by zero occurs (negative exponent
+   * with zero value)
    */
-  bilvector<int> evaluate(const std::vector<int>& point) const;
+  bilvector<int> evaluate(const std::vector<int> &point) const;
 
   /**
    * Check if two polynomials are compatible for arithmetic operations
@@ -173,14 +177,47 @@ public:
   MultivariablePolynomial &operator*=(const MultivariablePolynomial &other);
 
   /**
+   * Add a pure q-polynomial (bilvector) to this polynomial.
+   * The q-polynomial is attached to the monomial with all x-exponents = 0.
+   */
+  MultivariablePolynomial &operator+=(const bilvector<int> &qPoly);
+
+  /**
+   * Subtract a pure q-polynomial (bilvector) from this polynomial.
+   * The q-polynomial is attached to the monomial with all x-exponents = 0.
+   */
+  MultivariablePolynomial &operator-=(const bilvector<int> &qPoly);
+
+  /**
+   * Multiply this polynomial by a pure q-polynomial (bilvector).
+   * Each q-polynomial coefficient (for each x-monomial) is multiplied by qPoly.
+   */
+  MultivariablePolynomial &operator*=(const bilvector<int> &qPoly);
+
+  /**
    * Friend functions for binary operations
    */
   friend MultivariablePolynomial operator+(const MultivariablePolynomial &lhs,
+                                           const bilvector<int> &rhs);
+
+  friend MultivariablePolynomial operator-(const MultivariablePolynomial &lhs,
+                                           const bilvector<int> &rhs);
+
+  friend MultivariablePolynomial operator*(const MultivariablePolynomial &lhs,
+                                           const bilvector<int> &rhs);
+
+  friend MultivariablePolynomial operator+(const MultivariablePolynomial &lhs,
+                                           const bilvector<int> &rhs);
+  friend MultivariablePolynomial operator+(const bilvector<int> &lhs,
                                            const MultivariablePolynomial &rhs);
 
   friend MultivariablePolynomial operator-(const MultivariablePolynomial &lhs,
+                                           const bilvector<int> &rhs);
+  friend MultivariablePolynomial operator-(const bilvector<int> &lhs,
                                            const MultivariablePolynomial &rhs);
 
   friend MultivariablePolynomial operator*(const MultivariablePolynomial &lhs,
+                                           const bilvector<int> &rhs);
+  friend MultivariablePolynomial operator*(const bilvector<int> &lhs,
                                            const MultivariablePolynomial &rhs);
 };
