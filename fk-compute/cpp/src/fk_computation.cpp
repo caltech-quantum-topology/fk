@@ -3,12 +3,11 @@
 #include "fk/qalg_links.hpp"
 #include "fk/string_to_int.hpp"
 
-#include <cmath>
 #include <chrono>
+#include <cmath>
 #include <fstream>
 #include <functional>
 #include <iostream>
-#include <sstream>
 #include <list>
 #include <queue>
 #include <random>
@@ -18,12 +17,11 @@
 #include <stdexcept>
 
 void print_pterms(std::vector<bilvector<int>> polynomial_terms) {
-  for ( auto i = 0; i < polynomial_terms.size(); ++i) {
-      std::cout<<"x^"<<i<<" :";  
-       polynomial_terms[i].print();
-   }
+  for (auto i = 0; i < polynomial_terms.size(); ++i) {
+    std::cout << "x^" << i << " :";
+    polynomial_terms[i].print();
+  }
 }
-
 
 namespace fk {
 // FKConfiguration implementation
@@ -321,18 +319,21 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
                                                bilvector<int>(0, 1, 20, 0));
   polynomial_terms[0][0] = initial_coefficient;
 
-  MultivariablePolynomial poly(config_.components,0,max_x_degrees);
-  poly.setCoefficient(0,std::vector<int>(config_.components,0),initial_coefficient);
+  MultivariablePolynomial poly(config_.components, 0, max_x_degrees);
+  poly.setCoefficient(0, std::vector<int>(config_.components, 0),
+                      initial_coefficient);
 
   // Perform crossing computations
-  performCrossingComputations(polynomial_terms, max_x_degrees, block_sizes, poly);
+  performCrossingComputations(polynomial_terms, max_x_degrees, block_sizes,
+                              poly);
+
 
   // Accumulate result
-  accumulateResult(polynomial_terms, x_power_accumulator, q_power_accumulator, max_x_degrees, block_sizes);
+  accumulateResult(polynomial_terms, x_power_accumulator, q_power_accumulator,
+                   max_x_degrees, block_sizes);
 
   return result_;
 }
-
 
 std::vector<std::vector<int>> FKComputationEngine::computeNumericalAssignments(
     const std::vector<int> &angles) {
@@ -348,20 +349,22 @@ std::vector<std::vector<int>> FKComputationEngine::computeNumericalAssignments(
   return assignments;
 }
 
-
 void FKComputationEngine::performCrossingComputations(
     std::vector<bilvector<int>> &polynomial_terms,
-    const std::vector<int>& max_x_degrees,
-    const std::vector<int>& block_sizes,
+    const std::vector<int> &max_x_degrees, const std::vector<int> &block_sizes,
     MultivariablePolynomial &poly) {
 
-
+    std::cout << "poly start" << std::endl;
+    poly.print(50);
+    std::cout << "polynomial_terms start" << std::endl;
+    print_pterms(polynomial_terms);
+    std::cout << "\n\n\n" << std::endl;
   // First pass: binomial computations
   for (int crossing_index = 0; crossing_index < config_.crossings;
        crossing_index++) {
     const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
     int relation_type = config_.crossing_relation_types[crossing_index];
-
+    std::cout<<"Relation type: "<<relation_type<<std::endl;
     int param_i =
         numerical_assignments_[crossing_matrix[0][0]][crossing_matrix[0][1]];
     int param_j =
@@ -370,74 +373,51 @@ void FKComputationEngine::performCrossingComputations(
         numerical_assignments_[crossing_matrix[2][0]][crossing_matrix[2][1]];
     int param_m =
         numerical_assignments_[crossing_matrix[3][0]][crossing_matrix[3][1]];
-    
-    std::cout<<"poly initial"<<std::endl;
-    poly.print();
-    std::cout<<"polynomial_terms initial"<<std::endl;
-    print_pterms(polynomial_terms);
 
-    std::cout<<"qbinom"<<std::endl;
+
     if (relation_type == 1) {
       if (param_i > 0) {
-         computePositiveQBinomial(polynomial_terms, param_i, param_i - param_m,
+        computePositiveQBinomial(polynomial_terms, param_i, param_i - param_m,
                                  false);
-          auto qbinom = QBinomialPositive(param_i,param_i-param_m);
-          qbinom.print();
-          poly *= QBinomialPositive(param_i,param_i-param_m);
+        auto qbinom = QBinomialPositive(param_i, param_i - param_m);
+        poly *= QBinomialPositive(param_i, param_i - param_m);
       } else {
-          computeNegativeQBinomial(polynomial_terms, param_i, param_i - param_m,
+        computeNegativeQBinomial(polynomial_terms, param_i, param_i - param_m,
                                  false);
-          auto qbinom = QBinomialNegative(param_i,param_i-param_m);
-          qbinom.print();
-          poly *= QBinomialNegative(param_i,param_i-param_m);
+        auto qbinom = QBinomialNegative(param_i, param_i - param_m);
+        poly *= QBinomialNegative(param_i, param_i - param_m);
       }
     } else if (relation_type == 2) {
-          computeNegativeQBinomial(polynomial_terms, param_i, param_m, false);
-          auto qbinom = QBinomialNegative(param_i,param_m);
-          qbinom.print();
-          poly *= QBinomialNegative(param_i,param_m);
+      computeNegativeQBinomial(polynomial_terms, param_i, param_m, false);
+      auto qbinom = QBinomialNegative(param_i, param_m);
+      poly *= QBinomialNegative(param_i, param_m);
     } else if (relation_type == 3) {
-          computeNegativeQBinomial(polynomial_terms, param_j, param_k, true);
-          auto qbinom = QBinomialNegative(param_j,param_k).invertExponents();
-          qbinom.print();
-          poly *= QBinomialNegative(param_j,param_k).invertExponents();
+      computeNegativeQBinomial(polynomial_terms, param_j, param_k, true);
+      auto qbinom = QBinomialNegative(param_j, param_k).invertExponents();
+      poly *= QBinomialNegative(param_j, param_k).invertExponents();
     } else if (relation_type == 4) {
       if (param_j > 0) {
-          computePositiveQBinomial(polynomial_terms, param_j, param_j - param_k,
+        computePositiveQBinomial(polynomial_terms, param_j, param_j - param_k,
                                  true);
-          auto qbinom = QBinomialPositive(param_j,param_j - param_k).invertExponents();
-          qbinom.print();
-          poly *= QBinomialPositive(param_j,param_j - param_k).invertExponents();
+        auto qbinom =
+            QBinomialPositive(param_j, param_j - param_k).invertExponents();
+        poly *= QBinomialPositive(param_j, param_j - param_k).invertExponents();
       } else {
         computeNegativeQBinomial(polynomial_terms, param_j, param_j - param_k,
                                  true);
-          auto qbinom = QBinomialNegative(param_j,param_j - param_k).invertExponents();
-          qbinom.print();
-          poly *= QBinomialNegative(param_j,param_j - param_k).invertExponents();
+        auto qbinom =
+            QBinomialNegative(param_j, param_j - param_k).invertExponents();
+        poly *= QBinomialNegative(param_j, param_j - param_k).invertExponents();
       }
     }
   }
-
-  std::cout<<"poly final"<<std::endl;
-  poly.print();
-  std::cout<<"polynomial_terms final"<<std::endl;
-  print_pterms(polynomial_terms);
-  std::cout<<"\n\n\n"<<std::endl;
-   
-
-
-  std::cout<<"max_x_degrees"<<std::endl;
-  for (auto mx : max_x_degrees){
-    std::cout<<mx<<", ";
-  }
-  std::cout<<std::endl;
-  std::cout<<"block_sizes"<<std::endl;
-  for (auto bs : block_sizes){
-     std::cout<<bs<<", ";
-   }
-  std::cout<<std::endl;
-
-
+  
+    poly = poly.truncate(max_x_degrees);
+    std::cout << "poly intermediate" << std::endl;
+    poly.print(50);
+    std::cout << "polynomial_terms intermediate" << std::endl;
+    print_pterms(polynomial_terms);
+    std::cout << "\n\n\n" << std::endl;
 
   // Second pass: Pochhammer computations
   for (int crossing_index = 0; crossing_index < config_.crossings;
@@ -458,45 +438,43 @@ void FKComputationEngine::performCrossingComputations(
     int bottom_comp = config_.bottom_crossing_components[crossing_index];
 
     if (relation_type == 1) {
-      std::cout<<"======"<<std::endl;
-      std::cout<<param_k<<std::endl;
-      std::cout<<param_j<<std::endl;
-      std::cout<<bottom_comp<<std::endl;
-      std::cout<<config_.components<<std::endl;
-
-      std::cout<<"max_x_degrees"<<std::endl;
-      for (auto mx : max_x_degrees){
-        std::cout<<mx<<", ";
-      }
-      std::cout<<std::endl;
-      std::cout<<"block_sizes"<<std::endl;
-      for (auto bs : block_sizes){
-         std::cout<<bs<<", ";
-       }
-      std::cout<<std::endl;
-
-      std::cout<<"poly terms"<<std::endl;
-      print_pterms(polynomial_terms);
-
+      poly *=
+          MultivariablePolynomial(qpochhammer_xq_q(param_i - param_m, param_j, 1),
+                                  config_.components, bottom_comp);
       computeXQPochhammer(polynomial_terms, param_k, param_j + 1, bottom_comp,
                           config_.components, max_x_degrees, block_sizes);
 
-      std::cout<<"poly terms"<<std::endl;
-      print_pterms(polynomial_terms);
-
     } else if (relation_type == 2) {
-      computeXQInversePochhammer(polynomial_terms, param_j, param_k + 1,
-                                 bottom_comp, config_.components, max_x_degrees,
-                                 block_sizes);
+      poly *=
+          MultivariablePolynomial(inverse_qpochhammer_xq_q(param_m - param_i, -param_j,max_x_degrees[bottom_comp], 1).invertVariable(0),
+                                  config_.components, bottom_comp);
+          computeXQInversePochhammer(polynomial_terms, param_j, param_k + 1,
+                                     bottom_comp, config_.components,
+                                     max_x_degrees, block_sizes);
+
     } else if (relation_type == 3) {
+      poly *=
+          MultivariablePolynomial(inverse_qpochhammer_xq_q(param_k - param_j, param_i, max_x_degrees[top_comp], -1),
+                                  config_.components, top_comp);
       computeXQInversePochhammer(polynomial_terms, param_i, param_m + 1,
                                  top_comp, config_.components, max_x_degrees,
                                  block_sizes);
+
     } else if (relation_type == 4) {
+      poly *=
+          MultivariablePolynomial(qpochhammer_xq_q(param_j - param_k, param_j, -1).invertVariable(0),
+                                  config_.components, bottom_comp);
       computeXQPochhammer(polynomial_terms, param_m, param_i + 1, top_comp,
                           config_.components, max_x_degrees, block_sizes);
     }
   }
+  poly = poly.truncate(max_x_degrees);
+  //poly = poly.invertVariable(0);
+  std::cout << "poly final" << std::endl;
+  poly.print(50);
+  std::cout << "polynomial_terms final" << std::endl;
+  print_pterms(polynomial_terms);
+  std::cout << "\n\n\n" << std::endl;
 }
 
 void FKComputationEngine::accumulateResult(
@@ -551,7 +529,6 @@ void FKResultWriter::writeToText(const MultivariablePolynomial &result,
   outfile.close();
 }
 
-
 // FKComputation implementation
 void FKComputation::compute(const std::string &input_filename,
                             const std::string &output_filename) {
@@ -582,13 +559,13 @@ void FKComputation::compute(const FKConfiguration &config,
 
   // Collect all points from each variable assignment
   std::vector<std::vector<int>> all_points;
-  for (const auto& assignment : assignments) {
+  for (const auto &assignment : assignments) {
     auto points = enumeratePoints(assignment);
     all_points.insert(all_points.end(), points.begin(), points.end());
   }
 
   // Run the function on all collected points
-  for (const auto& point : all_points) {
+  for (const auto &point : all_points) {
     engine_->computeForAngles(point);
   }
 
@@ -630,11 +607,13 @@ void FKComputation::initializeEngine() {
   engine_ = std::make_unique<FKComputationEngine>(config_);
 }
 
-// Pooling functionality implementations (moved from solution_pool_1a_double_links.cpp)
+// Pooling functionality implementations (moved from
+// solution_pool_1a_double_links.cpp)
 
-bool FKComputation::satisfiesConstraints(const std::vector<int>& point,
-                         const std::vector<std::vector<double>>& constraints) {
-  for (const auto& constraint : constraints) {
+bool FKComputation::satisfiesConstraints(
+    const std::vector<int> &point,
+    const std::vector<std::vector<double>> &constraints) {
+  for (const auto &constraint : constraints) {
     int acc = static_cast<int>(constraint[0]);
     for (size_t j = 0; j < point.size(); j++) {
       acc += point[j] * static_cast<int>(constraint[1 + j]);
@@ -646,13 +625,15 @@ bool FKComputation::satisfiesConstraints(const std::vector<int>& point,
   return true;
 }
 
-std::vector<std::vector<int>> FKComputation::enumeratePoints(const AssignmentResult& assignment) {
+std::vector<std::vector<int>>
+FKComputation::enumeratePoints(const AssignmentResult &assignment) {
 
   std::vector<std::vector<int>> valid_points;
 
   if (assignment.bounds.empty()) {
     // Base case: check constraints and add point if valid
-    if (satisfiesConstraints(assignment.point, assignment.supporting_inequalities) &&
+    if (satisfiesConstraints(assignment.point,
+                             assignment.supporting_inequalities) &&
         satisfiesConstraints(assignment.point, assignment.criteria)) {
       valid_points.push_back(assignment.point);
     }
@@ -660,7 +641,8 @@ std::vector<std::vector<int>> FKComputation::enumeratePoints(const AssignmentRes
   }
 
   // Convert bounds list to vector for easier iteration
-  std::vector<std::array<int, 2>> bounds_vec(assignment.bounds.begin(), assignment.bounds.end());
+  std::vector<std::array<int, 2>> bounds_vec(assignment.bounds.begin(),
+                                             assignment.bounds.end());
 
   // Stack to manage iteration state
   struct IterationFrame {
@@ -681,19 +663,23 @@ std::vector<std::vector<int>> FKComputation::enumeratePoints(const AssignmentRes
   // Calculate upper bound for first variable
   int index = bounds_vec[0][0];
   int inequality = bounds_vec[0][1];
-  int upper = static_cast<int>(assignment.supporting_inequalities[inequality][0]);
+  int upper =
+      static_cast<int>(assignment.supporting_inequalities[inequality][0]);
   for (size_t i = 0; i < assignment.point.size(); i++) {
     if (static_cast<int>(i) != index) {
-      upper += static_cast<int>(assignment.supporting_inequalities[inequality][1 + i]) * assignment.point[i];
+      upper += static_cast<int>(
+                   assignment.supporting_inequalities[inequality][1 + i]) *
+               assignment.point[i];
     }
   }
-  upper /= -static_cast<int>(assignment.supporting_inequalities[inequality][1 + index]);
+  upper /= -static_cast<int>(
+      assignment.supporting_inequalities[inequality][1 + index]);
   initial_frame.upper_bound = upper;
 
   stack.push(initial_frame);
 
   while (!stack.empty()) {
-    IterationFrame& current = stack.top();
+    IterationFrame &current = stack.top();
 
     if (current.current_value > current.upper_bound) {
       stack.pop();
@@ -705,7 +691,8 @@ std::vector<std::vector<int>> FKComputation::enumeratePoints(const AssignmentRes
 
     if (current.bound_index == bounds_vec.size() - 1) {
       // Last variable - check constraints and add point if valid
-      if (satisfiesConstraints(current.point, assignment.supporting_inequalities) &&
+      if (satisfiesConstraints(current.point,
+                               assignment.supporting_inequalities) &&
           satisfiesConstraints(current.point, assignment.criteria)) {
         valid_points.push_back(current.point);
       }
@@ -720,13 +707,18 @@ std::vector<std::vector<int>> FKComputation::enumeratePoints(const AssignmentRes
       // Calculate upper bound for next variable
       int next_index = bounds_vec[next_frame.bound_index][0];
       int next_inequality = bounds_vec[next_frame.bound_index][1];
-      int next_upper = static_cast<int>(assignment.supporting_inequalities[next_inequality][0]);
+      int next_upper = static_cast<int>(
+          assignment.supporting_inequalities[next_inequality][0]);
       for (size_t i = 0; i < next_frame.point.size(); i++) {
         if (static_cast<int>(i) != next_index) {
-          next_upper += static_cast<int>(assignment.supporting_inequalities[next_inequality][1 + i]) * next_frame.point[i];
+          next_upper +=
+              static_cast<int>(
+                  assignment.supporting_inequalities[next_inequality][1 + i]) *
+              next_frame.point[i];
         }
       }
-      next_upper /= -static_cast<int>(assignment.supporting_inequalities[next_inequality][1 + next_index]);
+      next_upper /= -static_cast<int>(
+          assignment.supporting_inequalities[next_inequality][1 + next_index]);
       next_frame.upper_bound = next_upper;
 
       current.current_value++;
@@ -737,7 +729,8 @@ std::vector<std::vector<int>> FKComputation::enumeratePoints(const AssignmentRes
   return valid_points;
 }
 
-std::vector<FKComputation::AssignmentResult> FKComputation::assignVariables(const ValidatedCriteria& valid_criteria) {
+std::vector<FKComputation::AssignmentResult>
+FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
 
   std::vector<AssignmentResult> assignments;
 
@@ -752,7 +745,8 @@ std::vector<FKComputation::AssignmentResult> FKComputation::assignVariables(cons
   }
 
   // Convert first list to vector for easier iteration
-  std::vector<std::array<int, 2>> first_vec(valid_criteria.first_bounds.begin(), valid_criteria.first_bounds.end());
+  std::vector<std::array<int, 2>> first_vec(valid_criteria.first_bounds.begin(),
+                                            valid_criteria.first_bounds.end());
 
   std::stack<VariableAssignmentState> stack;
 
@@ -771,12 +765,13 @@ std::vector<FKComputation::AssignmentResult> FKComputation::assignVariables(cons
   int var_index = first_vec[0][0];
   int main_index = first_vec[0][1];
   double slope = -valid_criteria.criteria[main_index][var_index];
-  initial_state.max_value = static_cast<int>(valid_criteria.degrees[main_index] / slope);
+  initial_state.max_value =
+      static_cast<int>(valid_criteria.degrees[main_index] / slope);
 
   stack.push(initial_state);
 
   while (!stack.empty()) {
-    VariableAssignmentState& current = stack.top();
+    VariableAssignmentState &current = stack.top();
 
     if (current.current_value > current.max_value) {
       stack.pop();
@@ -791,7 +786,8 @@ std::vector<FKComputation::AssignmentResult> FKComputation::assignVariables(cons
     // Update degrees
     double slope = -current.new_criteria[main_idx][var_idx];
     std::vector<double> new_degrees = current.degrees;
-    new_degrees[main_idx] = current.degrees[main_idx] - current.current_value * slope;
+    new_degrees[main_idx] =
+        current.degrees[main_idx] - current.current_value * slope;
 
     if (current.current_var_index == first_vec.size() - 1) {
       // Last variable - create assignment result
@@ -818,7 +814,8 @@ std::vector<FKComputation::AssignmentResult> FKComputation::assignVariables(cons
       int next_var_idx = first_vec[next_state.current_var_index][0];
       int next_main_idx = first_vec[next_state.current_var_index][1];
       double next_slope = -next_state.new_criteria[next_main_idx][next_var_idx];
-      next_state.max_value = static_cast<int>(new_degrees[next_main_idx] / next_slope);
+      next_state.max_value =
+          static_cast<int>(new_degrees[next_main_idx] / next_slope);
 
       current.current_value++;
       stack.push(next_state);
@@ -828,8 +825,8 @@ std::vector<FKComputation::AssignmentResult> FKComputation::assignVariables(cons
   return assignments;
 }
 
-FKComputation::BoundedVariables FKComputation::identifyBoundedVariables(const std::vector<std::vector<double>>& inequalities,
-                                         int size) {
+FKComputation::BoundedVariables FKComputation::identifyBoundedVariables(
+    const std::vector<std::vector<double>> &inequalities, int size) {
   BoundedVariables result;
   result.bounded_v.resize(size - 1, 0);
   result.bounded_count = 0;
@@ -863,10 +860,8 @@ FKComputation::BoundedVariables FKComputation::identifyBoundedVariables(const st
 }
 
 std::list<std::array<int, 2>> FKComputation::findAdditionalBounds(
-    std::vector<int>& bounded_v,
-    int& bounded_count,
-    int size,
-    const std::vector<std::vector<double>>& supporting_inequalities) {
+    std::vector<int> &bounded_v, int &bounded_count, int size,
+    const std::vector<std::vector<double>> &supporting_inequalities) {
 
   std::list<std::array<int, 2>> bounds;
   int support = supporting_inequalities.size();
@@ -878,7 +873,8 @@ std::list<std::array<int, 2>> FKComputation::findAdditionalBounds(
         if (supporting_inequalities[l][1 + index] < 0) {
           bool useful = true;
           for (int n = 0; n < size - 1; n++) {
-            if (n != index && supporting_inequalities[l][1 + n] > 0 && !bounded_v[n]) {
+            if (n != index && supporting_inequalities[l][1 + n] > 0 &&
+                !bounded_v[n]) {
               useful = false;
             }
           }
@@ -901,17 +897,18 @@ std::list<std::array<int, 2>> FKComputation::findAdditionalBounds(
   return bounds;
 }
 
-std::vector<double> FKComputation::extractDegrees(const std::vector<std::vector<double>>& inequalities) {
+std::vector<double> FKComputation::extractDegrees(
+    const std::vector<std::vector<double>> &inequalities) {
   std::vector<double> degrees;
-  for (const auto& x : inequalities) {
+  for (const auto &x : inequalities) {
     degrees.push_back(x[0]);
   }
   return degrees;
 }
 
-bool FKComputation::validCriteria(const std::vector<std::vector<double>>& criteria,
-                   const std::vector<std::vector<double>>& supporting_inequalities,
-                   int size) {
+bool FKComputation::validCriteria(
+    const std::vector<std::vector<double>> &criteria,
+    const std::vector<std::vector<double>> &supporting_inequalities, int size) {
 
   auto bounded_info = identifyBoundedVariables(criteria, size);
 
@@ -924,10 +921,12 @@ bool FKComputation::validCriteria(const std::vector<std::vector<double>>& criter
   }
 
   // Try to find additional bounds
-  auto additional_bounds = findAdditionalBounds(bounded_info.bounded_v, bounded_info.bounded_count,
-                                               size, supporting_inequalities);
+  auto additional_bounds =
+      findAdditionalBounds(bounded_info.bounded_v, bounded_info.bounded_count,
+                           size, supporting_inequalities);
 
-  return (bounded_info.bounded_count == size - 1); // Valid if we now have enough
+  return (bounded_info.bounded_count ==
+          size - 1); // Valid if we now have enough
 }
 
 FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
@@ -938,10 +937,12 @@ FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
 
   const int mains = config_.criteria.size();
   const int size = config_.criteria[0].size();
-  const double COMBINATION_FACTOR = 0.5;  // Was hardcoded /2.0
+  const double COMBINATION_FACTOR = 0.5; // Was hardcoded /2.0
 
   // Helper function to build ValidatedCriteria from valid criteria
-  auto buildValidatedCriteria = [&](const std::vector<std::vector<double>>& criteria) -> ValidatedCriteria {
+  auto buildValidatedCriteria =
+      [&](const std::vector<std::vector<double>> &criteria)
+      -> ValidatedCriteria {
     ValidatedCriteria result;
     auto bounded_info = identifyBoundedVariables(criteria, size);
 
@@ -953,15 +954,17 @@ FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
 
     // Add additional bounds if needed
     if (bounded_info.bounded_count < size - 1) {
-      result.additional_bounds = findAdditionalBounds(bounded_info.bounded_v, bounded_info.bounded_count,
-                                                     size, config_.inequalities);
+      result.additional_bounds = findAdditionalBounds(
+          bounded_info.bounded_v, bounded_info.bounded_count, size,
+          config_.inequalities);
     }
     return result;
   };
 
   // Combine all inequalities for processing
   std::vector<std::vector<double>> all_inequalities = config_.inequalities;
-  all_inequalities.insert(all_inequalities.end(), config_.criteria.begin(), config_.criteria.end());
+  all_inequalities.insert(all_inequalities.end(), config_.criteria.begin(),
+                          config_.criteria.end());
 
   // Use a single set to track visited criterion configurations more efficiently
   std::set<std::vector<std::vector<double>>> visited_criteria;
@@ -985,23 +988,26 @@ FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
 
     // Try combining each criterion with each inequality
     for (int criterion_idx = 0; criterion_idx < mains; ++criterion_idx) {
-      for (const auto& inequality : all_inequalities) {
+      for (const auto &inequality : all_inequalities) {
 
         // Check if this combination could be beneficial (has opposing signs)
         bool potentially_beneficial = false;
         for (int var_idx = 1; var_idx < size; ++var_idx) {
-          if (current_criteria[criterion_idx][var_idx] > 0 && inequality[var_idx] < 0) {
+          if (current_criteria[criterion_idx][var_idx] > 0 &&
+              inequality[var_idx] < 0) {
             potentially_beneficial = true;
             break;
           }
         }
 
-        if (!potentially_beneficial) continue;
+        if (!potentially_beneficial)
+          continue;
 
         // Create new criterion by linear combination
         auto new_criteria = current_criteria;
         for (int var_idx = 0; var_idx < size; ++var_idx) {
-          new_criteria[criterion_idx][var_idx] += inequality[var_idx] * COMBINATION_FACTOR;
+          new_criteria[criterion_idx][var_idx] +=
+              inequality[var_idx] * COMBINATION_FACTOR;
         }
 
         // Skip if we've seen this configuration before
@@ -1014,7 +1020,7 @@ FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
 
         // Check if these criteria are valid
         if (validCriteria(new_criteria, config_.inequalities, size)) {
-          return buildValidatedCriteria(new_criteria);  // Found valid criteria
+          return buildValidatedCriteria(new_criteria); // Found valid criteria
         }
 
         // Add to queue for further exploration
@@ -1026,6 +1032,5 @@ FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
   // No valid criteria found
   return ValidatedCriteria();
 }
-
 
 } // namespace fk

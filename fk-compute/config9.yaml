@@ -1,0 +1,3 @@
+braid: [-1,-1,2,2,-1,-2,-2,-2]
+degree: 10 
+save_data: True

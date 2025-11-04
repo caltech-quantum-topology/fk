@@ -329,7 +329,7 @@ bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
 
 // Compute (x q; q)_n as a MultivariablePolynomial in one x-variable
 // P(q, x) = ∏_{k=1}^n (1 - x q^k)
-MultivariablePolynomial qpochhammer_xq_q(int n, int qpow) {
+MultivariablePolynomial qpochhammer_xq_q(int n, int qpow, int lsign) {
     const int numXVars = 1;              // just x
     const int maxXDegree = static_cast<int>(n); // deg_x ≤ n
 
@@ -348,7 +348,7 @@ MultivariablePolynomial qpochhammer_xq_q(int n, int qpow) {
         // 1 term: q^0 * x^0
         factor.addToCoefficient(0, zeroXPowers, 1);
         // - x q^k term: coefficient -1, q^k, x^1
-        factor.addToCoefficient(qpow + k, xXPowers, -1);
+        factor.addToCoefficient(qpow + lsign*k, xXPowers, -1);
 
         result *= factor;
     }
@@ -358,14 +358,14 @@ MultivariablePolynomial qpochhammer_xq_q(int n, int qpow) {
 
 // Compute 1/(x q^qpow; q)_n as a MultivariablePolynomial in one x-variable
 // P(q, x) = 1/∏_{k=1}^n (1 - x q^(k+qpow))
-MultivariablePolynomial inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
+MultivariablePolynomial inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign) {
   const int numXVars = 1;              // just x
   MultivariablePolynomial result(numXVars,0);
   result.setCoefficient(0,{0},1);
   for (int l = 0; l<n; ++l) {
      MultivariablePolynomial temp(numXVars,0);
-     for (int m = 0; m <= std::min(n,xMax); ++m) {
-        temp.setCoefficient((l+qpow)*m,{m},1);
+     for (int m = 0; m <= std::min(n,xMax) + 1; ++m) {
+        temp.setCoefficient((lsign*l+qpow)*m,{m},1);
     }
     result *= temp;
   }

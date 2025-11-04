@@ -436,6 +436,31 @@ void MultivariablePolynomial::print(int maxTerms) const {
   // Collect all terms and sort for deterministic output
   std::vector<std::tuple<std::vector<int>, int, int>> terms;
   for (const auto &[xPowers, bilvec] : coeffs_) {
+    for (int i = 0; i < xPowers.size(); ++i){
+      std::cout<<"x"<<i+1<<"^"<<xPowers[i];
+    }
+    std::cout<<": ";
+    bilvec.print();
+    std::cout<<std::endl;
+  }
+}
+
+/*
+void MultivariablePolynomial::print(int maxTerms) const {
+  std::cout << "Multivariable Polynomial P(q";
+  for (int i = 0; i < numXVariables; i++) {
+    std::cout << ", x" << (i + 1);
+  }
+  std::cout << "):\n";
+
+  if (coeffs_.empty()) {
+    std::cout << "0\n";
+    return;
+  }
+
+  // Collect all terms and sort for deterministic output
+  std::vector<std::tuple<std::vector<int>, int, int>> terms;
+  for (const auto &[xPowers, bilvec] : coeffs_) {
     for (int j = bilvec.getMaxNegativeIndex();
          j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
@@ -472,6 +497,7 @@ void MultivariablePolynomial::print(int maxTerms) const {
   }
   std::cout << std::endl;
 }
+*/
 
 void MultivariablePolynomial::checkCompatibility(
     const MultivariablePolynomial &other) const {
@@ -497,6 +523,7 @@ MultivariablePolynomial::operator+=(const MultivariablePolynomial &other) {
 
   return *this;
 }
+
 
 MultivariablePolynomial &
 MultivariablePolynomial::operator-=(const MultivariablePolynomial &other) {

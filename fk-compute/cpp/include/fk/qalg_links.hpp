@@ -43,5 +43,5 @@ void computeXQInversePochhammer(std::vector<bilvector<int>> &polynomialTerms,
 bilvector<int> QBinomialPositive(int upperLimit, int lowerLimit);
 bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit);
 
-MultivariablePolynomial qpochhammer_xq_q(int n, int qpow);
-MultivariablePolynomial inverse_qpochhammer_xq_q(int n, int qpow, int xMax);
+MultivariablePolynomial qpochhammer_xq_q(int n, int qpow, int lsign);
+MultivariablePolynomial inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign);
