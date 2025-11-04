@@ -69,59 +69,6 @@ void computePositiveQBinomial(std::vector<bilvector<int>> &polynomialTerms,
   }
 }
 
-MultivariablePolynomial computePositiveQBinomial(int upperLimit, int lowerLimit,
-                                                 bool neg) {
-  int maxQDegree = lowerLimit * (upperLimit - lowerLimit);
-  MultivariablePolynomial binomialCoefficients();
-  if (upperLimit == lowerLimit) {
-
-    binomialCoefficients[0] = 1;
-  } else if (lowerLimit == 0) {
-    binomialCoefficients[0] = 1;
-  } else {
-    computePositiveQBinomialHelper(binomialCoefficients, upperLimit - 1,
-                                   lowerLimit, lowerLimit);
-    computePositiveQBinomialHelper(binomialCoefficients, upperLimit - 1,
-                                   lowerLimit - 1, 0);
-  }
-  if (neg) {
-    bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                 polynomialTerms[0].getPositiveSize(),
-                                 polynomialTerms[0].getComponentSize(), 0);
-    for (int j = polynomialTerms[0].getMaxNegativeIndex();
-         j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
-      temporaryTerm[j] = polynomialTerms[0][j];
-      polynomialTerms[0][j] = 0;
-    }
-    for (int j = temporaryTerm.getMaxNegativeIndex();
-         j <= temporaryTerm.getMaxPositiveIndex(); j++) {
-      if (temporaryTerm[j] != 0) {
-        for (int k = 0; k < maxQDegree + 1; k++) {
-          polynomialTerms[0][j - k] +=
-              binomialCoefficients[k] * temporaryTerm[j];
-        }
-      }
-    }
-  } else {
-    bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                 polynomialTerms[0].getPositiveSize(),
-                                 polynomialTerms[0].getComponentSize(), 0);
-    for (int j = polynomialTerms[0].getMaxNegativeIndex();
-         j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
-      temporaryTerm[j] = polynomialTerms[0][j];
-      polynomialTerms[0][j] = 0;
-    }
-    for (int j = temporaryTerm.getMaxNegativeIndex();
-         j <= temporaryTerm.getMaxPositiveIndex(); j++) {
-      if (temporaryTerm[j] != 0) {
-        for (int k = 0; k < maxQDegree + 1; k++) {
-          polynomialTerms[0][j + k] +=
-              binomialCoefficients[k] * temporaryTerm[j];
-        }
-      }
-    }
-  }
-}
 
 void computeNegativeQBinomialHelper(std::vector<int> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift,
