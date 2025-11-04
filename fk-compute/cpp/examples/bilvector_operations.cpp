@@ -18,6 +18,10 @@ int main() {
   auto poly4 = poly - qb;
   poly4.print(50);
 
+  qb.print();
+  auto qb2 = qb.invertExponents();
+  qb2.print();
+
 
   return 0;
 }

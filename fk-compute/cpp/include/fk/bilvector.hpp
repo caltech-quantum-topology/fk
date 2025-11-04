@@ -5,6 +5,8 @@
 
 #include <list>
 #include <vector>
+#include <iostream>
+#include <stdexcept>
 
 template <typename T> struct bilvector {
 private:
@@ -31,11 +33,16 @@ public:
       positiveVectors.push_back(std::vector<T>(componentSize, defaultValue));
     }
   }
+  bilvector<T> invertExponents() const;
+  void print(const std::string &varName = "q") const;
   int getNegativeSize() { return negativeVectorCount * componentSize; }
   int getNegativeSize() const { return negativeVectorCount * componentSize; }
   int getPositiveSize() { return positiveVectorCount * componentSize; }
   int getPositiveSize() const { return positiveVectorCount * componentSize; }
   T &operator[](int accessIndex) {
+    if (componentSize <= 0) {
+      throw std::runtime_error("bilvector componentSize is zero or negative");
+    }
     if (accessIndex > maxPositiveIndex) {
       maxPositiveIndex = accessIndex;
     } else if (accessIndex < maxNegativeIndex) {
@@ -85,6 +92,9 @@ public:
 
   // Const version of operator[]
   const T &operator[](int accessIndex) const {
+    if (componentSize <= 0) {
+      throw std::runtime_error("bilvector componentSize is zero or negative");
+    }
     // For const access, we can't modify the structure, so we need to handle
     // this carefully
     if (accessIndex >= 0) {
@@ -259,4 +269,52 @@ bilvector<T> multiplyByQPower(const bilvector<T> &poly, int power) {
   }
 
   return result;
+}
+
+// Invert exponents of q in the Laurent polynomial
+template <typename T>
+bilvector<T> bilvector<T>::invertExponents() const {
+  bilvector<T> result(
+      this->negativeVectorCount,
+      this->positiveVectorCount,
+      this->componentSize,
+      this->defaultValue
+  );
+
+  // Loop over all valid indices and assign to the mirrored exponent
+  for (int j = this->getMaxNegativeIndex(); j <= this->getMaxPositiveIndex(); ++j) {
+    T coeff = (*this)[j];
+    if (coeff != this->defaultValue) {
+      result[-j] = coeff;
+    }
+  }
+
+  return result;
+}
+
+// Print the Laurent polynomial in human-readable form
+template <typename T>
+void bilvector<T>::print(const std::string &varName) const {
+    bool first = true;
+    for (int e = this->getMaxNegativeIndex(); e <= this->getMaxPositiveIndex(); ++e) {
+        T coeff = (*this)[e];
+        if (coeff == this->defaultValue || coeff == 0) continue;
+
+        if (!first) {
+            std::cout << " + ";
+        } else {
+            first = false;
+        }
+
+        std::cout << coeff;
+
+        if (e != 0) {
+            std::cout << "*" << varName << "^" << e;
+        }
+    }
+
+    if (first) {
+        std::cout << "0"; // all coefficients were zero
+    }
+    std::cout << std::endl;
 }

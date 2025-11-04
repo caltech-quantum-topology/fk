@@ -130,55 +130,59 @@ void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
   }
 }
 
-void offsetAdditionRecursive(std::vector<bilvector<int>> &targetArray,
-                             std::vector<bilvector<int>> &sourceArray,
-                             std::vector<int> &offsetVector,
-                             int bilvectorOffset, int &dimensions,
-                             std::vector<int> arrayLengths, int currentIndex,
-                             int accumulator, int accumulator2,
-                             int signMultiplier, std::vector<int> targetBlocks,
-                             std::vector<int> sourceBlocks) {
-  currentIndex++;
-  int oldAccumulator = accumulator;
-  int oldAccumulator2 =
-      accumulator2 + offsetVector[currentIndex] * targetBlocks[currentIndex];
-  for (int i = std::max(0, -offsetVector[currentIndex]);
-       i < arrayLengths[currentIndex] + 1; i++) {
-    accumulator = oldAccumulator + i * sourceBlocks[currentIndex];
-    accumulator2 = oldAccumulator2 + i * targetBlocks[currentIndex];
-    if (dimensions > currentIndex + 1) {
-      offsetAdditionRecursive(targetArray, sourceArray, offsetVector,
-                              bilvectorOffset, dimensions, arrayLengths,
-                              currentIndex, accumulator, accumulator2,
-                              signMultiplier, targetBlocks, sourceBlocks);
-    } else {
-      for (int q = sourceArray[accumulator].getMaxNegativeIndex();
-           q <= sourceArray[accumulator].getMaxPositiveIndex(); q++) {
-        targetArray[accumulator2][q + bilvectorOffset] +=
-            signMultiplier * sourceArray[accumulator][q];
-      }
-    }
-  }
-}
-
 void performOffsetAddition(std::vector<bilvector<int>> &targetArray,
                            std::vector<bilvector<int>> sourceArray,
                            std::vector<int> &offsetVector, int bilvectorOffset,
                            int &dimensions, std::vector<int> arrayLengths,
                            int signMultiplier, std::vector<int> targetBlocks,
                            std::vector<int> sourceBlocks) {
-  for (int i = std::max(0, -offsetVector[0]); i < arrayLengths[0] + 1; i++) {
-    if (dimensions > 1) {
-      offsetAdditionRecursive(targetArray, sourceArray, offsetVector,
-                              bilvectorOffset, dimensions, arrayLengths, 0, i,
-                              i + offsetVector[0], signMultiplier, targetBlocks,
-                              sourceBlocks);
-    } else {
+  if (dimensions == 1) {
+    for (int i = std::max(0, -offsetVector[0]); i < arrayLengths[0] + 1; i++) {
       for (int q = sourceArray[i].getMaxNegativeIndex();
            q <= sourceArray[i].getMaxPositiveIndex(); q++) {
         targetArray[i + offsetVector[0]][q + bilvectorOffset] +=
             signMultiplier * sourceArray[i][q];
       }
+    }
+    return;
+  }
+
+  std::vector<int> indices(dimensions);
+  std::vector<int> limits(dimensions);
+
+  for (int d = 0; d < dimensions; d++) {
+    indices[d] = std::max(0, -offsetVector[d]);
+    limits[d] = arrayLengths[d] + 1;
+  }
+
+  bool done = false;
+  while (!done) {
+    int sourceAccumulator = 0;
+    int targetAccumulator = 0;
+
+    for (int d = 0; d < dimensions; d++) {
+      sourceAccumulator += indices[d] * sourceBlocks[d];
+      targetAccumulator += (indices[d] + offsetVector[d]) * targetBlocks[d];
+    }
+
+    for (int q = sourceArray[sourceAccumulator].getMaxNegativeIndex();
+         q <= sourceArray[sourceAccumulator].getMaxPositiveIndex(); q++) {
+      targetArray[targetAccumulator][q + bilvectorOffset] +=
+          signMultiplier * sourceArray[sourceAccumulator][q];
+    }
+
+    int d = dimensions - 1;
+    while (d >= 0) {
+      indices[d]++;
+      if (indices[d] < limits[d]) {
+        break;
+      }
+      indices[d] = std::max(0, -offsetVector[d]);
+      d--;
+    }
+
+    if (d < 0) {
+      done = true;
     }
   }
 }

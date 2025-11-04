@@ -21,7 +21,7 @@ std::size_t VectorHash::operator()(const std::vector<int>& v) const {
 // MultivariablePolynomial implementation
 
 MultivariablePolynomial::MultivariablePolynomial(int numVariables, int degree,
-                        const std::vector<int> &maxDegrees)
+                        const std::vector<int>&maxDegrees)
     : numXVariables(numVariables) {
 
   if (maxDegrees.empty()) {

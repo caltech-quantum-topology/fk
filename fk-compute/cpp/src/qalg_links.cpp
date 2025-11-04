@@ -31,9 +31,13 @@ void computePositiveQBinomial(std::vector<bilvector<int>> &polynomialTerms,
                                    lowerLimit - 1, 0);
   }
   if (neg) {
+    int componentSize = polynomialTerms[0].getComponentSize();
+    if (componentSize <= 0) {
+      throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
+    }
     bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
                                  polynomialTerms[0].getPositiveSize(),
-                                 polynomialTerms[0].getComponentSize(), 0);
+                                 componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
          j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
       temporaryTerm[j] = polynomialTerms[0][j];
@@ -49,9 +53,13 @@ void computePositiveQBinomial(std::vector<bilvector<int>> &polynomialTerms,
       }
     }
   } else {
+    int componentSize = polynomialTerms[0].getComponentSize();
+    if (componentSize <= 0) {
+      throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
+    }
     bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
                                  polynomialTerms[0].getPositiveSize(),
-                                 polynomialTerms[0].getComponentSize(), 0);
+                                 componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
          j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
       temporaryTerm[j] = polynomialTerms[0][j];
@@ -79,6 +87,10 @@ void computeNegativeQBinomialHelper(std::vector<int> &binomialCoefficients,
     } else {
       binomialCoefficients[shift] += 1;
     }
+  } else if (lowerLimit < 0) {
+    // Base case: if lowerLimit < 0, the binomial coefficient is 0
+    // This prevents infinite recursion when lowerLimit keeps decreasing
+    return;
   } else if (upperLimit == -1) {
     computeNegativeQBinomialHelper(binomialCoefficients, -1, lowerLimit - 1,
                                    shift - lowerLimit, !neg);
@@ -111,9 +123,13 @@ void computeNegativeQBinomial(std::vector<bilvector<int>> &polynomialTerms,
                                    false);
   }
   if (neg) {
+    int componentSize = polynomialTerms[0].getComponentSize();
+    if (componentSize <= 0) {
+      throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
+    }
     bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
                                  polynomialTerms[0].getPositiveSize(),
-                                 polynomialTerms[0].getComponentSize(), 0);
+                                 componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
          j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
       temporaryTerm[j] = polynomialTerms[0][j];
@@ -129,9 +145,13 @@ void computeNegativeQBinomial(std::vector<bilvector<int>> &polynomialTerms,
       }
     }
   } else {
+    int componentSize = polynomialTerms[0].getComponentSize();
+    if (componentSize <= 0) {
+      throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
+    }
     bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
                                  polynomialTerms[0].getPositiveSize(),
-                                 polynomialTerms[0].getComponentSize(), 0);
+                                 componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
          j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
       temporaryTerm[j] = polynomialTerms[0][j];
@@ -222,4 +242,87 @@ bilvector<int> QBinomialPositive(int upperLimit, int lowerLimit) {
   }
 
   return C[n][k];
+}
+
+
+/*
+bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
+  int k = lowerLimit;
+  int u = upperLimit;
+
+  // If k is out of range, return the zero polynomial
+  if (k < 0) {
+    return bilvector<int>(0, 1, 1, 0); // zero, only exponent 0 allocated
+  }
+
+  // If upperLimit is nonnegative, just defer to the positive version
+  if (u >= 0) {
+    return QBinomialPositive(u, k);
+  }
+
+  // Here upperLimit is negative: u = -n, with n > 0
+  int n = -u;
+
+  // Use the identity:
+  //   [ -n choose k ]_q = (-1)^k q^(-n*k + k*(k-1)/2) [ n + k - 1 choose k ]_q
+  //
+  // First compute the positive q-binomial [ n + k - 1 choose k ]_q
+  bilvector<int> base = QBinomialPositive(n + k - 1, k);
+
+  // Compute the q-exponent shift: -n*k + k*(k-1)/2
+  int shift = -n * k + (k * (k - 1)) / 2;
+
+  // Apply the q^shift factor
+  bilvector<int> result = multiplyByQPower(base, shift);
+
+  // Apply the (-1)^k factor to all coefficients
+  if (k % 2 != 0) { // k odd → multiply by -1
+    int minExp = result.getMaxNegativeIndex();
+    int maxExp = result.getMaxPositiveIndex();
+    for (int e = minExp; e <= maxExp; ++e) {
+      result[e] = -result[e];
+    }
+  }
+
+  return result;
+}*/
+
+bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
+  int k = lowerLimit;
+  int u = upperLimit;
+
+  // Handle nonsense k
+  if (k < 0) {
+    return bilvector<int>(0, 1, 1, 0); // zero polynomial
+  }
+
+  // If upperLimit >= 0, just reuse the positive version
+  if (u >= 0) {
+    return QBinomialPositive(u, k);
+  }
+
+  // u < 0: write u = -n with n > 0
+  int n = -u;
+
+  // Base positive q-binomial: [n + k - 1 choose k]_q
+  bilvector<int> base = QBinomialPositive(n + k - 1, k);
+
+  // Shift exponent so that we match computeNegativeQBinomial.
+  // Desired shift: u * k - k*(k-1)/2
+  // (this gives exponents [- (1+u)k - k(k+1)/2, -k(k+1)/2],
+  //  which is exactly what your old code produces)
+  int shift = u * k - (k * (k - 1)) / 2;
+
+  bilvector<int> result = multiplyByQPower(base, shift);
+
+  // Apply (-1)^k factor
+  if (k % 2 != 0) { // k odd → multiply by -1
+    int minExp = result.getMaxNegativeIndex();
+    int maxExp = result.getMaxPositiveIndex();
+    for (int e = minExp; e <= maxExp; ++e) {
+      result[e] = -result[e];
+    }
+  }
+
+  return result;
 }
