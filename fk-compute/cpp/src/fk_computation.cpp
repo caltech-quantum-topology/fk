@@ -18,7 +18,7 @@
 
 void print_pterms(std::vector<bilvector<int>> polynomial_terms) {
   for (auto i = 0; i < polynomial_terms.size(); ++i) {
-    std::cout << "x^" << i << " :";
+    std::cout << "x^" << i << ": ";
     polynomial_terms[i].print();
   }
 }
@@ -327,10 +327,10 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   performCrossingComputations(polynomial_terms, max_x_degrees, block_sizes,
                               poly);
 
+  poly = poly.truncate(max_x_degrees);
 
   // Accumulate result
-  accumulateResult(polynomial_terms, x_power_accumulator, q_power_accumulator,
-                   max_x_degrees, block_sizes);
+  accumulateResultPoly(poly, x_power_accumulator, q_power_accumulator);
 
   return result_;
 }
@@ -354,17 +354,11 @@ void FKComputationEngine::performCrossingComputations(
     const std::vector<int> &max_x_degrees, const std::vector<int> &block_sizes,
     MultivariablePolynomial &poly) {
 
-    std::cout << "poly start" << std::endl;
-    poly.print(50);
-    std::cout << "polynomial_terms start" << std::endl;
-    print_pterms(polynomial_terms);
-    std::cout << "\n\n\n" << std::endl;
   // First pass: binomial computations
   for (int crossing_index = 0; crossing_index < config_.crossings;
        crossing_index++) {
     const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
     int relation_type = config_.crossing_relation_types[crossing_index];
-    std::cout<<"Relation type: "<<relation_type<<std::endl;
     int param_i =
         numerical_assignments_[crossing_matrix[0][0]][crossing_matrix[0][1]];
     int param_j =
@@ -373,7 +367,6 @@ void FKComputationEngine::performCrossingComputations(
         numerical_assignments_[crossing_matrix[2][0]][crossing_matrix[2][1]];
     int param_m =
         numerical_assignments_[crossing_matrix[3][0]][crossing_matrix[3][1]];
-
 
     if (relation_type == 1) {
       if (param_i > 0) {
@@ -411,13 +404,6 @@ void FKComputationEngine::performCrossingComputations(
       }
     }
   }
-  
-    poly = poly.truncate(max_x_degrees);
-    std::cout << "poly intermediate" << std::endl;
-    poly.print(50);
-    std::cout << "polynomial_terms intermediate" << std::endl;
-    print_pterms(polynomial_terms);
-    std::cout << "\n\n\n" << std::endl;
 
   // Second pass: Pochhammer computations
   for (int crossing_index = 0; crossing_index < config_.crossings;
@@ -438,43 +424,38 @@ void FKComputationEngine::performCrossingComputations(
     int bottom_comp = config_.bottom_crossing_components[crossing_index];
 
     if (relation_type == 1) {
-      poly *=
-          MultivariablePolynomial(qpochhammer_xq_q(param_i - param_m, param_j, 1),
-                                  config_.components, bottom_comp);
+      poly *= MultivariablePolynomial(
+          qpochhammer_xq_q(param_i - param_m, param_j, 1), config_.components,
+          bottom_comp);
       computeXQPochhammer(polynomial_terms, param_k, param_j + 1, bottom_comp,
                           config_.components, max_x_degrees, block_sizes);
 
     } else if (relation_type == 2) {
-      poly *=
-          MultivariablePolynomial(inverse_qpochhammer_xq_q(param_m - param_i, -param_j,max_x_degrees[bottom_comp], 1).invertVariable(0),
-                                  config_.components, bottom_comp);
-          computeXQInversePochhammer(polynomial_terms, param_j, param_k + 1,
-                                     bottom_comp, config_.components,
-                                     max_x_degrees, block_sizes);
+      poly *= MultivariablePolynomial(
+          inverse_qpochhammer_xq_q(param_j - param_k, param_j,
+                                   max_x_degrees[bottom_comp], -1),
+          config_.components, bottom_comp);
+      computeXQInversePochhammer(polynomial_terms, param_j, param_k + 1,
+                                 bottom_comp, config_.components, max_x_degrees,
+                                 block_sizes);
 
     } else if (relation_type == 3) {
-      poly *=
-          MultivariablePolynomial(inverse_qpochhammer_xq_q(param_k - param_j, param_i, max_x_degrees[top_comp], -1),
-                                  config_.components, top_comp);
+      poly *= MultivariablePolynomial(
+          inverse_qpochhammer_xq_q(param_k - param_j, param_i,
+                                   max_x_degrees[top_comp], -1),
+          config_.components, top_comp);
       computeXQInversePochhammer(polynomial_terms, param_i, param_m + 1,
                                  top_comp, config_.components, max_x_degrees,
                                  block_sizes);
 
     } else if (relation_type == 4) {
-      poly *=
-          MultivariablePolynomial(qpochhammer_xq_q(param_j - param_k, param_j, -1).invertVariable(0),
-                                  config_.components, bottom_comp);
+      poly *= MultivariablePolynomial(
+          qpochhammer_xq_q(param_j - param_k, param_j, -1), config_.components,
+          bottom_comp);
       computeXQPochhammer(polynomial_terms, param_m, param_i + 1, top_comp,
                           config_.components, max_x_degrees, block_sizes);
     }
   }
-  poly = poly.truncate(max_x_degrees);
-  //poly = poly.invertVariable(0);
-  std::cout << "poly final" << std::endl;
-  poly.print(50);
-  std::cout << "polynomial_terms final" << std::endl;
-  print_pterms(polynomial_terms);
-  std::cout << "\n\n\n" << std::endl;
 }
 
 void FKComputationEngine::accumulateResult(
@@ -488,12 +469,48 @@ void FKComputationEngine::accumulateResult(
   int components_copy = config_.components; // Make a mutable copy
   std::vector<bilvector<int>> polynomial_terms_copy =
       polynomial_terms; // Make a mutable copy
+  //
   performOffsetAddition(result_coeffs, polynomial_terms_copy,
                         x_power_accumulator_copy, q_power_accumulator,
                         components_copy, max_x_degrees, 1,
                         accumulator_block_sizes_, block_sizes);
 
   result_.syncFromDenseVector(result_coeffs);
+}
+
+void FKComputationEngine::performOffsetAdditionPoly(
+    const MultivariablePolynomial &source_poly,
+    const std::vector<int> &x_offset, int q_offset, int sign_multiplier) {
+
+  // Iterate through all coefficients in the source polynomial
+  const auto &coeff_map = source_poly.getCoefficientMap();
+
+  for (const auto &[x_powers, q_poly] : coeff_map) {
+    // Calculate the offset x-powers
+    std::vector<int> offset_x_powers = x_powers;
+    for (size_t i = 0; i < x_powers.size(); ++i) {
+      offset_x_powers[i] += x_offset[i];
+    }
+
+    // Iterate through all q-powers in the bilvector
+    for (int q_power = q_poly.getMaxNegativeIndex();
+         q_power <= q_poly.getMaxPositiveIndex(); ++q_power) {
+
+      int coeff = q_poly[q_power];
+      if (coeff != 0) {
+        // Apply q-offset and add to result polynomial
+        result_.addToCoefficient(q_power + q_offset, offset_x_powers,
+                                 sign_multiplier * coeff);
+      }
+    }
+  }
+}
+
+void FKComputationEngine::accumulateResultPoly(
+    const MultivariablePolynomial &poly,
+    const std::vector<int> &x_power_accumulator, int q_power_accumulator) {
+
+  performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator, 1);
 }
 
 void FKComputationEngine::reset() {
@@ -711,7 +728,7 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
           assignment.supporting_inequalities[next_inequality][0]);
       for (size_t i = 0; i < next_frame.point.size(); i++) {
         if (static_cast<int>(i) != next_index) {
-          next_upper +=
+          next_upper =
               static_cast<int>(
                   assignment.supporting_inequalities[next_inequality][1 + i]) *
               next_frame.point[i];

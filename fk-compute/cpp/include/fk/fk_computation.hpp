@@ -106,6 +106,13 @@ private:
                          int q_power_accumulator,
                          const std::vector<int>& max_x_degrees,
                          const std::vector<int>& block_sizes);
+    void accumulateResultPoly(const MultivariablePolynomial& poly,
+                             const std::vector<int>& x_power_accumulator,
+                             int q_power_accumulator);
+    void performOffsetAdditionPoly(const MultivariablePolynomial& source_poly,
+                                  const std::vector<int>& x_offset,
+                                  int q_offset,
+                                  int sign_multiplier);
 };
 
 /**
