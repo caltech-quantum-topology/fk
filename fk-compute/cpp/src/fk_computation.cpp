@@ -323,14 +323,15 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   poly.setCoefficient(0, std::vector<int>(config_.components, 0),
                       initial_coefficient);
 
-  // Perform crossing computations
-  performCrossingComputations(polynomial_terms, max_x_degrees, block_sizes,
-                              poly);
 
-  poly = poly.truncate(max_x_degrees);
+  // Perform crossing computations
+  //performCrossingComputations(polynomial_terms, max_x_degrees, block_sizes,
+  //                            poly);
+
+  poly *= crossingFactor(max_x_degrees);
 
   // Accumulate result
-  accumulateResultPoly(poly, x_power_accumulator, q_power_accumulator);
+  performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator, 1);
 
   return result_;
 }
@@ -347,6 +348,88 @@ std::vector<std::vector<int>> FKComputationEngine::computeNumericalAssignments(
     }
   }
   return assignments;
+}
+
+MultivariablePolynomial
+FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
+;
+  MultivariablePolynomial result(config_.components, 0);
+  std::vector<int> zeroDeg(config_.components,0);
+  result.setCoefficient(0,zeroDeg,1);
+
+  // First pass: binomial computations
+  for (int crossing_index = 0; crossing_index < config_.crossings;
+       crossing_index++) {
+    const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
+    int relation_type = config_.crossing_relation_types[crossing_index];
+    int param_i =
+        numerical_assignments_[crossing_matrix[0][0]][crossing_matrix[0][1]];
+    int param_j =
+        numerical_assignments_[crossing_matrix[1][0]][crossing_matrix[1][1]];
+    int param_k =
+        numerical_assignments_[crossing_matrix[2][0]][crossing_matrix[2][1]];
+    int param_m =
+        numerical_assignments_[crossing_matrix[3][0]][crossing_matrix[3][1]];
+
+    if (relation_type == 1) {
+      if (param_i > 0) {
+        result *= QBinomialPositive(param_i, param_i - param_m);
+      } else {
+        result *= QBinomialNegative(param_i, param_i - param_m);
+      }
+    } else if (relation_type == 2) {
+      result *= QBinomialNegative(param_i, param_m);
+    } else if (relation_type == 3) {
+      result *= QBinomialNegative(param_j, param_k).invertExponents();
+    } else if (relation_type == 4) {
+      if (param_j > 0) {
+        result *= QBinomialPositive(param_j, param_j - param_k).invertExponents();
+      } else {
+        result *= QBinomialNegative(param_j, param_j - param_k).invertExponents();
+      }
+    }
+  }
+
+  // Second pass: Pochhammer computations
+  for (int crossing_index = 0; crossing_index < config_.crossings;
+       crossing_index++) {
+    const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
+    int relation_type = config_.crossing_relation_types[crossing_index];
+
+    int param_i =
+        numerical_assignments_[crossing_matrix[0][0]][crossing_matrix[0][1]];
+    int param_j =
+        numerical_assignments_[crossing_matrix[1][0]][crossing_matrix[1][1]];
+    int param_k =
+        numerical_assignments_[crossing_matrix[2][0]][crossing_matrix[2][1]];
+    int param_m =
+        numerical_assignments_[crossing_matrix[3][0]][crossing_matrix[3][1]];
+
+    int top_comp = config_.top_crossing_components[crossing_index];
+    int bottom_comp = config_.bottom_crossing_components[crossing_index];
+
+    if (relation_type == 1) {
+      result *= MultivariablePolynomial(
+          qpochhammer_xq_q(param_i - param_m, param_j, 1), config_.components,
+          bottom_comp);
+    } else if (relation_type == 2) {
+      result *= MultivariablePolynomial(
+          inverse_qpochhammer_xq_q(param_j - param_k, param_j,
+                                   max_x_degrees[bottom_comp], -1),
+          config_.components, bottom_comp);
+    } else if (relation_type == 3) {
+      result *= MultivariablePolynomial(
+          inverse_qpochhammer_xq_q(param_k - param_j, param_i,
+                                   max_x_degrees[top_comp], -1),
+          config_.components, top_comp);
+
+    } else if (relation_type == 4) {
+      result *= MultivariablePolynomial(
+          qpochhammer_xq_q(param_j - param_k, param_j, -1), config_.components,
+          bottom_comp);
+    }
+  }
+  return result.truncate(max_x_degrees);
 }
 
 void FKComputationEngine::performCrossingComputations(
