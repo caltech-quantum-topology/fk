@@ -115,3 +115,112 @@ public:
     }
   }
 };
+
+template <typename T>
+bilvector<T> makeLaurentPolynomial(int minExponent, int maxExponent,
+                                   T defaultValue = T{}) {
+    int componentSize = 1;
+
+    int negativeCount = 0;
+    if (minExponent < 0) {
+        // exponents covered: -negativeCount, ..., -1
+        negativeCount = -minExponent;
+    }
+
+    int positiveCount = 0;
+    if (maxExponent >= 0) {
+        // exponents covered: 0, 1, ..., positiveCount - 1
+        positiveCount = maxExponent + 1;
+    }
+
+    return bilvector<T>(negativeCount, positiveCount, componentSize,
+                        defaultValue);
+}
+
+template <typename T>
+bilvector<T> makeZeroLike(const bilvector<T> &proto,
+                          int minExponent,
+                          int maxExponent) {
+  int componentSize = proto.getComponentSize();
+
+  int negativeCount = 0;
+  if (minExponent < 0) {
+    // exponents covered on negative side: -negativeCount, ..., -1
+    negativeCount = -minExponent;
+  }
+
+  int positiveCount = 0;
+  if (maxExponent >= 0) {
+    // exponents covered on positive side: 0, 1, ..., positiveCount - 1
+    positiveCount = maxExponent + 1;
+  }
+
+  // We use T{} as the default value (typically 0 for arithmetic types)
+  return bilvector<T>(negativeCount, positiveCount, componentSize, T{});
+}
+
+// ========================= Addition of bilvectors ==========================
+
+template <typename T>
+bilvector<T> operator+(const bilvector<T> &lhs, const bilvector<T> &rhs) {
+  // We assume same component size; if you want, you can add a runtime check.
+  // int csL = lhs.getComponentSize();
+  // int csR = rhs.getComponentSize();
+  // if (csL != csR) { throw std::runtime_error("componentSize mismatch"); }
+
+  int minExp = std::min(lhs.getMaxNegativeIndex(), rhs.getMaxNegativeIndex());
+  int maxExp = std::max(lhs.getMaxPositiveIndex(), rhs.getMaxPositiveIndex());
+
+  bilvector<T> result = makeZeroLike(lhs, minExp, maxExp);
+
+  for (int e = minExp; e <= maxExp; ++e) {
+    result[e] = lhs[e] + rhs[e];
+  }
+
+  return result;
+}
+
+template <typename T>
+bilvector<T> &operator+=(bilvector<T> &lhs, const bilvector<T> &rhs) {
+  lhs = lhs + rhs;
+  return lhs;
+}
+
+// ====================== Multiplication of bilvectors =======================
+
+template <typename T>
+bilvector<T> operator*(const bilvector<T> &lhs, const bilvector<T> &rhs) {
+  // Again, we assume same component size; optional check as above.
+
+  // Exponent ranges
+  int lhsMin = lhs.getMaxNegativeIndex();
+  int lhsMax = lhs.getMaxPositiveIndex();
+  int rhsMin = rhs.getMaxNegativeIndex();
+  int rhsMax = rhs.getMaxPositiveIndex();
+
+  // Result exponent range: all sums i + j
+  int resMin = lhsMin + rhsMin;
+  int resMax = lhsMax + rhsMax;
+
+  bilvector<T> result = makeZeroLike(lhs, resMin, resMax);
+
+  for (int i = lhsMin; i <= lhsMax; ++i) {
+    T a = lhs[i];
+    // If you only use numeric T, you can optionally skip zeros:
+    if (a == T{}) continue;
+
+    for (int j = rhsMin; j <= rhsMax; ++j) {
+      T b = rhs[j];
+      if (b == T{}) continue;
+      result[i + j] += a * b;
+    }
+  }
+
+  return result;
+}
+
+template <typename T>
+bilvector<T> &operator*=(bilvector<T> &lhs, const bilvector<T> &rhs) {
+  lhs = lhs * rhs;
+  return lhs;
+}
