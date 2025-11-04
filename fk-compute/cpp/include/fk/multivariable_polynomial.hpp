@@ -49,6 +49,20 @@ public:
                           const std::vector<int> &maxDegrees = {});
 
   /**
+   * Constructor to increase the number of variables from another polynomial
+   * @param source The source polynomial with fewer variables
+   * @param newNumVariables The new number of variables (must be >= source's numVariables)
+   * @param targetVariableIndex The index (0-based) where the source's variable should be mapped
+   * @param degree Maximum degree for each new x variable (advisory only)
+   * @param maxDegrees Optional: different max degree for each variable (advisory only)
+   */
+  MultivariablePolynomial(const MultivariablePolynomial &source,
+                          int newNumVariables,
+                          int targetVariableIndex,
+                          int degree = 10,
+                          const std::vector<int> &maxDegrees = {});
+
+  /**
    * Get coefficient for specific term
    * @param qPower Power of q
    * @param xPowers Vector of powers for x₁, x₂, ..., xₙ
@@ -82,6 +96,19 @@ public:
   bilvector<int> &getQPolynomial(const std::vector<int> &xPowers);
 
   const bilvector<int> &getQPolynomial(const std::vector<int> &xPowers) const;
+
+
+  /**
+   * Get read-only access to coefficient map (replaces getCoefficients)
+   */
+  MultivariablePolynomial invertVariable(const int target_index);
+
+
+  /**
+   * Truncate multivariable polynomial to given degrees
+   */
+  MultivariablePolynomial truncate(const std::vector<int> & maxXdegrees);
+
 
   /**
    * Get read-only access to coefficient map (replaces getCoefficients)
@@ -198,13 +225,13 @@ public:
    * Friend functions for binary operations
    */
   friend MultivariablePolynomial operator+(const MultivariablePolynomial &lhs,
-                                           const bilvector<int> &rhs);
+                                           const MultivariablePolynomial &rhs);
 
   friend MultivariablePolynomial operator-(const MultivariablePolynomial &lhs,
-                                           const bilvector<int> &rhs);
+                                           const MultivariablePolynomial &rhs);
 
   friend MultivariablePolynomial operator*(const MultivariablePolynomial &lhs,
-                                           const bilvector<int> &rhs);
+                                           const MultivariablePolynomial &rhs);
 
   friend MultivariablePolynomial operator+(const MultivariablePolynomial &lhs,
                                            const bilvector<int> &rhs);

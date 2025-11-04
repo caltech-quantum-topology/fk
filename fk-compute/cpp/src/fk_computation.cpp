@@ -17,6 +17,14 @@
 #include <stack>
 #include <stdexcept>
 
+void print_pterms(std::vector<bilvector<int>> polynomial_terms) {
+  for ( auto i = 0; i < polynomial_terms.size(); ++i) {
+      std::cout<<"x^"<<i<<" :";  
+       polynomial_terms[i].print();
+   }
+}
+
+
 namespace fk {
 // FKConfiguration implementation
 bool FKConfiguration::isValid() const {
@@ -317,7 +325,7 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   poly.setCoefficient(0,std::vector<int>(config_.components,0),initial_coefficient);
 
   // Perform crossing computations
-  performCrossingComputations(polynomial_terms, max_x_degrees, block_sizes);
+  performCrossingComputations(polynomial_terms, max_x_degrees, block_sizes, poly);
 
   // Accumulate result
   accumulateResult(polynomial_terms, x_power_accumulator, q_power_accumulator, max_x_degrees, block_sizes);
@@ -340,10 +348,14 @@ std::vector<std::vector<int>> FKComputationEngine::computeNumericalAssignments(
   return assignments;
 }
 
+
 void FKComputationEngine::performCrossingComputations(
     std::vector<bilvector<int>> &polynomial_terms,
     const std::vector<int>& max_x_degrees,
-    const std::vector<int>& block_sizes) {
+    const std::vector<int>& block_sizes,
+    MultivariablePolynomial &poly) {
+
+
   // First pass: binomial computations
   for (int crossing_index = 0; crossing_index < config_.crossings;
        crossing_index++) {
@@ -358,32 +370,76 @@ void FKComputationEngine::performCrossingComputations(
         numerical_assignments_[crossing_matrix[2][0]][crossing_matrix[2][1]];
     int param_m =
         numerical_assignments_[crossing_matrix[3][0]][crossing_matrix[3][1]];
+    
+    std::cout<<"poly initial"<<std::endl;
+    poly.print();
+    std::cout<<"polynomial_terms initial"<<std::endl;
+    print_pterms(polynomial_terms);
 
+    std::cout<<"qbinom"<<std::endl;
     if (relation_type == 1) {
       if (param_i > 0) {
-        computePositiveQBinomial(polynomial_terms, param_i, param_i - param_m,
+         computePositiveQBinomial(polynomial_terms, param_i, param_i - param_m,
                                  false);
+          auto qbinom = QBinomialPositive(param_i,param_i-param_m);
+          qbinom.print();
+          poly *= QBinomialPositive(param_i,param_i-param_m);
       } else {
-        computeNegativeQBinomial(polynomial_terms, param_i, param_i - param_m,
+          computeNegativeQBinomial(polynomial_terms, param_i, param_i - param_m,
                                  false);
+          auto qbinom = QBinomialNegative(param_i,param_i-param_m);
+          qbinom.print();
+          poly *= QBinomialNegative(param_i,param_i-param_m);
       }
     } else if (relation_type == 2) {
-      computeNegativeQBinomial(polynomial_terms, param_i, param_m, false);
+          computeNegativeQBinomial(polynomial_terms, param_i, param_m, false);
+          auto qbinom = QBinomialNegative(param_i,param_m);
+          qbinom.print();
+          poly *= QBinomialNegative(param_i,param_m);
     } else if (relation_type == 3) {
-      computeNegativeQBinomial(polynomial_terms, param_j, param_k, true);
+          computeNegativeQBinomial(polynomial_terms, param_j, param_k, true);
+          auto qbinom = QBinomialNegative(param_j,param_k).invertExponents();
+          qbinom.print();
+          poly *= QBinomialNegative(param_j,param_k).invertExponents();
     } else if (relation_type == 4) {
       if (param_j > 0) {
-        computePositiveQBinomial(polynomial_terms, param_j, param_j - param_k,
+          computePositiveQBinomial(polynomial_terms, param_j, param_j - param_k,
                                  true);
+          auto qbinom = QBinomialPositive(param_j,param_j - param_k).invertExponents();
+          qbinom.print();
+          poly *= QBinomialPositive(param_j,param_j - param_k).invertExponents();
       } else {
         computeNegativeQBinomial(polynomial_terms, param_j, param_j - param_k,
                                  true);
+          auto qbinom = QBinomialNegative(param_j,param_j - param_k).invertExponents();
+          qbinom.print();
+          poly *= QBinomialNegative(param_j,param_j - param_k).invertExponents();
       }
     }
   }
 
-  // Second pass: Pochhammer computations
+  std::cout<<"poly final"<<std::endl;
+  poly.print();
+  std::cout<<"polynomial_terms final"<<std::endl;
+  print_pterms(polynomial_terms);
+  std::cout<<"\n\n\n"<<std::endl;
+   
 
+
+  std::cout<<"max_x_degrees"<<std::endl;
+  for (auto mx : max_x_degrees){
+    std::cout<<mx<<", ";
+  }
+  std::cout<<std::endl;
+  std::cout<<"block_sizes"<<std::endl;
+  for (auto bs : block_sizes){
+     std::cout<<bs<<", ";
+   }
+  std::cout<<std::endl;
+
+
+
+  // Second pass: Pochhammer computations
   for (int crossing_index = 0; crossing_index < config_.crossings;
        crossing_index++) {
     const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
@@ -402,8 +458,32 @@ void FKComputationEngine::performCrossingComputations(
     int bottom_comp = config_.bottom_crossing_components[crossing_index];
 
     if (relation_type == 1) {
+      std::cout<<"======"<<std::endl;
+      std::cout<<param_k<<std::endl;
+      std::cout<<param_j<<std::endl;
+      std::cout<<bottom_comp<<std::endl;
+      std::cout<<config_.components<<std::endl;
+
+      std::cout<<"max_x_degrees"<<std::endl;
+      for (auto mx : max_x_degrees){
+        std::cout<<mx<<", ";
+      }
+      std::cout<<std::endl;
+      std::cout<<"block_sizes"<<std::endl;
+      for (auto bs : block_sizes){
+         std::cout<<bs<<", ";
+       }
+      std::cout<<std::endl;
+
+      std::cout<<"poly terms"<<std::endl;
+      print_pterms(polynomial_terms);
+
       computeXQPochhammer(polynomial_terms, param_k, param_j + 1, bottom_comp,
                           config_.components, max_x_degrees, block_sizes);
+
+      std::cout<<"poly terms"<<std::endl;
+      print_pterms(polynomial_terms);
+
     } else if (relation_type == 2) {
       computeXQInversePochhammer(polynomial_terms, param_j, param_k + 1,
                                  bottom_comp, config_.components, max_x_degrees,
@@ -507,8 +587,6 @@ void FKComputation::compute(const FKConfiguration &config,
     all_points.insert(all_points.end(), points.begin(), points.end());
   }
 
-
-  int i(0);
   // Run the function on all collected points
   for (const auto& point : all_points) {
     engine_->computeForAngles(point);

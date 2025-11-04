@@ -326,3 +326,48 @@ bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
 
   return result;
 }
+
+// Compute (x q; q)_n as a MultivariablePolynomial in one x-variable
+// P(q, x) = ∏_{k=1}^n (1 - x q^k)
+MultivariablePolynomial qpochhammer_xq_q(int n, int qpow) {
+    const int numXVars = 1;              // just x
+    const int maxXDegree = static_cast<int>(n); // deg_x ≤ n
+
+    // Start with P(q,x) = 1
+    MultivariablePolynomial result(numXVars, maxXDegree);
+    std::vector<int> zeroXPowers(numXVars, 0); // x^0
+    result.addToCoefficient(0, zeroXPowers, 1); // q^0 * x^0 with coeff 1
+
+    // Vector for x^1 (only x₁)
+    std::vector<int> xXPowers(numXVars, 0);
+    xXPowers[0] = 1; // x^1
+
+    // Multiply factors (1 - x q^k) for k = 1..n
+    for (int k = 1; k <= n; ++k) {
+        MultivariablePolynomial factor(numXVars, 1);
+        // 1 term: q^0 * x^0
+        factor.addToCoefficient(0, zeroXPowers, 1);
+        // - x q^k term: coefficient -1, q^k, x^1
+        factor.addToCoefficient(qpow + k, xXPowers, -1);
+
+        result *= factor;
+    }
+
+    return result;
+}
+
+// Compute 1/(x q^qpow; q)_n as a MultivariablePolynomial in one x-variable
+// P(q, x) = 1/∏_{k=1}^n (1 - x q^(k+qpow))
+MultivariablePolynomial inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
+  const int numXVars = 1;              // just x
+  MultivariablePolynomial result(numXVars,0);
+  result.setCoefficient(0,{0},1);
+  for (int l = 0; l<n; ++l) {
+     MultivariablePolynomial temp(numXVars,0);
+     for (int m = 0; m <= std::min(n,xMax); ++m) {
+        temp.setCoefficient((l+qpow)*m,{m},1);
+    }
+    result *= temp;
+  }
+  return result.truncate({xMax});
+}

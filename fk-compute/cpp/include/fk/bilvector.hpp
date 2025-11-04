@@ -318,3 +318,5 @@ void bilvector<T>::print(const std::string &varName) const {
     }
     std::cout << std::endl;
 }
+
+void print_pterms(std::vector<bilvector<int>> polynomial_terms);

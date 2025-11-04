@@ -97,7 +97,8 @@ private:
     std::vector<std::vector<int>> computeNumericalAssignments(const std::vector<int>& angles);
     void performCrossingComputations(std::vector<bilvector<int>>& polynomial_terms,
                                     const std::vector<int>& max_x_degrees,
-                                    const std::vector<int>& block_sizes);
+                                    const std::vector<int>& block_sizes,
+                                    MultivariablePolynomial & poly);
     void applyCrossingRelation(std::vector<bilvector<int>>& polynomial_terms,
                               int crossing_index, int relation_type);
     void accumulateResult(const std::vector<bilvector<int>>& polynomial_terms,

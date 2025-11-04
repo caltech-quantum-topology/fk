@@ -53,6 +53,8 @@ TEST_TARGET = testing
 FK_MAIN_TARGET = fk_main
 BILVECTOR_OPERATIONS = bilvector_operations
 NEW_QBINOM = new_qbinomials 
+XQ_EXMPL = xq_poch_example 
+
 
 # Default target - now builds main.cpp
 all: $(FK_MAIN_TARGET) $(EXAMPLE_TARGET)
@@ -150,6 +152,10 @@ $(BILVECTOR_OPERATIONS): $(BUILD_DIR)/bilvector_operations.o $(BUILD_DIR)/multiv
 # New qbinomial tests
 $(NEW_QBINOM): $(TEST_DIR)/new_qbinomials.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
+	
+# XQ poch 
+$(XQ_EXMPL): $(TEST_DIR)/xq_poch_example.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Rule for root directory files (like main.cpp)
 $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
@@ -181,7 +187,7 @@ $(BUILD_DIR)/checkpoint_resume_demo.o: checkpoint_resume_demo.cpp $(INCLUDE_DIR)
 
 # Utility targets
 clean:
-	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(PARALLEL_DEMO_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM)
+	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(PARALLEL_DEMO_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL)
 
 # Clean only object files
 clean-obj:

@@ -9,9 +9,9 @@
 #include <tuple>
 
 // VectorHash implementation
-std::size_t VectorHash::operator()(const std::vector<int>& v) const {
+std::size_t VectorHash::operator()(const std::vector<int> &v) const {
   std::size_t seed = v.size();
-  for (auto& i : v) {
+  for (auto &i : v) {
     // Mix the hash with signed int support
     seed ^= std::hash<int>{}(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   }
@@ -20,8 +20,8 @@ std::size_t VectorHash::operator()(const std::vector<int>& v) const {
 
 // MultivariablePolynomial implementation
 
-MultivariablePolynomial::MultivariablePolynomial(int numVariables, int degree,
-                        const std::vector<int>&maxDegrees)
+MultivariablePolynomial::MultivariablePolynomial(
+    int numVariables, int degree, const std::vector<int> &maxDegrees)
     : numXVariables(numVariables) {
 
   if (maxDegrees.empty()) {
@@ -44,14 +44,67 @@ MultivariablePolynomial::MultivariablePolynomial(int numVariables, int degree,
   }
 }
 
+MultivariablePolynomial::MultivariablePolynomial(
+    const MultivariablePolynomial &source, int newNumVariables,
+    int targetVariableIndex, int degree, const std::vector<int> &maxDegrees)
+    : numXVariables(newNumVariables) {
+
+  if (newNumVariables < source.numXVariables) {
+    throw std::invalid_argument(
+        "New number of variables must be >= source's number of variables");
+  }
+
+  if (targetVariableIndex < 0 || targetVariableIndex >= newNumVariables) {
+    throw std::invalid_argument(
+        "Target variable index must be in range [0, newNumVariables)");
+  }
+
+  if (source.numXVariables != 1) {
+    throw std::invalid_argument(
+        "Source polynomial must have exactly 1 x variable");
+  }
+
+  // Set up max degrees
+  if (maxDegrees.empty()) {
+    maxXDegrees = std::vector<int>(newNumVariables, degree);
+  } else {
+    if (maxDegrees.size() != static_cast<size_t>(newNumVariables)) {
+      throw std::invalid_argument(
+          "Max degrees vector size must match new number of variables");
+    }
+    maxXDegrees = maxDegrees;
+  }
+
+  // Calculate block sizes for compatibility (not used for indexing)
+  blockSizes.resize(newNumVariables);
+  if (newNumVariables > 0) {
+    blockSizes[0] = 1;
+    for (int i = 1; i < newNumVariables; i++) {
+      blockSizes[i] = (maxXDegrees[i - 1] + 1) * blockSizes[i - 1];
+    }
+  }
+
+  // Copy coefficients from source, mapping the single variable to
+  // targetVariableIndex
+  for (const auto &[sourceXPowers, bilvec] : source.coeffs_) {
+    // Create new x-powers vector with zeros except at targetVariableIndex
+    std::vector<int> newXPowers(newNumVariables, 0);
+    newXPowers[targetVariableIndex] = sourceXPowers[0];
+
+    // Copy the entire bilvector
+    coeffs_.emplace(newXPowers, bilvec);
+  }
+}
+
 void MultivariablePolynomial::pruneZeros() {
   auto it = coeffs_.begin();
   while (it != coeffs_.end()) {
     bool isZero = true;
-    const auto& bilvec = it->second;
+    const auto &bilvec = it->second;
 
     // Check if this bilvector is all zeros
-    for (int j = bilvec.getMaxNegativeIndex(); j <= bilvec.getMaxPositiveIndex(); j++) {
+    for (int j = bilvec.getMaxNegativeIndex();
+         j <= bilvec.getMaxPositiveIndex(); j++) {
       if (bilvec[j] != 0) {
         isZero = false;
         break;
@@ -66,7 +119,8 @@ void MultivariablePolynomial::pruneZeros() {
   }
 }
 
-int MultivariablePolynomial::getCoefficient(int qPower, const std::vector<int> &xPowers) const {
+int MultivariablePolynomial::getCoefficient(
+    int qPower, const std::vector<int> &xPowers) const {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
@@ -74,13 +128,14 @@ int MultivariablePolynomial::getCoefficient(int qPower, const std::vector<int> &
 
   auto it = coeffs_.find(xPowers);
   if (it == coeffs_.end()) {
-    return 0;  // Not found means coefficient is 0
+    return 0; // Not found means coefficient is 0
   }
   return it->second[qPower];
 }
 
-void MultivariablePolynomial::setCoefficient(int qPower, const std::vector<int> &xPowers,
-                    int coefficient) {
+void MultivariablePolynomial::setCoefficient(int qPower,
+                                             const std::vector<int> &xPowers,
+                                             int coefficient) {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
@@ -116,15 +171,16 @@ void MultivariablePolynomial::setCoefficient(int qPower, const std::vector<int> 
   }
 }
 
-void MultivariablePolynomial::addToCoefficient(int qPower, const std::vector<int> &xPowers,
-                      int coefficient) {
+void MultivariablePolynomial::addToCoefficient(int qPower,
+                                               const std::vector<int> &xPowers,
+                                               int coefficient) {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
   }
 
   if (coefficient == 0) {
-    return;  // Adding zero does nothing
+    return; // Adding zero does nothing
   }
 
   auto it = coeffs_.find(xPowers);
@@ -153,7 +209,8 @@ void MultivariablePolynomial::addToCoefficient(int qPower, const std::vector<int
   }
 }
 
-bilvector<int> &MultivariablePolynomial::getQPolynomial(const std::vector<int> &xPowers) {
+bilvector<int> &
+MultivariablePolynomial::getQPolynomial(const std::vector<int> &xPowers) {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
@@ -168,7 +225,8 @@ bilvector<int> &MultivariablePolynomial::getQPolynomial(const std::vector<int> &
   return it->second;
 }
 
-const bilvector<int> &MultivariablePolynomial::getQPolynomial(const std::vector<int> &xPowers) const {
+const bilvector<int> &
+MultivariablePolynomial::getQPolynomial(const std::vector<int> &xPowers) const {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
@@ -183,7 +241,7 @@ const bilvector<int> &MultivariablePolynomial::getQPolynomial(const std::vector<
   return it->second;
 }
 
-const std::unordered_map<std::vector<int>, bilvector<int>, VectorHash>&
+const std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> &
 MultivariablePolynomial::getCoefficientMap() const {
   return coeffs_;
 }
@@ -199,7 +257,7 @@ std::vector<bilvector<int>> MultivariablePolynomial::getCoefficients() const {
   std::vector<bilvector<int>> result(totalSize, bilvector<int>(0, 1, 20, 0));
 
   // Fill in the non-zero entries from sparse map
-  for (const auto& [xPowers, bilvec] : coeffs_) {
+  for (const auto &[xPowers, bilvec] : coeffs_) {
     // Convert x-powers to linear index using old formula
     int linearIndex = 0;
     bool withinBounds = true;
@@ -213,8 +271,10 @@ std::vector<bilvector<int>> MultivariablePolynomial::getCoefficients() const {
     }
 
     if (withinBounds && linearIndex >= 0 && linearIndex < totalSize) {
-      // Copy the bilvector - note: this is expensive but needed for compatibility
-      for (int j = bilvec.getMaxNegativeIndex(); j <= bilvec.getMaxPositiveIndex(); j++) {
+      // Copy the bilvector - note: this is expensive but needed for
+      // compatibility
+      for (int j = bilvec.getMaxNegativeIndex();
+           j <= bilvec.getMaxPositiveIndex(); j++) {
         if (bilvec[j] != 0) {
           result[linearIndex][j] = bilvec[j];
         }
@@ -225,26 +285,30 @@ std::vector<bilvector<int>> MultivariablePolynomial::getCoefficients() const {
   return result;
 }
 
-std::vector<bilvector<int>>& MultivariablePolynomial::getCoefficients() {
+std::vector<bilvector<int>> &MultivariablePolynomial::getCoefficients() {
   // Create a thread-local copy for modification
   static thread_local std::vector<bilvector<int>> temp_result;
-  temp_result = static_cast<const MultivariablePolynomial*>(this)->getCoefficients();
+  temp_result =
+      static_cast<const MultivariablePolynomial *>(this)->getCoefficients();
   return temp_result;
 }
 
-void MultivariablePolynomial::syncFromDenseVector(const std::vector<bilvector<int>>& denseVector) {
+void MultivariablePolynomial::syncFromDenseVector(
+    const std::vector<bilvector<int>> &denseVector) {
   // Clear current sparse representation
   coeffs_.clear();
 
   // Convert dense back to sparse
-  for (size_t linearIndex = 0; linearIndex < denseVector.size(); linearIndex++) {
+  for (size_t linearIndex = 0; linearIndex < denseVector.size();
+       linearIndex++) {
     // Convert linear index back to x-powers
     std::vector<int> xPowers(numXVariables);
     size_t remainingIndex = linearIndex;
 
     for (int i = numXVariables - 1; i >= 0; i--) {
       if (i < static_cast<int>(blockSizes.size()) && blockSizes[i] > 0) {
-        xPowers[i] = static_cast<int>(remainingIndex / blockSizes[i]) % (maxXDegrees[i] + 1);
+        xPowers[i] = static_cast<int>(remainingIndex / blockSizes[i]) %
+                     (maxXDegrees[i] + 1);
         remainingIndex %= blockSizes[i];
       }
     }
@@ -266,9 +330,42 @@ void MultivariablePolynomial::syncFromDenseVector(const std::vector<bilvector<in
   }
 }
 
-int MultivariablePolynomial::getNumXVariables() const {
-  return numXVariables;
+MultivariablePolynomial
+MultivariablePolynomial::invertVariable(const int target_index) {
+
+  MultivariablePolynomial newPoly(this->numXVariables, 0);
+  for (const auto &item : this->getCoefficientMap()) {
+    const std::vector<int> &xPowers = item.first; // like the key in Python
+    const bilvector<int> &qPoly = item.second;    // like the value in Python
+    auto newPowers = xPowers;
+    newPowers[target_index] *= -1;
+    newPoly.getQPolynomial(newPowers) = qPoly;
+  }
+  return newPoly;
 }
+
+
+MultivariablePolynomial
+MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) {
+    MultivariablePolynomial newPoly(this->numXVariables, 0);
+    for (const auto &item : this->getCoefficientMap()) {
+        const std::vector<int> &xPowers = item.first;
+        const bilvector<int> &qPoly = item.second;
+        bool in_range = true;
+        for (int j = 0; j < this->numXVariables; ++j) {
+            if (!(xPowers[j] <= maxXdegrees[j])) {
+                in_range = false;
+                break;
+            }
+        }
+        if (in_range) {
+            newPoly.getQPolynomial(xPowers) = qPoly;
+        }
+    }
+    return newPoly;
+}
+
+int MultivariablePolynomial::getNumXVariables() const { return numXVariables; }
 
 const std::vector<int> &MultivariablePolynomial::getMaxXDegrees() const {
   return maxXDegrees;
@@ -278,13 +375,9 @@ const std::vector<int> &MultivariablePolynomial::getBlockSizes() const {
   return blockSizes;
 }
 
-void MultivariablePolynomial::clear() {
-  coeffs_.clear();
-}
+void MultivariablePolynomial::clear() { coeffs_.clear(); }
 
-bool MultivariablePolynomial::isZero() const {
-  return coeffs_.empty();
-}
+bool MultivariablePolynomial::isZero() const { return coeffs_.empty(); }
 
 void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
   std::ofstream outputFile;
@@ -292,8 +385,9 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
   outputFile << "{\n\t\"terms\":[\n";
 
   bool firstTerm = true;
-  for (const auto& [xPowers, bilvec] : coeffs_) {
-    for (int j = bilvec.getMaxNegativeIndex(); j <= bilvec.getMaxPositiveIndex(); j++) {
+  for (const auto &[xPowers, bilvec] : coeffs_) {
+    for (int j = bilvec.getMaxNegativeIndex();
+         j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
       if (coeff != 0) {
         if (!firstTerm) {
@@ -304,7 +398,8 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
         outputFile << "\t\t{\"x\": [";
         for (size_t k = 0; k < xPowers.size(); k++) {
           outputFile << xPowers[k];
-          if (k < xPowers.size() - 1) outputFile << ",";
+          if (k < xPowers.size() - 1)
+            outputFile << ",";
         }
         outputFile << "], \"q\": " << j << ", \"c\": " << coeff << "}";
       }
@@ -340,8 +435,9 @@ void MultivariablePolynomial::print(int maxTerms) const {
 
   // Collect all terms and sort for deterministic output
   std::vector<std::tuple<std::vector<int>, int, int>> terms;
-  for (const auto& [xPowers, bilvec] : coeffs_) {
-    for (int j = bilvec.getMaxNegativeIndex(); j <= bilvec.getMaxPositiveIndex(); j++) {
+  for (const auto &[xPowers, bilvec] : coeffs_) {
+    for (int j = bilvec.getMaxNegativeIndex();
+         j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
       if (coeff != 0) {
         terms.emplace_back(xPowers, j, coeff);
@@ -353,10 +449,12 @@ void MultivariablePolynomial::print(int maxTerms) const {
   std::sort(terms.begin(), terms.end());
 
   int termCount = 0;
-  for (const auto& [xPowers, qPower, coeff] : terms) {
-    if (termCount >= maxTerms) break;
+  for (const auto &[xPowers, qPower, coeff] : terms) {
+    if (termCount >= maxTerms)
+      break;
 
-    if (termCount > 0) std::cout << " + ";
+    if (termCount > 0)
+      std::cout << " + ";
     std::cout << coeff << "*q^" << qPower;
     for (size_t k = 0; k < xPowers.size(); k++) {
       if (xPowers[k] != 0) {
@@ -375,18 +473,21 @@ void MultivariablePolynomial::print(int maxTerms) const {
   std::cout << std::endl;
 }
 
-void MultivariablePolynomial::checkCompatibility(const MultivariablePolynomial &other) const {
+void MultivariablePolynomial::checkCompatibility(
+    const MultivariablePolynomial &other) const {
   if (numXVariables != other.numXVariables) {
     throw std::invalid_argument(
         "Polynomials must have the same number of x variables");
   }
 }
 
-MultivariablePolynomial &MultivariablePolynomial::operator+=(const MultivariablePolynomial &other) {
+MultivariablePolynomial &
+MultivariablePolynomial::operator+=(const MultivariablePolynomial &other) {
   checkCompatibility(other);
 
-  for (const auto& [xPowers, bilvec] : other.coeffs_) {
-    for (int j = bilvec.getMaxNegativeIndex(); j <= bilvec.getMaxPositiveIndex(); j++) {
+  for (const auto &[xPowers, bilvec] : other.coeffs_) {
+    for (int j = bilvec.getMaxNegativeIndex();
+         j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
       if (coeff != 0) {
         addToCoefficient(j, xPowers, coeff);
@@ -397,11 +498,13 @@ MultivariablePolynomial &MultivariablePolynomial::operator+=(const Multivariable
   return *this;
 }
 
-MultivariablePolynomial &MultivariablePolynomial::operator-=(const MultivariablePolynomial &other) {
+MultivariablePolynomial &
+MultivariablePolynomial::operator-=(const MultivariablePolynomial &other) {
   checkCompatibility(other);
 
-  for (const auto& [xPowers, bilvec] : other.coeffs_) {
-    for (int j = bilvec.getMaxNegativeIndex(); j <= bilvec.getMaxPositiveIndex(); j++) {
+  for (const auto &[xPowers, bilvec] : other.coeffs_) {
+    for (int j = bilvec.getMaxNegativeIndex();
+         j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
       if (coeff != 0) {
         addToCoefficient(j, xPowers, -coeff);
@@ -412,15 +515,16 @@ MultivariablePolynomial &MultivariablePolynomial::operator-=(const Multivariable
   return *this;
 }
 
-MultivariablePolynomial &MultivariablePolynomial::operator*=(const MultivariablePolynomial &other) {
+MultivariablePolynomial &
+MultivariablePolynomial::operator*=(const MultivariablePolynomial &other) {
   checkCompatibility(other);
 
   // Create a new coefficient map for the result
   std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> result;
 
   // Multiply each term in this polynomial with each term in other polynomial
-  for (const auto& [thisXPowers, thisBilvec] : coeffs_) {
-    for (const auto& [otherXPowers, otherBilvec] : other.coeffs_) {
+  for (const auto &[thisXPowers, thisBilvec] : coeffs_) {
+    for (const auto &[otherXPowers, otherBilvec] : other.coeffs_) {
 
       // Calculate product x-powers
       std::vector<int> productXPowers(numXVariables);
@@ -443,7 +547,8 @@ MultivariablePolynomial &MultivariablePolynomial::operator*=(const Multivariable
               // Add to result
               auto it = result.find(productXPowers);
               if (it == result.end()) {
-                auto insertResult = result.emplace(productXPowers, bilvector<int>(0, 1, 20, 0));
+                auto insertResult =
+                    result.emplace(productXPowers, bilvector<int>(0, 1, 20, 0));
                 it = insertResult.first;
               }
               it->second[productQ] += productCoeff;
@@ -463,14 +568,16 @@ MultivariablePolynomial &MultivariablePolynomial::operator*=(const Multivariable
   return *this;
 }
 
-bilvector<int> MultivariablePolynomial::evaluate(const std::vector<int>& point) const {
+bilvector<int>
+MultivariablePolynomial::evaluate(const std::vector<int> &point) const {
   if (point.size() != static_cast<size_t>(numXVariables)) {
-    throw std::invalid_argument("Point dimension must match number of variables");
+    throw std::invalid_argument(
+        "Point dimension must match number of variables");
   }
 
   bilvector<int> result(0, 0, 1, 0);
 
-  for (const auto& [xPowers, qPoly] : coeffs_) {
+  for (const auto &[xPowers, qPoly] : coeffs_) {
     int termValue = 1;
 
     for (size_t i = 0; i < xPowers.size(); ++i) {
@@ -480,18 +587,22 @@ bilvector<int> MultivariablePolynomial::evaluate(const std::vector<int>& point) 
         }
       } else if (xPowers[i] < 0) {
         if (point[i] == 0) {
-          throw std::domain_error("Division by zero: negative exponent with zero value at variable " + std::to_string(i));
+          throw std::domain_error("Division by zero: negative exponent with "
+                                  "zero value at variable " +
+                                  std::to_string(i));
         }
         for (int exp = 0; exp > xPowers[i]; --exp) {
           if (termValue % point[i] != 0) {
-            throw std::domain_error("Division would result in non-integer coefficient");
+            throw std::domain_error(
+                "Division would result in non-integer coefficient");
           }
           termValue /= point[i];
         }
       }
     }
 
-    for (int qPower = qPoly.getMaxNegativeIndex(); qPower <= qPoly.getMaxPositiveIndex(); ++qPower) {
+    for (int qPower = qPoly.getMaxNegativeIndex();
+         qPower <= qPoly.getMaxPositiveIndex(); ++qPower) {
       int coefficient = qPoly[qPower];
       if (coefficient != 0) {
         result[qPower] += coefficient * termValue;
@@ -504,21 +615,21 @@ bilvector<int> MultivariablePolynomial::evaluate(const std::vector<int>& point) 
 
 // Friend functions for binary operations
 MultivariablePolynomial operator+(const MultivariablePolynomial &lhs,
-                                 const MultivariablePolynomial &rhs) {
+                                  const MultivariablePolynomial &rhs) {
   MultivariablePolynomial result = lhs;
   result += rhs;
   return result;
 }
 
 MultivariablePolynomial operator-(const MultivariablePolynomial &lhs,
-                                 const MultivariablePolynomial &rhs) {
+                                  const MultivariablePolynomial &rhs) {
   MultivariablePolynomial result = lhs;
   result -= rhs;
   return result;
 }
 
 MultivariablePolynomial operator*(const MultivariablePolynomial &lhs,
-                                 const MultivariablePolynomial &rhs) {
+                                  const MultivariablePolynomial &rhs) {
   MultivariablePolynomial result = lhs;
   result *= rhs;
   return result;
@@ -529,7 +640,8 @@ MultivariablePolynomial::operator+=(const bilvector<int> &qPoly) {
   // Monomial x_1^0 x_2^0 ... x_n^0
   std::vector<int> zeroXPowers(numXVariables, 0);
 
-  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
+  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex();
+       ++q) {
     int coeff = qPoly[q];
     if (coeff != 0) {
       addToCoefficient(q, zeroXPowers, coeff);
@@ -543,7 +655,8 @@ MultivariablePolynomial &
 MultivariablePolynomial::operator-=(const bilvector<int> &qPoly) {
   std::vector<int> zeroXPowers(numXVariables, 0);
 
-  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
+  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex();
+       ++q) {
     int coeff = qPoly[q];
     if (coeff != 0) {
       addToCoefficient(q, zeroXPowers, -coeff);
@@ -562,7 +675,8 @@ MultivariablePolynomial::operator*=(const bilvector<int> &qPoly) {
 
   // Check if qPoly is the zero polynomial
   bool qPolyIsZero = true;
-  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
+  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex();
+       ++q) {
     if (qPoly[q] != 0) {
       qPolyIsZero = false;
       break;
@@ -570,7 +684,7 @@ MultivariablePolynomial::operator*=(const bilvector<int> &qPoly) {
   }
 
   if (qPolyIsZero) {
-    clear();  // P * 0 = 0
+    clear(); // P * 0 = 0
     return *this;
   }
 
@@ -591,11 +705,13 @@ MultivariablePolynomial::operator*=(const bilvector<int> &qPoly) {
 
     for (int qi = thisMin; qi <= thisMax; ++qi) {
       int a = thisBilvec[qi];
-      if (a == 0) continue;
+      if (a == 0)
+        continue;
 
       for (int qj = factorMin; qj <= factorMax; ++qj) {
         int b = qPoly[qj];
-        if (b == 0) continue;
+        if (b == 0)
+          continue;
 
         product[qi + qj] += a * b;
       }
@@ -603,7 +719,8 @@ MultivariablePolynomial::operator*=(const bilvector<int> &qPoly) {
 
     // Store only if product is not the zero polynomial
     bool allZero = true;
-    for (int q = product.getMaxNegativeIndex(); q <= product.getMaxPositiveIndex(); ++q) {
+    for (int q = product.getMaxNegativeIndex();
+         q <= product.getMaxPositiveIndex(); ++q) {
       if (product[q] != 0) {
         allZero = false;
         break;
@@ -620,47 +737,47 @@ MultivariablePolynomial::operator*=(const bilvector<int> &qPoly) {
 }
 
 MultivariablePolynomial operator+(const MultivariablePolynomial &lhs,
-                                 const bilvector<int> &rhs) {
+                                  const bilvector<int> &rhs) {
   MultivariablePolynomial result = lhs;
   result += rhs;
   return result;
 }
 
 MultivariablePolynomial operator+(const bilvector<int> &lhs,
-                                 const MultivariablePolynomial &rhs) {
+                                  const MultivariablePolynomial &rhs) {
   MultivariablePolynomial result = rhs;
   result += lhs;
   return result;
 }
 
 MultivariablePolynomial operator-(const MultivariablePolynomial &lhs,
-                                 const bilvector<int> &rhs) {
+                                  const bilvector<int> &rhs) {
   MultivariablePolynomial result = lhs;
   result -= rhs;
   return result;
 }
 
 MultivariablePolynomial operator-(const bilvector<int> &lhs,
-                                 const MultivariablePolynomial &rhs) {
+                                  const MultivariablePolynomial &rhs) {
   // Construct a polynomial with the same x-structure as rhs, then do lhs - rhs
   MultivariablePolynomial result(rhs.getNumXVariables(),
                                  /*degree (unused when maxDegrees provided)*/ 0,
                                  rhs.getMaxXDegrees());
 
-  result += lhs;   // attach lhs(q) to x^0...0
-  result -= rhs;   // subtract rhs
+  result += lhs; // attach lhs(q) to x^0...0
+  result -= rhs; // subtract rhs
   return result;
 }
 
 MultivariablePolynomial operator*(const MultivariablePolynomial &lhs,
-                                 const bilvector<int> &rhs) {
+                                  const bilvector<int> &rhs) {
   MultivariablePolynomial result = lhs;
   result *= rhs;
   return result;
 }
 
 MultivariablePolynomial operator*(const bilvector<int> &lhs,
-                                 const MultivariablePolynomial &rhs) {
+                                  const MultivariablePolynomial &rhs) {
   MultivariablePolynomial result = rhs;
   result *= lhs;
   return result;
