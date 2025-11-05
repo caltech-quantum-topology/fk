@@ -1,6 +1,7 @@
 #include "fk/qalg_links.hpp"
 #include "fk/linalg.hpp"
 #include "fk/multivariable_polynomial.hpp"
+#include <map>
 
 void computePositiveQBinomialHelper(std::vector<int> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift) {
@@ -357,17 +358,48 @@ MultivariablePolynomial qpochhammer_xq_q(int n, int qpow, int lsign) {
 }
 
 // Compute 1/(x q^qpow; q)_n as a MultivariablePolynomial in one x-variable
-// P(q, x) = 1/∏_{k=1}^n (1 - x q^(k+qpow))
+// P(q, x) = ∏_{l=0}^{n-1} ∑_{m=0}^{xMax+1} x^m q^{(lsign*l+qpow)*m}
+// Optimized using direct coefficient computation
 MultivariablePolynomial inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign) {
-  const int numXVars = 1;              // just x
-  MultivariablePolynomial result(numXVars,0);
-  result.setCoefficient(0,{0},1);
-  for (int l = 0; l<n; ++l) {
-     MultivariablePolynomial temp(numXVars,0);
-     for (int m = 0; m <= std::min(n,xMax) + 1; ++m) {
-        temp.setCoefficient((lsign*l+qpow)*m,{m},1);
+  const int numXVars = 1;
+  const int maxTerms = std::min(n, xMax) + 1;
+
+  // Coefficients map: coeffs[x_degree][q_power] = coefficient
+  std::map<int, std::map<int, int>> coeffs;
+  coeffs[0][0] = 1; // Initialize with 1
+
+  // For each factor (geometric series)
+  for (int l = 0; l < n; ++l) {
+    const int q_base = lsign * l + qpow;
+    std::map<int, std::map<int, int>> new_coeffs;
+
+    // Multiply current polynomial by the l-th geometric series
+    for (const auto &[x_deg, q_map] : coeffs) {
+      for (const auto &[q_pow, coeff] : q_map) {
+        if (coeff != 0) {
+          // Add terms from geometric series: 1 + x*q^q_base + x^2*q^(2*q_base) + ...
+          for (int m = 0; m <= maxTerms && x_deg + m <= xMax; ++m) {
+            const int new_x_deg = x_deg + m;
+            const int new_q_pow = q_pow + m * q_base;
+            new_coeffs[new_x_deg][new_q_pow] += coeff;
+          }
+        }
+      }
     }
-    result *= temp;
+    coeffs = std::move(new_coeffs);
   }
+
+  // Build result polynomial
+  MultivariablePolynomial result(numXVars, 0);
+  for (const auto &[x_deg, q_map] : coeffs) {
+    if (x_deg <= xMax) {
+      for (const auto &[q_pow, coeff] : q_map) {
+        if (coeff != 0) {
+          result.addToCoefficient(q_pow, {x_deg}, coeff);
+        }
+      }
+    }
+  }
+
   return result.truncate({xMax});
 }
