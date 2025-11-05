@@ -649,13 +649,13 @@ void FKComputation::compute(const FKConfiguration &config,
   initializeEngine();
 
   // Find valid criteria
-  auto valid_criteria = findValidCriteria();
+  ValidatedCriteria valid_criteria = findValidCriteria();
   if (!valid_criteria.is_valid) {
     throw std::runtime_error("No valid criteria found");
   }
 
   // Assign variables to get list of variable assignments
-  auto assignments = assignVariables(valid_criteria);
+  std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
 
   // Collect all points from each variable assignment
   std::vector<std::vector<int>> all_points;
