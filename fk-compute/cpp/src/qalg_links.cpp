@@ -329,29 +329,48 @@ bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
 }
 
 // Compute (x q; q)_n as a MultivariablePolynomial in one x-variable
-// P(q, x) = ∏_{k=1}^n (1 - x q^k)
+// P(q, x) = ∏_{k=1}^n (1 - x q^{qpow + lsign*k})
+// Optimized using direct coefficient computation
 MultivariablePolynomial qpochhammer_xq_q(int n, int qpow, int lsign) {
-    const int numXVars = 1;              // just x
-    const int maxXDegree = static_cast<int>(n); // deg_x ≤ n
+    const int numXVars = 1;
+    const int maxXDegree = n;
 
-    // Start with P(q,x) = 1
-    MultivariablePolynomial result(numXVars, maxXDegree);
-    std::vector<int> zeroXPowers(numXVars, 0); // x^0
-    result.addToCoefficient(0, zeroXPowers, 1); // q^0 * x^0 with coeff 1
+    // Coefficients map: coeffs[x_degree][q_power] = coefficient
+    std::map<int, std::map<int, int>> coeffs;
+    coeffs[0][0] = 1; // Initialize with 1
 
-    // Vector for x^1 (only x₁)
-    std::vector<int> xXPowers(numXVars, 0);
-    xXPowers[0] = 1; // x^1
-
-    // Multiply factors (1 - x q^k) for k = 1..n
+    // For each factor (1 - x q^{qpow + lsign*k})
     for (int k = 1; k <= n; ++k) {
-        MultivariablePolynomial factor(numXVars, 1);
-        // 1 term: q^0 * x^0
-        factor.addToCoefficient(0, zeroXPowers, 1);
-        // - x q^k term: coefficient -1, q^k, x^1
-        factor.addToCoefficient(qpow + lsign*k, xXPowers, -1);
+        const int q_factor = qpow + lsign * k;
+        std::map<int, std::map<int, int>> new_coeffs;
 
-        result *= factor;
+        // Multiply current polynomial by (1 - x q^q_factor)
+        for (const auto &[x_deg, q_map] : coeffs) {
+            for (const auto &[q_pow, coeff] : q_map) {
+                if (coeff != 0) {
+                    // Add the "1" term: same x_deg and q_pow
+                    new_coeffs[x_deg][q_pow] += coeff;
+
+                    // Add the "-x q^q_factor" term: x_deg+1 and q_pow+q_factor
+                    if (x_deg + 1 <= maxXDegree) {
+                        new_coeffs[x_deg + 1][q_pow + q_factor] -= coeff;
+                    }
+                }
+            }
+        }
+        coeffs = std::move(new_coeffs);
+    }
+
+    // Build result polynomial
+    MultivariablePolynomial result(numXVars, maxXDegree);
+    for (const auto &[x_deg, q_map] : coeffs) {
+        if (x_deg <= maxXDegree) {
+            for (const auto &[q_pow, coeff] : q_map) {
+                if (coeff != 0) {
+                    result.addToCoefficient(q_pow, {x_deg}, coeff);
+                }
+            }
+        }
     }
 
     return result;

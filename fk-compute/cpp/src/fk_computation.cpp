@@ -487,6 +487,7 @@ void FKResultWriter::writeToText(const MultivariablePolynomial &result,
 // FKComputation implementation
 void FKComputation::compute(const std::string &input_filename,
                             const std::string &output_filename) {
+
   FKConfiguration config = parser_.parseFromFile(input_filename);
 
   // Call the config-based compute method
@@ -514,7 +515,7 @@ void FKComputation::compute(const FKConfiguration &config,
 
   // Collect all points from each variable assignment
   std::vector<std::vector<int>> all_points;
-  for (const auto &assignment : assignments) {
+  for (const AssignmentResult &assignment : assignments) {
     auto points = enumeratePoints(assignment);
     all_points.insert(all_points.end(), points.begin(), points.end());
   }

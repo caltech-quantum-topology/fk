@@ -74,6 +74,7 @@ def _safe_unlink(path: str):
     except Exception:
         pass
 
+
 # -------------------------------------------------------------------------
 # Helpers
 # -------------------------------------------------------------------------
@@ -680,7 +681,7 @@ def _fk_compute(
         logger.debug("ILP data calculated")
 
     # --- Step 3: FK invariant computation ---
-    bin_path = _binary_path("fk_segments_links")
+    bin_path = _binary_path("fk_main")
     if verbose:
         subprocess.run([bin_path, f"{link_name}_ilp", f"{link_name}"], check=True)
     else:
@@ -690,7 +691,34 @@ def _fk_compute(
     with open(link_name + ".json", "r") as f:
         fk_result = json.load(f)
 
-    fk_coefficients = fk_result["coefficient_q_powers"]
+    # Handle both old and new JSON formats
+    if "coefficient_q_powers" in fk_result:
+        # Old format
+        fk_coefficients = fk_result["coefficient_q_powers"]
+    elif "terms" in fk_result:
+        # New format - convert terms to coefficient matrix structure
+        metadata = fk_result.get("metadata", {})
+        max_x_degrees = metadata.get("max_x_degrees", [])
+
+        if max_x_degrees:
+            max_degree = max_x_degrees[0] + 1
+        else:
+            # Find max x degree from terms
+            max_degree = max(term["x"][0] for term in fk_result["terms"]) + 1
+
+        fk_coefficients = [[] for _ in range(max_degree)]
+
+        for term in fk_result["terms"]:
+            x_degree = term["x"][0] if term["x"] else 0
+            q_power = term["q"]
+            coeff = term["c"]
+            fk_coefficients[x_degree].append([q_power, coeff])
+
+        # Sort by q_power for consistency
+        for q_poly in fk_coefficients:
+            q_poly.sort(key=lambda x: x[0])
+    else:
+        raise ValueError("FK result missing both 'terms' (new format) and 'coefficient_q_powers' (old format)")
 
     # Clean up intermediate files unless explicitly saving
     if not save_data:

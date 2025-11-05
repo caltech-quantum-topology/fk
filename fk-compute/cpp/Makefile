@@ -3,6 +3,7 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude
 DEBUG_FLAGS = -g -DDEBUG
+PROFILE_FLAGS = -g -pg -fno-omit-frame-pointer -O2 -DNDEBUG
 
 # Directories
 SRC_DIR = src
@@ -74,11 +75,6 @@ $(MAIN_TARGET): $(OBJECTS)
 $(POLYNOMIAL_EXAMPLE_TARGET): $(BUILD_DIR)/polynomial_example.o $(BUILD_DIR)/multivariable_polynomial.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-
-# Parallel demo executable
-$(PARALLEL_DEMO_TARGET):  $(BUILD_DIR)/solution_pool_1a_double_links.o
-	$(CXX) $(CXXFLAGS) -pthread -o $@ $^
-
 # Arithmetic test executable
 $(ARITHMETIC_TEST_TARGET): $(BUILD_DIR)/arithmetic_test.o $(BUILD_DIR)/multivariable_polynomial.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
@@ -135,6 +131,27 @@ debug: clean $(MAIN_TARGET)
 debug-example: CXXFLAGS += $(DEBUG_FLAGS)
 debug-example: clean $(EXAMPLE_TARGET)
 
+# Profile versions - optimized build with profiling support
+profile:
+	@$(MAKE) clean
+	@mkdir -p $(BUILD_DIR)
+	@$(MAKE) $(FK_MAIN_TARGET) CXXFLAGS="-std=c++17 -Wall -Wextra $(PROFILE_FLAGS) -Iinclude"
+	@echo "✓ Built profiling executable: $(FK_MAIN_TARGET)"
+	@echo "📊 Profiling flags: $(PROFILE_FLAGS)"
+	@echo ""
+	@echo "Usage instructions:"
+	@echo "  1. gprof profiling:   Run './$(FK_MAIN_TARGET) <args>' then 'gprof ./$(FK_MAIN_TARGET) gmon.out'"
+	@echo "  2. perf profiling:    Run 'perf record ./$(FK_MAIN_TARGET) <args>' then 'perf report'"
+	@echo "  3. Valgrind callgrind: Run 'valgrind --tool=callgrind ./$(FK_MAIN_TARGET) <args>'"
+	@echo "  4. Valgrind cachegrind: Run 'valgrind --tool=cachegrind ./$(FK_MAIN_TARGET) <args>'"
+	@echo ""
+
+profile-example:
+	@$(MAKE) clean
+	@mkdir -p $(BUILD_DIR)
+	@$(MAKE) $(EXAMPLE_TARGET) CXXFLAGS="-std=c++17 -Wall -Wextra $(PROFILE_FLAGS) -Iinclude"
+	@echo "✓ Built profiling example: $(EXAMPLE_TARGET)"
+
 # Object file compilation rules
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -187,7 +204,7 @@ $(BUILD_DIR)/checkpoint_resume_demo.o: checkpoint_resume_demo.cpp $(INCLUDE_DIR)
 
 # Utility targets
 clean:
-	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(PARALLEL_DEMO_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL)
+	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL)
 
 # Clean only object files
 clean-obj:
@@ -240,12 +257,15 @@ structure:
 help:
 	@echo "Available targets:"
 	@echo "  all          - Build main executable and example (default)"
+	@echo "  main         - Build main FK computation executable (fk_main)"
 	@echo "  fk_segments_links - Build main FK computation executable"
 	@echo "  polynomial_example - Build polynomial example"
 	@echo "  arithmetic_test - Build arithmetic operations test"
 	@echo "  testing      - Build testing executable"
 	@echo "  debug        - Build main executable with debug flags"
 	@echo "  debug-example - Build example with debug flags"
+	@echo "  profile      - Build main with profiling support (gprof, perf, valgrind)"
+	@echo "  profile-example - Build example with profiling support"
 	@echo "  clean        - Remove all generated files"
 	@echo "  clean-obj    - Remove only object files"
 	@echo "  run          - Build and run main executable"
@@ -259,4 +279,4 @@ help:
 	@echo "  help         - Show this help message"
 
 # Phony targets
-.PHONY: all debug debug-example clean clean-obj run run-example run-test run-arithmetic install format check structure help bilvector_operations
+.PHONY: all main debug debug-example profile profile-example clean clean-obj run run-example run-test run-arithmetic install format check structure help bilvector_operations
