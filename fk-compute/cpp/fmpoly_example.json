@@ -1,0 +1,10 @@
+{
+	"terms":[
+
+	],
+	"metadata": {
+		"num_x_variables": 2,
+		"max_x_degrees": [3,3],
+		"storage_type": "flint"
+	}
+}

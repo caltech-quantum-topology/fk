@@ -1,9 +1,10 @@
 # Makefile for FK Computation Project
 # Compiler and flags
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude $(shell pkg-config --cflags flint)
 DEBUG_FLAGS = -g -DDEBUG
 PROFILE_FLAGS = -g -pg -fno-omit-frame-pointer -O2 -DNDEBUG
+FLINT_LIBS = $(shell pkg-config --libs flint)
 
 # Directories
 SRC_DIR = src
@@ -18,6 +19,7 @@ $(shell mkdir -p $(BUILD_DIR))
 # Source files
 SOURCES = $(SRC_DIR)/fk_segments_links.cpp \
           $(SRC_DIR)/multivariable_polynomial.cpp \
+          $(SRC_DIR)/fmpoly.cpp \
           $(SRC_DIR)/qalg_links.cpp \
           $(SRC_DIR)/linalg.cpp \
           $(SRC_DIR)/string_to_int.cpp \
@@ -29,6 +31,7 @@ OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 
 # Header files for dependency tracking
 HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
+          $(INCLUDE_DIR)/fk/fmpoly.hpp \
           $(INCLUDE_DIR)/fk/qalg_links.hpp \
           $(INCLUDE_DIR)/fk/linalg.hpp \
           $(INCLUDE_DIR)/fk/string_to_int.hpp \
@@ -40,6 +43,11 @@ HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
 # Main targets
 MAIN_TARGET = fk_segments_links
 POLYNOMIAL_EXAMPLE_TARGET = polynomial_example
+FMPOLY_EXAMPLE_TARGET = fmpoly_example
+FMPOLY_COMPATIBILITY_TARGET = fmpoly_compatibility_test
+PERFORMANCE_COMPARISON_TARGET = performance_comparison_test
+TEST_GETQPOLY_TARGET = test_getQPolynomial
+DEBUG_FMPOLY_TARGET = debug_fmpoly
 ARITHMETIC_TEST_TARGET = arithmetic_test
 EXAMPLE_TARGET = example
 INEQUALITY_EXAMPLE_TARGET = inequality_example
@@ -69,19 +77,39 @@ main: $(FK_MAIN_TARGET)
 
 # Main FK computation executable
 $(MAIN_TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Polynomial example executable
 $(POLYNOMIAL_EXAMPLE_TARGET): $(BUILD_DIR)/polynomial_example.o $(BUILD_DIR)/multivariable_polynomial.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
+
+# FMPoly example executable
+$(FMPOLY_EXAMPLE_TARGET): $(BUILD_DIR)/fmpoly_example.o $(BUILD_DIR)/fmpoly.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
+
+# FMPoly compatibility test executable
+$(FMPOLY_COMPATIBILITY_TARGET): $(BUILD_DIR)/fmpoly_compatibility_test.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/multivariable_polynomial.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
+
+# Performance comparison test executable
+$(PERFORMANCE_COMPARISON_TARGET): $(BUILD_DIR)/performance_comparison_test.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/multivariable_polynomial.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
+
+# Test getQPolynomial executable
+$(TEST_GETQPOLY_TARGET): $(BUILD_DIR)/test_getQPolynomial.o $(BUILD_DIR)/fmpoly.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
+
+# Debug FMPoly executable
+$(DEBUG_FMPOLY_TARGET): $(BUILD_DIR)/debug_fmpoly.o $(BUILD_DIR)/fmpoly.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Arithmetic test executable
 $(ARITHMETIC_TEST_TARGET): $(BUILD_DIR)/arithmetic_test.o $(BUILD_DIR)/multivariable_polynomial.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Example executable
 $(EXAMPLE_TARGET): $(BUILD_DIR)/example.o $(BUILD_DIR)/multivariable_polynomial.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Inequality example executable
 $(INEQUALITY_EXAMPLE_TARGET): $(BUILD_DIR)/inequality_example.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/inequality_solver.o
@@ -89,7 +117,7 @@ $(INEQUALITY_EXAMPLE_TARGET): $(BUILD_DIR)/inequality_example.o $(BUILD_DIR)/mul
 
 # FK computation refactored executable
 $(FK_COMPUTATION_TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # FK computation test executable
 $(FK_TEST_TARGET): $(BUILD_DIR)/fk_computation_test.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
@@ -181,11 +209,17 @@ $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 # Specific dependencies for object files
 $(BUILD_DIR)/fk_segments_links.o: $(SRC_DIR)/fk_segments_links.cpp $(HEADERS)
 $(BUILD_DIR)/multivariable_polynomial.o: $(SRC_DIR)/multivariable_polynomial.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
+$(BUILD_DIR)/fmpoly.o: $(SRC_DIR)/fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
 $(BUILD_DIR)/qalg_links.o: $(SRC_DIR)/qalg_links.cpp $(INCLUDE_DIR)/fk/qalg_links.hpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/linalg.o: $(SRC_DIR)/linalg.cpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/solution_pool_1a_double_links.o: $(SRC_DIR)/solution_pool_1a_double_links.cpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp $(INCLUDE_DIR)/fk/btree.hpp
 $(BUILD_DIR)/string_to_int.o: $(SRC_DIR)/string_to_int.cpp $(INCLUDE_DIR)/fk/string_to_int.hpp
 $(BUILD_DIR)/polynomial_example.o: $(EXAMPLE_DIR)/polynomial_example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
+$(BUILD_DIR)/fmpoly_example.o: $(EXAMPLE_DIR)/fmpoly_example.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
+$(BUILD_DIR)/fmpoly_compatibility_test.o: $(TEST_DIR)/fmpoly_compatibility_test.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
+$(BUILD_DIR)/performance_comparison_test.o: $(TEST_DIR)/performance_comparison_test.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
+$(BUILD_DIR)/test_getQPolynomial.o: $(TEST_DIR)/test_getQPolynomial.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
+$(BUILD_DIR)/debug_fmpoly.o: $(TEST_DIR)/debug_fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
 $(BUILD_DIR)/arithmetic_test.o: $(TEST_DIR)/arithmetic_test.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 $(BUILD_DIR)/example.o: $(EXAMPLE_DIR)/example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 $(BUILD_DIR)/inequality_example.o: $(EXAMPLE_DIR)/inequality_example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/inequality_solver.hpp
@@ -204,7 +238,7 @@ $(BUILD_DIR)/checkpoint_resume_demo.o: checkpoint_resume_demo.cpp $(INCLUDE_DIR)
 
 # Utility targets
 clean:
-	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL)
+	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL) $(PERFORMANCE_COMPARISON_TARGET) $(FMPOLY_COMPATIBILITY_TARGET) $(FMPOLY_EXAMPLE_TARGET) $(POLYNOMIAL_EXAMPLE_TARGET)
 
 # Clean only object files
 clean-obj:
