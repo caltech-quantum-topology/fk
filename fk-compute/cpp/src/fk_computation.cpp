@@ -10,18 +10,10 @@
 #include <iostream>
 #include <list>
 #include <queue>
-#include <random>
 #include <set>
 #include <sstream>
 #include <stack>
 #include <stdexcept>
-
-void print_pterms(std::vector<bilvector<int>> polynomial_terms) {
-  for (auto i = 0; i < polynomial_terms.size(); ++i) {
-    std::cout << "x^" << i << ": ";
-    polynomial_terms[i].print();
-  }
-}
 
 namespace fk {
 // FKConfiguration implementation
@@ -311,22 +303,11 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     }
   }
 
-  int total_product_size = block_sizes[config_.components - 1] *
-                           (max_x_degrees[config_.components - 1] + 1);
-
-  // Initialize polynomial terms
-  std::vector<bilvector<int>> polynomial_terms(total_product_size,
-                                               bilvector<int>(0, 1, 20, 0));
-  polynomial_terms[0][0] = initial_coefficient;
-
   MultivariablePolynomial poly(config_.components, 0, max_x_degrees);
   poly.setCoefficient(0, std::vector<int>(config_.components, 0),
                       initial_coefficient);
 
-
   // Perform crossing computations
-  //performCrossingComputations(polynomial_terms, max_x_degrees, block_sizes,
-  //                            poly);
 
   poly *= crossingFactor(max_x_degrees);
 
@@ -352,213 +333,87 @@ std::vector<std::vector<int>> FKComputationEngine::computeNumericalAssignments(
 
 MultivariablePolynomial
 FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
-;
   MultivariablePolynomial result(config_.components, 0);
-  std::vector<int> zeroDeg(config_.components,0);
-  result.setCoefficient(0,zeroDeg,1);
+  result.setCoefficient(0, std::vector<int>(config_.components, 0), 1);
 
-  // First pass: binomial computations
+  // Single pass: process each crossing once with both binomial and Pochhammer
   for (int crossing_index = 0; crossing_index < config_.crossings;
-       crossing_index++) {
+       ++crossing_index) {
     const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
-    int relation_type = config_.crossing_relation_types[crossing_index];
-    int param_i =
+    const int relation_type = config_.crossing_relation_types[crossing_index];
+
+    // Extract parameters once
+    const int param_i =
         numerical_assignments_[crossing_matrix[0][0]][crossing_matrix[0][1]];
-    int param_j =
+    const int param_j =
         numerical_assignments_[crossing_matrix[1][0]][crossing_matrix[1][1]];
-    int param_k =
+    const int param_k =
         numerical_assignments_[crossing_matrix[2][0]][crossing_matrix[2][1]];
-    int param_m =
+    const int param_m =
         numerical_assignments_[crossing_matrix[3][0]][crossing_matrix[3][1]];
 
-    if (relation_type == 1) {
-      if (param_i > 0) {
-        result *= QBinomialPositive(param_i, param_i - param_m);
-      } else {
-        result *= QBinomialNegative(param_i, param_i - param_m);
-      }
-    } else if (relation_type == 2) {
+    const int top_comp = config_.top_crossing_components[crossing_index];
+    const int bottom_comp = config_.bottom_crossing_components[crossing_index];
+
+    // Apply binomial and Pochhammer operations based on relation type
+    switch (relation_type) {
+    case 1: {
+      // Binomial part
+      const bilvector<int> binomial =
+          (param_i > 0) ? QBinomialPositive(param_i, param_i - param_m)
+                        : QBinomialNegative(param_i, param_i - param_m);
+      result *= binomial;
+
+      // Pochhammer part
+      const MultivariablePolynomial poch(
+          qpochhammer_xq_q(param_i - param_m, param_j, 1), config_.components,
+          bottom_comp);
+      result *= poch;
+      break;
+    }
+    case 2: {
+      // Binomial part
       result *= QBinomialNegative(param_i, param_m);
-    } else if (relation_type == 3) {
+
+      // Pochhammer part
+      const MultivariablePolynomial poch(
+          inverse_qpochhammer_xq_q(param_j - param_k, param_j,
+                                   max_x_degrees[bottom_comp], -1),
+          config_.components, bottom_comp);
+      result *= poch;
+      break;
+    }
+    case 3: {
+      // Binomial part
       result *= QBinomialNegative(param_j, param_k).invertExponents();
-    } else if (relation_type == 4) {
-      if (param_j > 0) {
-        result *= QBinomialPositive(param_j, param_j - param_k).invertExponents();
-      } else {
-        result *= QBinomialNegative(param_j, param_j - param_k).invertExponents();
-      }
-    }
-  }
 
-  // Second pass: Pochhammer computations
-  for (int crossing_index = 0; crossing_index < config_.crossings;
-       crossing_index++) {
-    const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
-    int relation_type = config_.crossing_relation_types[crossing_index];
-
-    int param_i =
-        numerical_assignments_[crossing_matrix[0][0]][crossing_matrix[0][1]];
-    int param_j =
-        numerical_assignments_[crossing_matrix[1][0]][crossing_matrix[1][1]];
-    int param_k =
-        numerical_assignments_[crossing_matrix[2][0]][crossing_matrix[2][1]];
-    int param_m =
-        numerical_assignments_[crossing_matrix[3][0]][crossing_matrix[3][1]];
-
-    int top_comp = config_.top_crossing_components[crossing_index];
-    int bottom_comp = config_.bottom_crossing_components[crossing_index];
-
-    if (relation_type == 1) {
-      result *= MultivariablePolynomial(
-          qpochhammer_xq_q(param_i - param_m, param_j, 1), config_.components,
-          bottom_comp);
-    } else if (relation_type == 2) {
-      result *= MultivariablePolynomial(
-          inverse_qpochhammer_xq_q(param_j - param_k, param_j,
-                                   max_x_degrees[bottom_comp], -1),
-          config_.components, bottom_comp);
-    } else if (relation_type == 3) {
-      result *= MultivariablePolynomial(
+      // Pochhammer part
+      const MultivariablePolynomial poch(
           inverse_qpochhammer_xq_q(param_k - param_j, param_i,
                                    max_x_degrees[top_comp], -1),
           config_.components, top_comp);
+      result *= poch;
+      break;
+    }
+    case 4: {
+      // Binomial part
+      const bilvector<int> binomial =
+          (param_j > 0)
+              ? QBinomialPositive(param_j, param_j - param_k).invertExponents()
+              : QBinomialNegative(param_j, param_j - param_k).invertExponents();
+      result *= binomial;
 
-    } else if (relation_type == 4) {
-      result *= MultivariablePolynomial(
+      // Pochhammer part
+      const MultivariablePolynomial poch(
           qpochhammer_xq_q(param_j - param_k, param_j, -1), config_.components,
           bottom_comp);
+      result *= poch;
+      break;
+    }
     }
   }
+
   return result.truncate(max_x_degrees);
-}
-
-void FKComputationEngine::performCrossingComputations(
-    std::vector<bilvector<int>> &polynomial_terms,
-    const std::vector<int> &max_x_degrees, const std::vector<int> &block_sizes,
-    MultivariablePolynomial &poly) {
-
-  // First pass: binomial computations
-  for (int crossing_index = 0; crossing_index < config_.crossings;
-       crossing_index++) {
-    const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
-    int relation_type = config_.crossing_relation_types[crossing_index];
-    int param_i =
-        numerical_assignments_[crossing_matrix[0][0]][crossing_matrix[0][1]];
-    int param_j =
-        numerical_assignments_[crossing_matrix[1][0]][crossing_matrix[1][1]];
-    int param_k =
-        numerical_assignments_[crossing_matrix[2][0]][crossing_matrix[2][1]];
-    int param_m =
-        numerical_assignments_[crossing_matrix[3][0]][crossing_matrix[3][1]];
-
-    if (relation_type == 1) {
-      if (param_i > 0) {
-        computePositiveQBinomial(polynomial_terms, param_i, param_i - param_m,
-                                 false);
-        auto qbinom = QBinomialPositive(param_i, param_i - param_m);
-        poly *= QBinomialPositive(param_i, param_i - param_m);
-      } else {
-        computeNegativeQBinomial(polynomial_terms, param_i, param_i - param_m,
-                                 false);
-        auto qbinom = QBinomialNegative(param_i, param_i - param_m);
-        poly *= QBinomialNegative(param_i, param_i - param_m);
-      }
-    } else if (relation_type == 2) {
-      computeNegativeQBinomial(polynomial_terms, param_i, param_m, false);
-      auto qbinom = QBinomialNegative(param_i, param_m);
-      poly *= QBinomialNegative(param_i, param_m);
-    } else if (relation_type == 3) {
-      computeNegativeQBinomial(polynomial_terms, param_j, param_k, true);
-      auto qbinom = QBinomialNegative(param_j, param_k).invertExponents();
-      poly *= QBinomialNegative(param_j, param_k).invertExponents();
-    } else if (relation_type == 4) {
-      if (param_j > 0) {
-        computePositiveQBinomial(polynomial_terms, param_j, param_j - param_k,
-                                 true);
-        auto qbinom =
-            QBinomialPositive(param_j, param_j - param_k).invertExponents();
-        poly *= QBinomialPositive(param_j, param_j - param_k).invertExponents();
-      } else {
-        computeNegativeQBinomial(polynomial_terms, param_j, param_j - param_k,
-                                 true);
-        auto qbinom =
-            QBinomialNegative(param_j, param_j - param_k).invertExponents();
-        poly *= QBinomialNegative(param_j, param_j - param_k).invertExponents();
-      }
-    }
-  }
-
-  // Second pass: Pochhammer computations
-  for (int crossing_index = 0; crossing_index < config_.crossings;
-       crossing_index++) {
-    const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
-    int relation_type = config_.crossing_relation_types[crossing_index];
-
-    int param_i =
-        numerical_assignments_[crossing_matrix[0][0]][crossing_matrix[0][1]];
-    int param_j =
-        numerical_assignments_[crossing_matrix[1][0]][crossing_matrix[1][1]];
-    int param_k =
-        numerical_assignments_[crossing_matrix[2][0]][crossing_matrix[2][1]];
-    int param_m =
-        numerical_assignments_[crossing_matrix[3][0]][crossing_matrix[3][1]];
-
-    int top_comp = config_.top_crossing_components[crossing_index];
-    int bottom_comp = config_.bottom_crossing_components[crossing_index];
-
-    if (relation_type == 1) {
-      poly *= MultivariablePolynomial(
-          qpochhammer_xq_q(param_i - param_m, param_j, 1), config_.components,
-          bottom_comp);
-      computeXQPochhammer(polynomial_terms, param_k, param_j + 1, bottom_comp,
-                          config_.components, max_x_degrees, block_sizes);
-
-    } else if (relation_type == 2) {
-      poly *= MultivariablePolynomial(
-          inverse_qpochhammer_xq_q(param_j - param_k, param_j,
-                                   max_x_degrees[bottom_comp], -1),
-          config_.components, bottom_comp);
-      computeXQInversePochhammer(polynomial_terms, param_j, param_k + 1,
-                                 bottom_comp, config_.components, max_x_degrees,
-                                 block_sizes);
-
-    } else if (relation_type == 3) {
-      poly *= MultivariablePolynomial(
-          inverse_qpochhammer_xq_q(param_k - param_j, param_i,
-                                   max_x_degrees[top_comp], -1),
-          config_.components, top_comp);
-      computeXQInversePochhammer(polynomial_terms, param_i, param_m + 1,
-                                 top_comp, config_.components, max_x_degrees,
-                                 block_sizes);
-
-    } else if (relation_type == 4) {
-      poly *= MultivariablePolynomial(
-          qpochhammer_xq_q(param_j - param_k, param_j, -1), config_.components,
-          bottom_comp);
-      computeXQPochhammer(polynomial_terms, param_m, param_i + 1, top_comp,
-                          config_.components, max_x_degrees, block_sizes);
-    }
-  }
-}
-
-void FKComputationEngine::accumulateResult(
-    const std::vector<bilvector<int>> &polynomial_terms,
-    const std::vector<int> &x_power_accumulator, int q_power_accumulator,
-    const std::vector<int> &max_x_degrees,
-    const std::vector<int> &block_sizes) {
-  auto result_coeffs = result_.getCoefficients();
-  std::vector<int> x_power_accumulator_copy =
-      x_power_accumulator;                  // Make a mutable copy
-  int components_copy = config_.components; // Make a mutable copy
-  std::vector<bilvector<int>> polynomial_terms_copy =
-      polynomial_terms; // Make a mutable copy
-  //
-  performOffsetAddition(result_coeffs, polynomial_terms_copy,
-                        x_power_accumulator_copy, q_power_accumulator,
-                        components_copy, max_x_degrees, 1,
-                        accumulator_block_sizes_, block_sizes);
-
-  result_.syncFromDenseVector(result_coeffs);
 }
 
 void FKComputationEngine::performOffsetAdditionPoly(

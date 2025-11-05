@@ -14,17 +14,6 @@
 // given side just becomes the trivial identity matrix expressing the sign of
 // the variables in the other side
 
-std::vector<int>
-multiplyMatrixVector(std::vector<std::vector<int>> &inputMatrix,
-                     std::vector<int> &inputVector);
-
-// with transpose
-std::vector<int>
-multiplyMatrixVectorTranspose(std::vector<std::vector<int>> &inputMatrix,
-                              const std::vector<int> &inputVector);
-
-std::vector<double> mult(std::vector<std::vector<int>> &matrix,
-                         std::vector<double> &vector);
 
 int computeDotProduct(const std::vector<int> &a, const std::vector<int> &b);
 
@@ -42,14 +31,6 @@ void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
                        int rankOffset, int &zVariable, int signMultiplier,
                        std::vector<int> blockSizes);
 
-void offsetAdditionRecursive(std::vector<bilvector<int>> &targetArray,
-                             std::vector<bilvector<int>> &sourceArray,
-                             std::vector<int> &offsetVector,
-                             int bilvectorOffset, int &dimensions,
-                             std::vector<int> arrayLengths, int currentIndex,
-                             int accumulator, int accumulator2,
-                             int signMultiplier, std::vector<int> targetBlocks,
-                             std::vector<int> sourceBlocks);
 
 void performOffsetAddition(std::vector<bilvector<int>> &targetArray,
                            std::vector<bilvector<int>> sourceArray,

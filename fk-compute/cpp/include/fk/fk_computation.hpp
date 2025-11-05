@@ -76,7 +76,6 @@ public:
    * @return Computed polynomial result
    */
   MultivariablePolynomial computeForAngles(const std::vector<int> &angles);
-  MultivariablePolynomial computeForAngles_new(const std::vector<int> &angles);
 
   /**
    * Get the current accumulated result
@@ -101,18 +100,6 @@ private:
   MultivariablePolynomial
   crossingFactor(const std::vector<int> &max_x_degrees); 
 
-  void
-  performCrossingComputations(std::vector<bilvector<int>> &polynomial_terms,
-                              const std::vector<int> &max_x_degrees,
-                              const std::vector<int> &block_sizes,
-                              MultivariablePolynomial &poly);
-  void applyCrossingRelation(std::vector<bilvector<int>> &polynomial_terms,
-                             int crossing_index, int relation_type);
-  void accumulateResult(const std::vector<bilvector<int>> &polynomial_terms,
-                        const std::vector<int> &x_power_accumulator,
-                        int q_power_accumulator,
-                        const std::vector<int> &max_x_degrees,
-                        const std::vector<int> &block_sizes);
   void accumulateResultPoly(const MultivariablePolynomial &poly,
                             const std::vector<int> &x_power_accumulator,
                             int q_power_accumulator);
@@ -187,7 +174,6 @@ private:
   FKResultWriter writer_;
 
   void initializeEngine();
-  void runPooledComputation();
 
   // Pooling functionality - moved from solution_pool_1a_double_links.cpp
   struct EnumerationState {

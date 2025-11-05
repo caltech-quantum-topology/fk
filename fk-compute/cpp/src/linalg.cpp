@@ -1,46 +1,6 @@
 #include "fk/linalg.hpp"
 #include <iostream>
 
-std::vector<int>
-multiplyMatrixVector(std::vector<std::vector<int>> &inputMatrix,
-                     std::vector<int> &inputVector) {
-  std::vector<int> resultVector(inputVector.size());
-  for (int i = 0; i < inputVector.size(); i++) {
-    int accumulator = 0;
-    for (int j = 0; j < inputVector.size(); j++) {
-      accumulator += inputMatrix[i][j] * inputVector[j];
-    }
-    resultVector[i] = accumulator;
-  }
-  return resultVector;
-}
-
-std::vector<int>
-multiplyMatrixVectorTranspose(std::vector<std::vector<int>> &inputMatrix,
-                              const std::vector<int> &inputVector) {
-  std::vector<int> resultVector(inputVector.size());
-  for (int i = 0; i < inputVector.size(); i++) {
-    int accumulator = 0;
-    for (int j = 0; j < inputVector.size(); j++) {
-      accumulator += inputMatrix[1 + j][1 + i] * inputVector[j];
-    }
-    resultVector[i] = accumulator;
-  }
-  return resultVector;
-}
-
-std::vector<double> mult(std::vector<std::vector<int>> &matrix,
-                         std::vector<double> &vector) {
-  std::vector<double> out(vector.size());
-  for (int i = 0; i < vector.size(); i++) {
-    int acc = 0;
-    for (int j = 0; j < vector.size(); j++) {
-      acc += matrix[i][j] * vector[j];
-    }
-    out[i] = acc;
-  }
-  return out;
-}
 
 int computeDotProduct(const std::vector<int> &a, const std::vector<int> &b) {
   int accumulator = a[0];
