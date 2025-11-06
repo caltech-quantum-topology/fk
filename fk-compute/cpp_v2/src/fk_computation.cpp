@@ -520,6 +520,15 @@ void FKComputation::compute(const FKConfiguration &config,
     all_points.insert(all_points.end(), points.begin(), points.end());
   }
 
+  for (const auto& point : all_points) {
+      std::cout << "(";
+      for (auto it = point.begin(); it != point.end(); ++it) {
+          if (it != point.begin()) std::cout << ", ";
+          std::cout << *it;
+      }
+      std::cout << ")\n";
+  }
+
   // Run the function on all collected points
   for (const auto &point : all_points) {
     engine_->computeForAngles(point);

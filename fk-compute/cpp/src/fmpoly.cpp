@@ -7,7 +7,7 @@
 #include <stdexcept>
 
 FMPoly::FMPoly(int numVariables, int degree, const std::vector<int> &maxDegrees)
-    : numXVariables(numVariables), qOffset(0) {
+    : numXVariables(numVariables), qOffset(0), xGroundPowers(numVariables, 0) {
 
   if (maxDegrees.empty()) {
     maxXDegrees = std::vector<int>(numVariables, degree);
@@ -34,7 +34,7 @@ FMPoly::FMPoly(int numVariables, int degree, const std::vector<int> &maxDegrees)
 FMPoly::FMPoly(const FMPoly &source, int newNumVariables,
                int targetVariableIndex, int degree,
                const std::vector<int> &maxDegrees)
-    : numXVariables(newNumVariables), qOffset(source.qOffset) {
+    : numXVariables(newNumVariables), qOffset(source.qOffset), xGroundPowers(newNumVariables, 0) {
 
   if (newNumVariables < source.numXVariables) {
     throw std::invalid_argument(
@@ -80,7 +80,7 @@ FMPoly::FMPoly(const FMPoly &source, int newNumVariables,
 }
 
 FMPoly::FMPoly(const FMPoly &other)
-    : numXVariables(other.numXVariables), qOffset(other.qOffset),
+    : numXVariables(other.numXVariables), qOffset(other.qOffset), xGroundPowers(other.xGroundPowers),
       maxXDegrees(other.maxXDegrees), blockSizes(other.blockSizes) {
 
   setupContext();
@@ -96,6 +96,7 @@ FMPoly &FMPoly::operator=(const FMPoly &other) {
     // Copy data
     numXVariables = other.numXVariables;
     qOffset = other.qOffset;
+    xGroundPowers = other.xGroundPowers;
     maxXDegrees = other.maxXDegrees;
     blockSizes = other.blockSizes;
 
@@ -136,12 +137,9 @@ void FMPoly::convertExponents(int qPower, const std::vector<int> &xPowers,
   // Set q exponent (handle offset for negative powers)
   fmpz_set_si(&((*exps)[0]), qPower + qOffset);
 
-  // Set x variable exponents
+  // Set x variable exponents (apply ground powers offset)
   for (int i = 0; i < numXVariables; i++) {
-    if (xPowers[i] < 0) {
-      throw std::invalid_argument("Negative x exponents not yet supported");
-    }
-    fmpz_set_si(&((*exps)[i + 1]), xPowers[i]);
+    fmpz_set_si(&((*exps)[i + 1]), xPowers[i] - xGroundPowers[i]);
   }
 }
 
@@ -152,9 +150,9 @@ bool FMPoly::getExponentsFromMonomial(const fmpz *exps, int &qPower,
   // Extract q power (handle offset)
   qPower = fmpz_get_si(&exps[0]) - qOffset;
 
-  // Extract x powers
+  // Extract x powers (reverse ground powers offset)
   for (int i = 0; i < numXVariables; i++) {
-    xPowers[i] = fmpz_get_si(&exps[i + 1]);
+    xPowers[i] = fmpz_get_si(&exps[i + 1]) + xGroundPowers[i];
   }
 
   return true;
@@ -191,6 +189,73 @@ int FMPoly::getCoefficient(int qPower, const std::vector<int> &xPowers) const {
 
 void FMPoly::setCoefficient(int qPower, const std::vector<int> &xPowers,
                             int coefficient) {
+  if (xPowers.size() != static_cast<size_t>(numXVariables)) {
+    throw std::invalid_argument(
+        "X powers vector size must match number of variables");
+  }
+
+  // Check if we need to adjust ground powers for negative x powers
+  bool needToAdjustGroundPowers = false;
+  std::vector<int> newGroundPowers = xGroundPowers;
+
+  for (int i = 0; i < numXVariables; i++) {
+    if (xPowers[i] < xGroundPowers[i]) {
+      newGroundPowers[i] = xPowers[i];
+      needToAdjustGroundPowers = true;
+    }
+  }
+
+  // If we need to adjust ground powers, shift all existing terms
+  if (needToAdjustGroundPowers) {
+    // Create a new polynomial with adjusted exponents
+    fmpz_mpoly_t newPoly;
+    fmpz_mpoly_init(newPoly, ctx);
+
+    // Get number of terms in current polynomial
+    slong numTerms = fmpz_mpoly_length(poly, ctx);
+
+    // Copy all existing terms with adjusted x exponents
+    for (slong i = 0; i < numTerms; i++) {
+      // Get coefficient
+      fmpz_t termCoeff;
+      fmpz_init(termCoeff);
+      fmpz_mpoly_get_term_coeff_fmpz(termCoeff, poly, i, ctx);
+
+      // Get exponents
+      fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
+      fmpz **exp_ptrs =
+          (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+      for (int j = 0; j <= numXVariables; j++) {
+        fmpz_init(&exps[j]);
+        exp_ptrs[j] = &exps[j];
+      }
+
+      fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
+
+      // Adjust x exponents by the ground power differences
+      for (int j = 0; j < numXVariables; j++) {
+        int groundPowerDiff = xGroundPowers[j] - newGroundPowers[j];
+        fmpz_add_si(&exps[j + 1], &exps[j + 1], groundPowerDiff);
+      }
+
+      // Add term to new polynomial
+      fmpz_mpoly_set_coeff_fmpz_fmpz(newPoly, termCoeff, exp_ptrs, ctx);
+
+      // Cleanup
+      fmpz_clear(termCoeff);
+      for (int j = 0; j <= numXVariables; j++) {
+        fmpz_clear(&exps[j]);
+      }
+      flint_free(exp_ptrs);
+      flint_free(exps);
+    }
+
+    // Replace the old polynomial with the new one and update ground powers
+    fmpz_mpoly_swap(poly, newPoly, ctx);
+    fmpz_mpoly_clear(newPoly, ctx);
+    xGroundPowers = newGroundPowers;
+  }
+
   // Check if we need to adjust qOffset for negative q powers
   if (qPower + qOffset < 0) {
     // We need to increase the offset to make all exponents non-negative
@@ -388,6 +453,7 @@ FMPoly FMPoly::invertVariable(const int target_index) const {
 
   FMPoly result(numXVariables, 0);
   result.qOffset = qOffset;
+  result.xGroundPowers = xGroundPowers;
 
   // Get number of terms in the polynomial
   slong numTerms = fmpz_mpoly_length(poly, ctx);
@@ -442,6 +508,7 @@ FMPoly FMPoly::truncate(const std::vector<int> &maxXdegrees) const {
 
   FMPoly result(numXVariables, 0);
   result.qOffset = qOffset;
+  result.xGroundPowers = xGroundPowers;
 
   // Get number of terms in the polynomial
   slong numTerms = fmpz_mpoly_length(poly, ctx);
@@ -540,9 +607,102 @@ void FMPoly::print(int maxTerms) const {
     return;
   }
 
-  // For now, just print that it's a FLINT polynomial
-  std::cout << "[FLINT polynomial with " << fmpz_mpoly_length(poly, ctx)
-            << " terms]\n";
+  // Get number of terms in the polynomial
+  slong numTerms = fmpz_mpoly_length(poly, ctx);
+  if (numTerms == 0) {
+    std::cout << "0\n";
+    return;
+  }
+
+  // Limit the number of terms to display
+  slong termsToShow = (maxTerms > 0 && maxTerms < numTerms) ? maxTerms : numTerms;
+
+  bool first = true;
+
+  // Iterate through terms in the FLINT polynomial
+  for (slong i = 0; i < termsToShow; i++) {
+    // Get coefficient of this term
+    fmpz_t coeff;
+    fmpz_init(coeff);
+    fmpz_mpoly_get_term_coeff_fmpz(coeff, poly, i, ctx);
+
+    // Get exponent vector for this term
+    fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
+    fmpz **exp_ptrs = (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+    for (int j = 0; j <= numXVariables; j++) {
+      fmpz_init(&exps[j]);
+      exp_ptrs[j] = &exps[j];
+    }
+
+    fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
+
+    // Extract q-power and x-powers from exponent vector
+    int qPower;
+    std::vector<int> xPowers;
+    getExponentsFromMonomial(exps, qPower, xPowers);
+
+    // Get coefficient value
+    int coeffValue = fmpz_get_si(coeff);
+
+    if (coeffValue != 0) {
+      // Print sign
+      if (!first) {
+        std::cout << (coeffValue > 0 ? " + " : " - ");
+        coeffValue = std::abs(coeffValue);
+      } else if (coeffValue < 0) {
+        std::cout << "-";
+        coeffValue = -coeffValue;
+      }
+      first = false;
+
+      // Print coefficient if not 1 or if it's a constant term
+      bool isConstantTerm = (qPower == 0);
+      for (int j = 0; j < numXVariables; j++) {
+        if (xPowers[j] != 0) {
+          isConstantTerm = false;
+          break;
+        }
+      }
+
+      if (coeffValue != 1 || isConstantTerm) {
+        std::cout << coeffValue;
+      }
+
+      // Print q term
+      if (qPower != 0) {
+        if (coeffValue != 1 || isConstantTerm) std::cout << "*";
+        std::cout << "q";
+        if (qPower != 1) {
+          std::cout << "^" << qPower;
+        }
+      }
+
+      // Print x terms
+      for (int j = 0; j < numXVariables; j++) {
+        if (xPowers[j] != 0) {
+          if (coeffValue != 1 || isConstantTerm || qPower != 0) std::cout << "*";
+          std::cout << "x" << (j + 1);
+          if (xPowers[j] != 1) {
+            std::cout << "^" << xPowers[j];
+          }
+        }
+      }
+    }
+
+    // Cleanup
+    fmpz_clear(coeff);
+    for (int j = 0; j <= numXVariables; j++) {
+      fmpz_clear(&exps[j]);
+    }
+    flint_free(exp_ptrs);
+    flint_free(exps);
+  }
+
+  if (termsToShow < numTerms) {
+    std::cout << " + ... (" << (numTerms - termsToShow) << " more terms)";
+  }
+
+  std::cout << "\n";
 }
 
 std::vector<int> FMPoly::evaluate(const std::vector<int> &point) const {

@@ -20,6 +20,7 @@ class FMPoly {
 private:
     int numXVariables;                    // Number of x variables
     int qOffset;                          // Offset for handling negative q powers
+    std::vector<int> xGroundPowers;       // Ground powers for each x variable (minimum powers)
     fmpz_mpoly_ctx_t ctx;                 // FLINT context for multivariate polynomials
     fmpz_mpoly_t poly;                    // Main FLINT polynomial
 

@@ -24,7 +24,7 @@ int main() {
                   << poly.getCoefficient(-1, {0, 1}) << "\n";
         std::cout << "- Coefficient of q^3*x1^2*x2^0: "
                   << poly.getCoefficient(3, {2, 0}) << "\n\n";
-        std::cout << "- Coefficient of q^3*x1^2*x2^0: "
+        std::cout << "- Coefficient of q^3*x1^2*x2^-1: "
                   << poly.getCoefficient(3, {2, -1}) << "\n\n";
 
         // Add to existing coefficients
@@ -47,6 +47,8 @@ int main() {
                   << poly2.getCoefficient(1, {1, 1}) << "\n";
         std::cout << "- Coefficient of q^2*x1^0*x2^0: "
                   << poly2.getCoefficient(2, {0, 0}) << "\n\n";
+
+        poly2.print();
 
         // Test addition
         FMPoly sum = poly + poly2;
