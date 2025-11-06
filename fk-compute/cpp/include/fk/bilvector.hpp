@@ -90,6 +90,23 @@ public:
   int getComponentSize() { return componentSize; }
   int getComponentSize() const { return componentSize; }
 
+  // Check if bilvector is zero (all coefficients are default value)
+  bool isZero() const {
+    // Check all accessible negative indices
+    for (int i = maxNegativeIndex; i < 0; ++i) {
+      if ((*this)[i] != defaultValue) {
+        return false;
+      }
+    }
+    // Check all accessible positive indices
+    for (int i = 0; i <= maxPositiveIndex; ++i) {
+      if ((*this)[i] != defaultValue) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   // Const version of operator[]
   const T &operator[](int accessIndex) const {
     if (componentSize <= 0) {

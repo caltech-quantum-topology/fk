@@ -20,6 +20,7 @@ $(shell mkdir -p $(BUILD_DIR))
 SOURCES = $(SRC_DIR)/fk_segments_links.cpp \
           $(SRC_DIR)/multivariable_polynomial.cpp \
           $(SRC_DIR)/fmpoly.cpp \
+          $(SRC_DIR)/bmpoly.cpp \
           $(SRC_DIR)/qalg_links.cpp \
           $(SRC_DIR)/linalg.cpp \
           $(SRC_DIR)/string_to_int.cpp \
@@ -32,6 +33,7 @@ OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 # Header files for dependency tracking
 HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
           $(INCLUDE_DIR)/fk/fmpoly.hpp \
+          $(INCLUDE_DIR)/fk/bmpoly.hpp \
           $(INCLUDE_DIR)/fk/qalg_links.hpp \
           $(INCLUDE_DIR)/fk/linalg.hpp \
           $(INCLUDE_DIR)/fk/string_to_int.hpp \
@@ -63,7 +65,8 @@ FK_MAIN_TARGET = fk_main
 BILVECTOR_OPERATIONS = bilvector_operations
 NEW_QBINOM = new_qbinomials
 XQ_EXMPL = xq_poch_example
-RANDOM_FMPOLY_TARGET = random_fmpoly 
+RANDOM_FMPOLY_TARGET = random_fmpoly
+BMPOLY_TEST_TARGET = bmpoly_test 
 
 
 # Default target - now builds main.cpp
@@ -93,7 +96,7 @@ $(FMPOLY_COMPATIBILITY_TARGET): $(BUILD_DIR)/fmpoly_compatibility_test.o $(BUILD
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Performance comparison test executable
-$(PERFORMANCE_COMPARISON_TARGET): $(BUILD_DIR)/performance_comparison_test.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/multivariable_polynomial.o
+$(PERFORMANCE_COMPARISON_TARGET): $(BUILD_DIR)/performance_comparison_test.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/bmpoly.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Test getQPolynomial executable
@@ -207,6 +210,10 @@ $(XQ_EXMPL): $(TEST_DIR)/xq_poch_example.o $(BUILD_DIR)/multivariable_polynomial
 $(RANDOM_FMPOLY_TARGET): $(BUILD_DIR)/random_fmpoly.o $(BUILD_DIR)/fmpoly.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
+# BMPoly test
+$(BMPOLY_TEST_TARGET): $(BUILD_DIR)/bmpoly_test.o $(BUILD_DIR)/bmpoly.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
 # Rule for root directory files (like main.cpp)
 $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -215,6 +222,7 @@ $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 $(BUILD_DIR)/fk_segments_links.o: $(SRC_DIR)/fk_segments_links.cpp $(HEADERS)
 $(BUILD_DIR)/multivariable_polynomial.o: $(SRC_DIR)/multivariable_polynomial.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/fmpoly.o: $(SRC_DIR)/fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
+$(BUILD_DIR)/bmpoly.o: $(SRC_DIR)/bmpoly.cpp $(INCLUDE_DIR)/fk/bmpoly.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/qalg_links.o: $(SRC_DIR)/qalg_links.cpp $(INCLUDE_DIR)/fk/qalg_links.hpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/linalg.o: $(SRC_DIR)/linalg.cpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/solution_pool_1a_double_links.o: $(SRC_DIR)/solution_pool_1a_double_links.cpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp $(INCLUDE_DIR)/fk/btree.hpp
@@ -222,7 +230,7 @@ $(BUILD_DIR)/string_to_int.o: $(SRC_DIR)/string_to_int.cpp $(INCLUDE_DIR)/fk/str
 $(BUILD_DIR)/polynomial_example.o: $(EXAMPLE_DIR)/polynomial_example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 $(BUILD_DIR)/fmpoly_example.o: $(EXAMPLE_DIR)/fmpoly_example.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
 $(BUILD_DIR)/fmpoly_compatibility_test.o: $(TEST_DIR)/fmpoly_compatibility_test.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
-$(BUILD_DIR)/performance_comparison_test.o: $(TEST_DIR)/performance_comparison_test.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
+$(BUILD_DIR)/performance_comparison_test.o: $(TEST_DIR)/performance_comparison_test.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/bmpoly.hpp
 $(BUILD_DIR)/test_getQPolynomial.o: $(TEST_DIR)/test_getQPolynomial.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
 $(BUILD_DIR)/debug_fmpoly.o: $(TEST_DIR)/debug_fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
 $(BUILD_DIR)/arithmetic_test.o: $(TEST_DIR)/arithmetic_test.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
@@ -241,10 +249,11 @@ $(BUILD_DIR)/testing.o: $(TEST_DIR)/testing.cpp $(HEADERS)
 $(BUILD_DIR)/checkpoint_demo.o: checkpoint_demo.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/checkpoint_resume_demo.o: checkpoint_resume_demo.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/random_fmpoly.o: $(EXAMPLE_DIR)/random_fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
+$(BUILD_DIR)/bmpoly_test.o: $(TEST_DIR)/bmpoly_test.cpp $(INCLUDE_DIR)/fk/bmpoly.hpp
 
 # Utility targets
 clean:
-	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL) $(PERFORMANCE_COMPARISON_TARGET) $(FMPOLY_COMPATIBILITY_TARGET) $(FMPOLY_EXAMPLE_TARGET) $(POLYNOMIAL_EXAMPLE_TARGET) $(RANDOM_FMPOLY_TARGET)
+	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL) $(PERFORMANCE_COMPARISON_TARGET) $(FMPOLY_COMPATIBILITY_TARGET) $(FMPOLY_EXAMPLE_TARGET) $(POLYNOMIAL_EXAMPLE_TARGET) $(RANDOM_FMPOLY_TARGET) $(BMPOLY_TEST_TARGET)
 
 # Clean only object files
 clean-obj:
@@ -267,6 +276,9 @@ run-arithmetic: $(ARITHMETIC_TEST_TARGET)
 
 run-random-fmpoly: $(RANDOM_FMPOLY_TARGET)
 	./$(RANDOM_FMPOLY_TARGET)
+
+run-bmpoly-test: $(BMPOLY_TEST_TARGET)
+	./$(BMPOLY_TEST_TARGET)
 
 # Installation (optional)
 install: $(MAIN_TARGET)
@@ -315,6 +327,7 @@ help:
 	@echo "  run-example  - Build and run polynomial example"
 	@echo "  run-arithmetic - Build and run arithmetic test"
 	@echo "  run-test     - Build and run testing executable"
+	@echo "  run-bmpoly-test - Build and run BMPoly unit tests"
 	@echo "  check        - Check that all files compile"
 	@echo "  format       - Format code with clang-format (if available)"
 	@echo "  structure    - Show project directory structure"
@@ -322,4 +335,4 @@ help:
 	@echo "  help         - Show this help message"
 
 # Phony targets
-.PHONY: all main debug debug-example profile profile-example clean clean-obj run run-example run-test run-arithmetic install format check structure help bilvector_operations
+.PHONY: all main debug debug-example profile profile-example clean clean-obj run run-example run-test run-arithmetic run-bmpoly-test install format check structure help bilvector_operations

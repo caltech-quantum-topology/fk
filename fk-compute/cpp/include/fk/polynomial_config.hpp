@@ -5,24 +5,42 @@
  * Polynomial Configuration Header
  *
  * This header allows easy switching between different polynomial implementations.
- * Simply change the USE_FMPOLY macro to switch between:
- * - MultivariablePolynomial (sparse implementation with unordered_map)
- * - FMPoly (FLINT-based dense implementation for performance)
+ * Set the POLYNOMIAL_TYPE macro to choose between:
+ * - 0: MultivariablePolynomial (sparse implementation with unordered_map)
+ * - 1: FMPoly (FLINT-based dense implementation for performance)
+ * - 2: BMPoly (Basic vector-based implementation with negative exponent support)
  *
- * Both classes have identical public interfaces, making them interchangeable.
+ * All classes have identical public interfaces, making them interchangeable.
  */
 
-// Configuration: Set to 1 to use FMPoly, 0 to use MultivariablePolynomial
-#ifndef USE_FMPOLY
-#define USE_FMPOLY 1
+// Configuration: Set to 0, 1, or 2 to choose polynomial implementation
+#ifndef POLYNOMIAL_TYPE
+#define POLYNOMIAL_TYPE 1  // Default to FMPoly
 #endif
 
-#if USE_FMPOLY
-    #include "fk/fmpoly.hpp"
-    using PolynomialType = FMPoly;
-    #define POLYNOMIAL_CLASS_NAME "FMPoly"
-#else
+#if POLYNOMIAL_TYPE == 0
     #include "fk/multivariable_polynomial.hpp"
     using PolynomialType = MultivariablePolynomial;
     #define POLYNOMIAL_CLASS_NAME "MultivariablePolynomial"
+#elif POLYNOMIAL_TYPE == 1
+    #include "fk/fmpoly.hpp"
+    using PolynomialType = FMPoly;
+    #define POLYNOMIAL_CLASS_NAME "FMPoly"
+#elif POLYNOMIAL_TYPE == 2
+    #include "fk/bmpoly.hpp"
+    using PolynomialType = BMPoly;
+    #define POLYNOMIAL_CLASS_NAME "BMPoly"
+#else
+    #error "Invalid POLYNOMIAL_TYPE: must be 0 (MultivariablePolynomial), 1 (FMPoly), or 2 (BMPoly)"
+#endif
+
+// Backward compatibility: Support old USE_FMPOLY macro
+#ifdef USE_FMPOLY
+    #if USE_FMPOLY
+        #undef POLYNOMIAL_TYPE
+        #define POLYNOMIAL_TYPE 1
+    #else
+        #undef POLYNOMIAL_TYPE
+        #define POLYNOMIAL_TYPE 0
+    #endif
 #endif

@@ -1,5 +1,6 @@
 #include "fk/fmpoly.hpp"
 #include "fk/multivariable_polynomial.hpp"
+#include "fk/bmpoly.hpp"
 #include <chrono>
 #include <iostream>
 #include <vector>
@@ -44,6 +45,25 @@ void populateRandomPolynomial(FMPoly& poly, int numTerms, int maxQPower, int max
 }
 
 void populateRandomPolynomial(MultivariablePolynomial& poly, int numTerms, int maxQPower, int maxXPower, std::mt19937& gen) {
+    std::uniform_int_distribution<int> qDist(-maxQPower, maxQPower);
+    std::uniform_int_distribution<int> xDist(0, maxXPower);
+    std::uniform_int_distribution<int> coeffDist(1, 100);
+
+    int numVars = poly.getNumXVariables();
+
+    for (int i = 0; i < numTerms; ++i) {
+        int qPower = qDist(gen);
+        std::vector<int> xPowers(numVars);
+        for (int j = 0; j < numVars; ++j) {
+            xPowers[j] = xDist(gen);
+        }
+        int coeff = coeffDist(gen);
+
+        poly.setCoefficient(qPower, xPowers, coeff);
+    }
+}
+
+void populateRandomPolynomial(BMPoly& poly, int numTerms, int maxQPower, int maxXPower, std::mt19937& gen) {
     std::uniform_int_distribution<int> qDist(-maxQPower, maxQPower);
     std::uniform_int_distribution<int> xDist(0, maxXPower);
     std::uniform_int_distribution<int> coeffDist(1, 100);
@@ -133,6 +153,33 @@ void runPerformanceTest(const TestParams& params) {
         }
     }
 
+    // Test BMPoly
+    std::cout << "Testing BMPoly (vector-based):\n";
+    std::vector<double> bmpolyTimes;
+
+    // Reset generator for fair comparison
+    gen.seed(42);
+
+    for (int iter = 0; iter < params.numIterations; ++iter) {
+        // Create polynomials
+        BMPoly poly1(params.numVariables, params.maxXPower);
+        BMPoly poly2(params.numVariables, params.maxXPower);
+
+        // Populate with random data
+        populateRandomPolynomial(poly1, params.numTerms, params.maxQPower, params.maxXPower, gen);
+        populateRandomPolynomial(poly2, params.numTerms, params.maxQPower, params.maxXPower, gen);
+
+        // Time the multiplication
+        timer.start();
+        BMPoly result = poly1 * poly2;
+        double elapsed = timer.elapsed_ms();
+        bmpolyTimes.push_back(elapsed);
+
+        if (iter == 0) {
+            std::cout << "  Sample result - is zero: " << (result.isZero() ? "yes" : "no") << "\n";
+        }
+    }
+
     // Calculate statistics
     auto calcStats = [](const std::vector<double>& times) {
         double sum = 0, min_time = times[0], max_time = times[0];
@@ -153,6 +200,7 @@ void runPerformanceTest(const TestParams& params) {
 
     auto [fmpoly_avg, fmpoly_min, fmpoly_max, fmpoly_median] = calcStats(fmpolyTimes);
     auto [multipoly_avg, multipoly_min, multipoly_max, multipoly_median] = calcStats(multipolyTimes);
+    auto [bmpoly_avg, bmpoly_min, bmpoly_max, bmpoly_median] = calcStats(bmpolyTimes);
 
     // Print results
     std::cout << std::fixed << std::setprecision(3);
@@ -164,20 +212,47 @@ void runPerformanceTest(const TestParams& params) {
               << std::setw(12) << fmpoly_min << std::setw(12) << fmpoly_max << "\n";
     std::cout << std::setw(25) << "MultivariablePolynomial" << std::setw(12) << multipoly_avg << std::setw(12) << multipoly_median
               << std::setw(12) << multipoly_min << std::setw(12) << multipoly_max << "\n";
+    std::cout << std::setw(25) << "BMPoly (vector)" << std::setw(12) << bmpoly_avg << std::setw(12) << bmpoly_median
+              << std::setw(12) << bmpoly_min << std::setw(12) << bmpoly_max << "\n";
 
-    // Calculate speedup
-    double speedup = multipoly_avg / fmpoly_avg;
-    std::cout << "\nSpeedup (MultivariablePoly / FMPoly): " << std::setprecision(2) << speedup << "x\n";
+    // Calculate relative performance
+    std::cout << "\nRelative Performance:\n";
+    std::cout << std::setw(40) << "Comparison" << std::setw(15) << "Speedup" << "\n";
+    std::cout << std::string(55, '-') << "\n";
 
-    if (speedup > 1.0) {
-        std::cout << "✓ FMPoly is " << speedup << "x faster than MultivariablePolynomial\n";
-    } else {
-        std::cout << "⚠ MultivariablePolynomial is " << (1.0/speedup) << "x faster than FMPoly\n";
+    double multipoly_vs_fmpoly = multipoly_avg / fmpoly_avg;
+    double bmpoly_vs_fmpoly = bmpoly_avg / fmpoly_avg;
+    double multipoly_vs_bmpoly = multipoly_avg / bmpoly_avg;
+
+    std::cout << std::setw(40) << "MultivariablePoly / FMPoly:" << std::setw(15) << std::setprecision(2) << multipoly_vs_fmpoly << "x\n";
+    std::cout << std::setw(40) << "BMPoly / FMPoly:" << std::setw(15) << bmpoly_vs_fmpoly << "x\n";
+    std::cout << std::setw(40) << "MultivariablePoly / BMPoly:" << std::setw(15) << multipoly_vs_bmpoly << "x\n";
+
+    // Find the fastest implementation
+    std::vector<std::pair<std::string, double>> implementations = {
+        {"FMPoly", fmpoly_avg},
+        {"MultivariablePolynomial", multipoly_avg},
+        {"BMPoly", bmpoly_avg}
+    };
+
+    std::sort(implementations.begin(), implementations.end(),
+              [](const auto& a, const auto& b) { return a.second < b.second; });
+
+    std::cout << "\nRanking (fastest to slowest):\n";
+    for (size_t i = 0; i < implementations.size(); ++i) {
+        double relative_speed = implementations[0].second / implementations[i].second;
+        std::cout << "  " << (i+1) << ". " << implementations[i].first;
+        if (i > 0) {
+            std::cout << " (" << std::setprecision(2) << relative_speed << "x slower)";
+        } else {
+            std::cout << " (fastest)";
+        }
+        std::cout << "\n";
     }
 }
 
 int main() {
-    std::cout << "=== Performance Comparison: FMPoly vs MultivariablePolynomial ===\n";
+    std::cout << "=== Performance Comparison: FMPoly vs MultivariablePolynomial vs BMPoly ===\n";
     std::cout << "Testing multiplication performance with various polynomial sizes\n";
 
     // Define test cases
@@ -197,8 +272,10 @@ int main() {
 
         std::cout << "\n=== Summary ===\n";
         std::cout << "Performance comparison completed successfully!\n";
-        std::cout << "Results show relative performance of FLINT-based FMPoly\n";
-        std::cout << "versus hash-based MultivariablePolynomial for multiplication.\n";
+        std::cout << "Results show relative performance of three polynomial implementations:\n";
+        std::cout << "  - FMPoly (FLINT-based)\n";
+        std::cout << "  - MultivariablePolynomial (sparse hash-based)\n";
+        std::cout << "  - BMPoly (dense vector-based)\n";
 
     } catch (const std::exception& e) {
         std::cerr << "Error during performance testing: " << e.what() << std::endl;
