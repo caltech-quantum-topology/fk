@@ -61,9 +61,8 @@ PARSER_TEST_TARGET = parser_comparison_test
 TEST_TARGET = testing
 FK_MAIN_TARGET = fk_main
 BILVECTOR_OPERATIONS = bilvector_operations
-NEW_QBINOM = new_qbinomials
-XQ_EXMPL = xq_poch_example
-RANDOM_FMPOLY_TARGET = random_fmpoly 
+NEW_QBINOM = new_qbinomials 
+XQ_EXMPL = xq_poch_example 
 
 
 # Default target - now builds main.cpp
@@ -199,13 +198,9 @@ $(BILVECTOR_OPERATIONS): $(BUILD_DIR)/bilvector_operations.o $(BUILD_DIR)/multiv
 $(NEW_QBINOM): $(TEST_DIR)/new_qbinomials.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 	
-# XQ poch
+# XQ poch 
 $(XQ_EXMPL): $(TEST_DIR)/xq_poch_example.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
-
-# Random FMPoly example
-$(RANDOM_FMPOLY_TARGET): $(BUILD_DIR)/random_fmpoly.o $(BUILD_DIR)/fmpoly.o
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Rule for root directory files (like main.cpp)
 $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
@@ -240,11 +235,10 @@ $(BUILD_DIR)/main.o: main.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/testing.o: $(TEST_DIR)/testing.cpp $(HEADERS)
 $(BUILD_DIR)/checkpoint_demo.o: checkpoint_demo.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/checkpoint_resume_demo.o: checkpoint_resume_demo.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
-$(BUILD_DIR)/random_fmpoly.o: $(EXAMPLE_DIR)/random_fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
 
 # Utility targets
 clean:
-	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL) $(PERFORMANCE_COMPARISON_TARGET) $(FMPOLY_COMPATIBILITY_TARGET) $(FMPOLY_EXAMPLE_TARGET) $(POLYNOMIAL_EXAMPLE_TARGET) $(RANDOM_FMPOLY_TARGET)
+	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL) $(PERFORMANCE_COMPARISON_TARGET) $(FMPOLY_COMPATIBILITY_TARGET) $(FMPOLY_EXAMPLE_TARGET) $(POLYNOMIAL_EXAMPLE_TARGET)
 
 # Clean only object files
 clean-obj:
@@ -264,9 +258,6 @@ run-test: $(TEST_TARGET)
 
 run-arithmetic: $(ARITHMETIC_TEST_TARGET)
 	./$(ARITHMETIC_TEST_TARGET)
-
-run-random-fmpoly: $(RANDOM_FMPOLY_TARGET)
-	./$(RANDOM_FMPOLY_TARGET)
 
 # Installation (optional)
 install: $(MAIN_TARGET)
