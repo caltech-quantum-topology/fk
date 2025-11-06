@@ -2,14 +2,7 @@
 
 #include <string>
 #include <vector>
-#include <unordered_map>
 #include <flint/fmpz_mpoly.h>
-#include "fk/bilvector.hpp"
-
-// Forward declaration for VectorHash (defined in multivariable_polynomial.hpp)
-struct VectorHash {
-    std::size_t operator()(const std::vector<int> &v) const;
-};
 
 /**
  * FMPoly: A FLINT-based multivariate polynomial class
@@ -182,24 +175,6 @@ public:
     friend FMPoly operator+(const FMPoly &lhs, const FMPoly &rhs);
     friend FMPoly operator-(const FMPoly &lhs, const FMPoly &rhs);
     friend FMPoly operator*(const FMPoly &lhs, const FMPoly &rhs);
-
-    /**
-     * Backward compatibility: Convert representation to dense vector
-     * This is needed for existing code that expects vector<bilvector<int>>
-     */
-    std::vector<bilvector<int>> getCoefficients() const;
-
-    /**
-     * Get read-only access to coefficient map (for compatibility)
-     * Note: This creates a temporary map representation
-     */
-    std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> getCoefficientMap() const;
-
-    /**
-     * Sync dense vector back to sparse representation (compatibility method)
-     * This method is a no-op for FMPoly since it doesn't use dense vectors internally
-     */
-    void syncFromDenseVector(const std::vector<bilvector<int>> &denseVector);
 
     /**
      * Get access to the underlying FLINT polynomial (for advanced operations)

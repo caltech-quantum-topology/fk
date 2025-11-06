@@ -15,6 +15,7 @@ int main() {
         poly.setCoefficient(2, {1, 2}, 5);  // 5*q^2*x1^1*x2^2
         poly.setCoefficient(-1, {0, 1}, 3); // 3*q^(-1)*x1^0*x2^1
         poly.setCoefficient(3, {2, 0}, 7);  // 7*q^3*x1^2*x2^0
+        poly.setCoefficient(3, {2, -1}, 8);  // 8*q^3*x1^2*x2^-1
 
         std::cout << "Set coefficients:\n";
         std::cout << "- Coefficient of q^2*x1^1*x2^2: "
@@ -23,6 +24,8 @@ int main() {
                   << poly.getCoefficient(-1, {0, 1}) << "\n";
         std::cout << "- Coefficient of q^3*x1^2*x2^0: "
                   << poly.getCoefficient(3, {2, 0}) << "\n\n";
+        std::cout << "- Coefficient of q^3*x1^2*x2^0: "
+                  << poly.getCoefficient(3, {2, -1}) << "\n\n";
 
         // Add to existing coefficients
         poly.addToCoefficient(2, {1, 2}, 2); // Now coefficient should be 7

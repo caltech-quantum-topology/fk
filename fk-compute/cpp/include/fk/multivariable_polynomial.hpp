@@ -99,7 +99,7 @@ public:
 
 
   /**
-   * Get read-only access to coefficient map (replaces getCoefficients)
+   * Invert variable at target_index
    */
   MultivariablePolynomial invertVariable(const int target_index);
 

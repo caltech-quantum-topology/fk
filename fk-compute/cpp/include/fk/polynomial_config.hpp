@@ -14,7 +14,7 @@
 
 // Configuration: Set to 1 to use FMPoly, 0 to use MultivariablePolynomial
 #ifndef USE_FMPOLY
-#define USE_FMPOLY 0
+#define USE_FMPOLY 1
 #endif
 
 #if USE_FMPOLY
