@@ -1,0 +1,12 @@
+{
+	"terms":[
+		{"x": [1], "q": 1, "c": 2},
+		{"x": [0], "q": -1, "c": -3},
+		{"x": [0], "q": 0, "c": 1}
+	],
+	"metadata": {
+		"num_x_variables": 1,
+		"max_x_degrees": [5],
+		"storage_type": "sparse"
+	}
+}

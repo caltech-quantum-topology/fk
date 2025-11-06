@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fk/multivariable_polynomial.hpp"
+#include "fk/polynomial_config.hpp"
 #include <vector>
 #include <set>
 
@@ -32,7 +32,7 @@ struct IntegerPoint {
  * where the polynomial coefficients are stored with q^0 power (constant term).
  */
 std::set<IntegerPoint> findIntegerSolutions(
-    const std::vector<MultivariablePolynomial>& inequalities,
+    const std::vector<PolynomialType>& inequalities,
     const std::vector<std::pair<int, int>>& bounds
 );
 
@@ -43,7 +43,7 @@ std::set<IntegerPoint> findIntegerSolutions(
  * @param point The point at which to evaluate
  * @return The value of the polynomial at the point
  */
-int evaluateLinearPolynomial(const MultivariablePolynomial& poly, const std::vector<int>& point);
+int evaluateLinearPolynomial(const PolynomialType& poly, const std::vector<int>& point);
 
 /**
  * Check if a point satisfies all inequalities
@@ -53,4 +53,4 @@ int evaluateLinearPolynomial(const MultivariablePolynomial& poly, const std::vec
  * @return true if point satisfies all inequalities, false otherwise
  */
 bool satisfiesAllInequalities(const std::vector<int>& point,
-                            const std::vector<MultivariablePolynomial>& inequalities);
+                            const std::vector<PolynomialType>& inequalities);

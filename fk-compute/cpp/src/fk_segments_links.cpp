@@ -14,7 +14,7 @@
 
 #include "fk/bilvector.hpp"
 #include "fk/linalg.hpp"
-#include "fk/multivariable_polynomial.hpp"
+#include "fk/polynomial_config.hpp"
 #include "fk/qalg_links.hpp"
 #include "fk/string_to_int.hpp"
 
@@ -491,7 +491,7 @@ private:
   std::vector<bool> trivial_angles_;
   std::vector<int> nontrivial_map;
   std::vector<int> inversion_data;
-  MultivariablePolynomial result{
+  PolynomialType result{
       1, 1}; // Initialize with dummy values, will be reassigned
   std::vector<std::vector<std::vector<int>>> variableAssignments;
   std::vector<std::vector<int>> numericalAssignments;
@@ -752,7 +752,7 @@ public:
       writhe = parseStringToInteger(line.substr(0, index));
 
       // Initialize the polynomial after we know the degree and components
-      result = MultivariablePolynomial(components, degree);
+      result = PolynomialType(components, degree);
 
       std::getline(infile, line, '\n');
       int height = 0;

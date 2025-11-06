@@ -3,7 +3,7 @@
 #include <functional>
 #include <vector>
 
-#include "fk/multivariable_polynomial.hpp"
+#include "fk/polynomial_config.hpp"
 #include "fk/bilvector.hpp"
 
 // Forward declarations
@@ -43,5 +43,5 @@ void computeXQInversePochhammer(std::vector<bilvector<int>> &polynomialTerms,
 bilvector<int> QBinomialPositive(int upperLimit, int lowerLimit);
 bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit);
 
-MultivariablePolynomial qpochhammer_xq_q(int n, int qpow, int lsign);
-MultivariablePolynomial inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign);
+PolynomialType qpochhammer_xq_q(int n, int qpow, int lsign);
+PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign);

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <functional>
 
-int evaluateLinearPolynomial(const MultivariablePolynomial& poly, const std::vector<int>& point) {
+int evaluateLinearPolynomial(const PolynomialType& poly, const std::vector<int>& point) {
     int result = 0;
     const auto& coeffMap = poly.getCoefficientMap();
 
@@ -35,7 +35,7 @@ int evaluateLinearPolynomial(const MultivariablePolynomial& poly, const std::vec
 }
 
 bool satisfiesAllInequalities(const std::vector<int>& point,
-                            const std::vector<MultivariablePolynomial>& inequalities) {
+                            const std::vector<PolynomialType>& inequalities) {
     for (const auto& inequality : inequalities) {
         int value = evaluateLinearPolynomial(inequality, point);
         if (value < 0) {
@@ -46,7 +46,7 @@ bool satisfiesAllInequalities(const std::vector<int>& point,
 }
 
 std::set<IntegerPoint> findIntegerSolutions(
-    const std::vector<MultivariablePolynomial>& inequalities,
+    const std::vector<PolynomialType>& inequalities,
     const std::vector<std::pair<int, int>>& bounds) {
 
     std::set<IntegerPoint> solutions;

@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "bilvector.hpp"
-#include "multivariable_polynomial.hpp"
+#include "polynomial_config.hpp"
 
 class FK {
 private:
@@ -23,7 +23,7 @@ private:
   std::vector<bool> trivial_angles_;
   std::vector<int> nontrivial_map;
   std::vector<int> inversion_data;
-  MultivariablePolynomial result{
+  PolynomialType result{
       1, 1}; // Initialize with dummy values, will be reassigned
   std::vector<std::vector<std::vector<int>>> variableAssignments;
   std::vector<std::vector<int>> numericalAssignments;

@@ -227,7 +227,7 @@ void FKComputationEngine::initializeAccumulatorBlockSizes() {
   }
 }
 
-MultivariablePolynomial
+PolynomialType
 FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   numerical_assignments_ = computeNumericalAssignments(angles);
 
@@ -303,7 +303,7 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     }
   }
 
-  MultivariablePolynomial poly(config_.components, 0, max_x_degrees);
+  PolynomialType poly(config_.components, 0, max_x_degrees);
   poly.setCoefficient(0, std::vector<int>(config_.components, 0),
                       initial_coefficient);
 
@@ -331,9 +331,9 @@ std::vector<std::vector<int>> FKComputationEngine::computeNumericalAssignments(
   return assignments;
 }
 
-MultivariablePolynomial
+PolynomialType
 FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
-  MultivariablePolynomial result(config_.components, 0);
+  PolynomialType result(config_.components, 0);
   result.setCoefficient(0, std::vector<int>(config_.components, 0), 1);
 
   // Single pass: process each crossing once with both binomial and Pochhammer
@@ -365,7 +365,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       result *= binomial;
 
       // Pochhammer part
-      const MultivariablePolynomial poch(
+      const PolynomialType poch(
           qpochhammer_xq_q(param_i - param_m, param_j, 1), config_.components,
           bottom_comp);
       result *= poch;
@@ -376,7 +376,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       result *= QBinomialNegative(param_i, param_m);
 
       // Pochhammer part
-      const MultivariablePolynomial poch(
+      const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_j - param_k, param_j,
                                    max_x_degrees[bottom_comp], -1),
           config_.components, bottom_comp);
@@ -388,7 +388,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       result *= QBinomialNegative(param_j, param_k).invertExponents();
 
       // Pochhammer part
-      const MultivariablePolynomial poch(
+      const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_k - param_j, param_i,
                                    max_x_degrees[top_comp], -1),
           config_.components, top_comp);
@@ -404,7 +404,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       result *= binomial;
 
       // Pochhammer part
-      const MultivariablePolynomial poch(
+      const PolynomialType poch(
           qpochhammer_xq_q(param_j - param_k, param_j, -1), config_.components,
           bottom_comp);
       result *= poch;
@@ -417,7 +417,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
 }
 
 void FKComputationEngine::performOffsetAdditionPoly(
-    const MultivariablePolynomial &source_poly,
+    const PolynomialType &source_poly,
     const std::vector<int> &x_offset, int q_offset, int sign_multiplier) {
 
   // Iterate through all coefficients in the source polynomial
@@ -445,26 +445,26 @@ void FKComputationEngine::performOffsetAdditionPoly(
 }
 
 void FKComputationEngine::accumulateResultPoly(
-    const MultivariablePolynomial &poly,
+    const PolynomialType &poly,
     const std::vector<int> &x_power_accumulator, int q_power_accumulator) {
 
   performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator, 1);
 }
 
 void FKComputationEngine::reset() {
-  result_ = MultivariablePolynomial(config_.components, config_.degree);
+  result_ = PolynomialType(config_.components, config_.degree);
   for (auto &row : numerical_assignments_) {
     std::fill(row.begin(), row.end(), 0);
   }
 }
 
 // FKResultWriter implementation
-void FKResultWriter::writeToJson(const MultivariablePolynomial &result,
+void FKResultWriter::writeToJson(const PolynomialType &result,
                                  const std::string &filename) {
   result.exportToJson(filename);
 }
 
-void FKResultWriter::writeToText(const MultivariablePolynomial &result,
+void FKResultWriter::writeToText(const PolynomialType &result,
                                  const std::string &filename) {
   std::ofstream outfile(filename + ".txt");
   if (!outfile.is_open()) {
@@ -546,13 +546,13 @@ void FKComputation::compute(const FKConfiguration &config,
                         components_copy, maxima, -1, accumulator_block_sizes,
                         accumulator_block_sizes);
 
-  const_cast<MultivariablePolynomial &>(engine_->getResult())
+  const_cast<PolynomialType &>(engine_->getResult())
       .syncFromDenseVector(result_coeffs1);
 
   writer_.writeToJson(engine_->getResult(), output_filename);
 }
 
-const MultivariablePolynomial &FKComputation::getLastResult() const {
+const PolynomialType &FKComputation::getLastResult() const {
   if (!engine_) {
     throw std::runtime_error("No computation has been performed yet");
   }

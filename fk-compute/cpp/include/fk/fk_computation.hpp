@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fk/multivariable_polynomial.hpp"
+#include "fk/polynomial_config.hpp"
 #include <array>
 #include <functional>
 #include <list>
@@ -75,12 +75,12 @@ public:
    * @param angles Input angle vector
    * @return Computed polynomial result
    */
-  MultivariablePolynomial computeForAngles(const std::vector<int> &angles);
+  PolynomialType computeForAngles(const std::vector<int> &angles);
 
   /**
    * Get the current accumulated result
    */
-  const MultivariablePolynomial &getResult() const { return result_; }
+  const PolynomialType &getResult() const { return result_; }
 
   /**
    * Reset computation state
@@ -89,7 +89,7 @@ public:
 
 private:
   const FKConfiguration &config_;
-  MultivariablePolynomial result_;
+  PolynomialType result_;
   std::vector<int> accumulator_block_sizes_;
   std::vector<std::vector<int>> numerical_assignments_;
 
@@ -97,13 +97,13 @@ private:
   std::vector<std::vector<int>>
   computeNumericalAssignments(const std::vector<int> &angles);
 
-  MultivariablePolynomial
+  PolynomialType
   crossingFactor(const std::vector<int> &max_x_degrees); 
 
-  void accumulateResultPoly(const MultivariablePolynomial &poly,
+  void accumulateResultPoly(const PolynomialType &poly,
                             const std::vector<int> &x_power_accumulator,
                             int q_power_accumulator);
-  void performOffsetAdditionPoly(const MultivariablePolynomial &source_poly,
+  void performOffsetAdditionPoly(const PolynomialType &source_poly,
                                  const std::vector<int> &x_offset, int q_offset,
                                  int sign_multiplier);
 };
@@ -121,7 +121,7 @@ public:
    * @param result Polynomial to write
    * @param filename Output filename
    */
-  void writeToJson(const MultivariablePolynomial &result,
+  void writeToJson(const PolynomialType &result,
                    const std::string &filename);
 
   /**
@@ -129,7 +129,7 @@ public:
    * @param result Polynomial to write
    * @param filename Output filename
    */
-  void writeToText(const MultivariablePolynomial &result,
+  void writeToText(const PolynomialType &result,
                    const std::string &filename);
 };
 
@@ -160,7 +160,7 @@ public:
   /**
    * Get the last computed result
    */
-  const MultivariablePolynomial &getLastResult() const;
+  const PolynomialType &getLastResult() const;
 
   /**
    * Get the configuration used in the last computation

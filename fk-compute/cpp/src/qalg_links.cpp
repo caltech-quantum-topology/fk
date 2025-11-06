@@ -1,6 +1,5 @@
 #include "fk/qalg_links.hpp"
 #include "fk/linalg.hpp"
-#include "fk/multivariable_polynomial.hpp"
 #include <map>
 
 void computePositiveQBinomialHelper(std::vector<int> &binomialCoefficients,
@@ -331,7 +330,7 @@ bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
 // Compute (x q; q)_n as a MultivariablePolynomial in one x-variable
 // P(q, x) = ∏_{k=1}^n (1 - x q^{qpow + lsign*k})
 // Optimized using direct coefficient computation
-MultivariablePolynomial qpochhammer_xq_q(int n, int qpow, int lsign) {
+PolynomialType qpochhammer_xq_q(int n, int qpow, int lsign) {
     const int numXVars = 1;
     const int maxXDegree = n;
 
@@ -362,7 +361,7 @@ MultivariablePolynomial qpochhammer_xq_q(int n, int qpow, int lsign) {
     }
 
     // Build result polynomial
-    MultivariablePolynomial result(numXVars, maxXDegree);
+    PolynomialType result(numXVars, maxXDegree);
     for (const auto &[x_deg, q_map] : coeffs) {
         if (x_deg <= maxXDegree) {
             for (const auto &[q_pow, coeff] : q_map) {
@@ -379,7 +378,7 @@ MultivariablePolynomial qpochhammer_xq_q(int n, int qpow, int lsign) {
 // Compute 1/(x q^qpow; q)_n as a MultivariablePolynomial in one x-variable
 // P(q, x) = ∏_{l=0}^{n-1} ∑_{m=0}^{xMax+1} x^m q^{(lsign*l+qpow)*m}
 // Optimized using direct coefficient computation
-MultivariablePolynomial inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign) {
+PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign) {
   const int numXVars = 1;
   const int maxTerms = std::min(n, xMax) + 1;
 
@@ -409,7 +408,7 @@ MultivariablePolynomial inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int 
   }
 
   // Build result polynomial
-  MultivariablePolynomial result(numXVars, 0);
+  PolynomialType result(numXVars, 0);
   for (const auto &[x_deg, q_map] : coeffs) {
     if (x_deg <= xMax) {
       for (const auto &[q_pow, coeff] : q_map) {
