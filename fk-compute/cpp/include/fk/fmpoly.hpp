@@ -236,10 +236,31 @@ public:
     std::vector<int> getQPolynomial(const std::vector<int> &xPowers) const;
 
     /**
+     * Get a q-polynomial as QPolynomial object for a specific x-multi-index
+     * Returns a QPolynomial object with proper handling of negative powers
+     */
+    QPolynomial getQPolynomialObject(const std::vector<int> &xPowers) const;
+
+    /**
      * Set q-polynomial for a specific x-multi-index
      */
     void setQPolynomial(const std::vector<int> &xPowers,
                        const std::vector<int> &qCoeffs, int minQPower = 0);
+
+    /**
+     * Set q-polynomial for a specific x-multi-index using QPolynomial object
+     */
+    void setQPolynomial(const std::vector<int> &xPowers, const QPolynomial &qPoly);
+
+    /**
+     * Add a QPolynomial to existing q-polynomial for a specific x-multi-index
+     */
+    void addQPolynomial(const std::vector<int> &xPowers, const QPolynomial &qPoly);
+
+    /**
+     * Multiply existing q-polynomial by a QPolynomial for a specific x-multi-index
+     */
+    void multiplyQPolynomial(const std::vector<int> &xPowers, const QPolynomial &qPoly);
 
     /**
      * Invert a specific variable
