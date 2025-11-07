@@ -1,10 +1,11 @@
 # Makefile for FK Computation Project
 # Compiler and flags
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude $(shell pkg-config --cflags flint)
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -fopenmp -Iinclude $(shell pkg-config --cflags flint)
 DEBUG_FLAGS = -g -DDEBUG
 PROFILE_FLAGS = -g -pg -fno-omit-frame-pointer -O2 -DNDEBUG
 FLINT_LIBS = $(shell pkg-config --libs flint)
+OPENMP_LIBS = -fopenmp
 
 # Directories
 SRC_DIR = src
@@ -85,7 +86,7 @@ main: $(FK_MAIN_TARGET)
 
 # Main FK computation executable
 $(MAIN_TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS) $(OPENMP_LIBS)
 
 # Polynomial example executable
 $(POLYNOMIAL_EXAMPLE_TARGET): $(BUILD_DIR)/polynomial_example.o $(BUILD_DIR)/multivariable_polynomial.o
@@ -125,39 +126,39 @@ $(INEQUALITY_EXAMPLE_TARGET): $(BUILD_DIR)/inequality_example.o $(BUILD_DIR)/mul
 
 # FK computation refactored executable
 $(FK_COMPUTATION_TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS) $(OPENMP_LIBS)
 
 # FK computation test executable
 $(FK_TEST_TARGET): $(BUILD_DIR)/fk_computation_test.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(OPENMP_LIBS)
 
 # Trefoil FK example executable
 $(TREFOIL_EXAMPLE_TARGET): $(BUILD_DIR)/trefoil_fk_example.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(OPENMP_LIBS)
 
 # Trefoil simple example executable
 $(TREFOIL_SIMPLE_TARGET): $(BUILD_DIR)/trefoil_simple_example.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(OPENMP_LIBS)
 
 # Trefoil demo executable
 $(TREFOIL_DEMO_TARGET): $(BUILD_DIR)/trefoil_demo.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(OPENMP_LIBS)
 
 # Trefoil complete example executable
 $(TREFOIL_COMPLETE_TARGET): $(BUILD_DIR)/trefoil_complete_example.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(OPENMP_LIBS)
 
 # FK Main executable (refactored API)
 $(FK_MAIN_TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o $(BUILD_DIR)/bmpoly.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS) -pthread
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS) $(OPENMP_LIBS)
 
 # Parser comparison test executable
 $(PARSER_TEST_TARGET): $(BUILD_DIR)/parser_comparison_test.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(OPENMP_LIBS)
 
 # Testing executable
 $(TEST_TARGET): $(BUILD_DIR)/testing.o $(filter-out $(BUILD_DIR)/fk_segments_links.o,$(OBJECTS))
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS) $(OPENMP_LIBS)
 
 
 # Debug versions

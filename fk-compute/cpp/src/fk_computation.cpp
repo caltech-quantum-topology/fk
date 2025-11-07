@@ -14,11 +14,11 @@
 #include <sstream>
 #include <stack>
 #include <stdexcept>
-#include <thread>
 #include <vector>
-#include <mutex>
-#include <deque>
-#include <atomic>
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 void printTerms(const std::vector<Term> &terms) {
   std::cout << "=== Terms (" << terms.size() << ") ===\n";
@@ -1005,82 +1005,35 @@ void FKComputation::setupWorkStealingComputation(const std::vector<std::vector<i
   int total_points = all_points.size();
   int num_engines = engines_.size();
 
-  std::cout << "Processing " << total_points << " points with " << num_engines << " engines using work stealing" << std::endl;
+#ifdef _OPENMP
+  omp_set_num_threads(num_engines);
+  std::cout << "Processing " << total_points << " points with " << num_engines << " threads using OpenMP" << std::endl;
+#else
+  std::cout << "Processing " << total_points << " points sequentially (OpenMP not available)" << std::endl;
+#endif
 
-  // Work stealing data structures
-  std::vector<std::deque<int>> work_queues(num_engines);
-  std::vector<std::mutex> queue_mutexes(num_engines);
-  std::atomic<int> completed_points{0};
-  std::atomic<int> active_threads{num_engines};
-
-  // Initial work distribution - distribute points across queues
+  // Use OpenMP parallel for to distribute work across threads
+#pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < total_points; ++i) {
-    work_queues[i % num_engines].push_back(i);
+#ifdef _OPENMP
+    int thread_id = omp_get_thread_num();
+    engines_[thread_id]->computeForAngles(all_points[i]);
+
+    // Print progress occasionally from thread 0 only to avoid race conditions
+    if (thread_id == 0 && i % 100 == 0) {
+      std::cout << "Processing point " << i << "/" << total_points << std::endl;
+    }
+#else
+    engines_[0]->computeForAngles(all_points[i]);
+
+    // Print progress for sequential execution
+    if (i % 100 == 0) {
+      std::cout << "Processing point " << i << "/" << total_points << std::endl;
+    }
+#endif
   }
 
-  // Create worker threads with work stealing
-  std::vector<std::thread> threads;
-  threads.reserve(num_engines);
-
-  for (int engine_idx = 0; engine_idx < num_engines; ++engine_idx) {
-    threads.emplace_back([this, engine_idx, &work_queues, &queue_mutexes, &all_points, &completed_points, &active_threads, num_engines, total_points]() {
-      int local_completed = 0;
-
-      while (completed_points.load() < total_points) {
-        int point_idx = -1;
-
-        // Try to get work from own queue first
-        {
-          std::lock_guard<std::mutex> lock(queue_mutexes[engine_idx]);
-          if (!work_queues[engine_idx].empty()) {
-            point_idx = work_queues[engine_idx].front();
-            work_queues[engine_idx].pop_front();
-          }
-        }
-
-        // If own queue is empty, try to steal from other queues
-        if (point_idx == -1) {
-          for (int steal_idx = 0; steal_idx < num_engines; ++steal_idx) {
-            if (steal_idx == engine_idx) continue;
-
-            std::lock_guard<std::mutex> lock(queue_mutexes[steal_idx]);
-            if (!work_queues[steal_idx].empty()) {
-              // Steal from the back of the queue (work stealing typically steals from opposite end)
-              point_idx = work_queues[steal_idx].back();
-              work_queues[steal_idx].pop_back();
-              break;
-            }
-          }
-        }
-
-        // If we got work, process it
-        if (point_idx != -1) {
-          engines_[engine_idx]->computeForAngles(all_points[point_idx]);
-          local_completed++;
-          completed_points.fetch_add(1);
-
-          // Print progress occasionally
-          if (local_completed % 50 == 0) {
-            std::cout << "Engine " << engine_idx + 1 << " completed " << local_completed
-                      << " points (total: " << completed_points.load() << "/" << total_points << ")" << std::endl;
-          }
-        } else {
-          // No work available, brief pause before checking again
-          std::this_thread::sleep_for(std::chrono::microseconds(10));
-        }
-      }
-
-      std::cout << "Engine " << engine_idx + 1 << " finished with " << local_completed << " points processed" << std::endl;
-      active_threads.fetch_sub(1);
-    });
-  }
-
-  // Wait for all threads to complete
-  std::cout << "Waiting for all engines to complete work stealing..." << std::endl;
-  for (auto& thread : threads) {
-    thread.join();
-  }
-  std::cout << "All engines completed! Total points processed: " << completed_points.load() << std::endl;
+  std::cout << "All points processed!" << std::endl;
 }
 
 void FKComputation::combineEngineResults() {
