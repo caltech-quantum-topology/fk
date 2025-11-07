@@ -243,6 +243,34 @@ void QPolynomial::print() const {
     std::cout << oss.str() << std::endl;
 }
 
+std::vector<int> QPolynomial::getCoefficients() const {
+    std::vector<int> result;
+
+    // Length of the underlying FLINT polynomial: highest internal index + 1
+    slong length = fmpz_poly_length(poly);
+
+    // Reserve to avoid reallocations
+    result.reserve(static_cast<std::size_t>(length));
+
+    // For each internal index i, read the coefficient of q^(minPower + i)
+    for (slong i = 0; i < length; ++i) {
+        fmpz_t coeff;
+        fmpz_init(coeff);
+
+        // Get coefficient of q^i in the FLINT polynomial
+        fmpz_poly_get_coeff_fmpz(coeff, poly, i);
+
+        // Convert to a plain int and append
+        result.push_back(fmpz_get_si(coeff));
+
+        fmpz_clear(coeff);
+    }
+
+    // Semantics: result[i] is the coefficient of q^(minPower + i)
+    // (call getMinPower() if you need to know which exponent result[0] corresponds to)
+    return result;
+}
+
 QPolynomial &QPolynomial::operator+=(const QPolynomial &other) {
     if (other.isZero()) return *this;
     if (this->isZero()) {
@@ -362,6 +390,8 @@ QPolynomial operator*(const QPolynomial &lhs, const QPolynomial &rhs) {
     result *= rhs;
     return result;
 }
+
+
 
 // FMPoly Implementation
 
@@ -1179,6 +1209,76 @@ void FMPoly::print(int maxTerms) const {
 
   std::cout << "\n";
 }
+
+std::vector<std::pair<std::vector<int>, QPolynomial>>
+FMPoly::getCoefficients() const {
+  // Map x-powers -> QPolynomial in q
+  std::map<std::vector<int>, QPolynomial> xToQPoly;
+
+  // Number of terms in the FLINT multivariate polynomial
+  slong numTerms = fmpz_mpoly_length(poly, ctx);
+
+  for (slong i = 0; i < numTerms; ++i) {
+    // Get coefficient of this term
+    fmpz_t coeff;
+    fmpz_init(coeff);
+    fmpz_mpoly_get_term_coeff_fmpz(coeff, poly, i, ctx);
+
+    // FLINT shouldn't store zero terms, but be defensive
+    if (fmpz_is_zero(coeff)) {
+      fmpz_clear(coeff);
+      continue;
+    }
+
+    // Get exponent vector for this term: [q, x1, ..., xn]
+    fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
+    fmpz **exp_ptrs =
+        (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+    for (int j = 0; j <= numXVariables; ++j) {
+      fmpz_init(&exps[j]);
+      exp_ptrs[j] = &exps[j];
+    }
+
+    fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
+
+    // Convert FLINT exponents (with ground offsets) back to logical powers
+    int qPower;
+    std::vector<int> xPowers;
+    getExponentsFromMonomial(exps, qPower, xPowers);
+
+    // Convert coefficient to a plain int
+    int coeffValue = fmpz_get_si(coeff);
+
+    // Accumulate into the QPolynomial for this xPowers
+    QPolynomial &qp = xToQPoly[xPowers];  // default-constructs if not present
+    qp.addToCoefficient(qPower, coeffValue);
+
+    // Clean up
+    fmpz_clear(coeff);
+    for (int j = 0; j <= numXVariables; ++j) {
+      fmpz_clear(&exps[j]);
+    }
+    flint_free(exp_ptrs);
+    flint_free(exps);
+  }
+
+  // Convert the map into the sparse vector of (xPowers, QPolynomial),
+  // skipping any zero polynomials (to emulate BMPoly's behavior).
+  std::vector<std::pair<std::vector<int>, QPolynomial>> result;
+  result.reserve(xToQPoly.size());
+
+  for (auto &entry : xToQPoly) {
+    const auto &xPowers = entry.first;
+    const auto &qp = entry.second;
+
+    if (!qp.isZero()) {
+      result.emplace_back(xPowers, qp);
+    }
+  }
+
+  return result;
+}
+
 
 std::vector<int> FMPoly::evaluate(const std::vector<int> &point) const {
   if (point.size() != static_cast<size_t>(numXVariables)) {

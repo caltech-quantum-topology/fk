@@ -172,6 +172,12 @@ public:
   void print(int maxTerms = 10) const;
 
   /**
+   * Return the number of non-zero terms
+   */
+  int nTerms() const;
+
+
+  /**
    * Evaluate polynomial at a given point, returning a polynomial in q
    * @param point Vector of values for x₁, x₂, ..., xₙ (must match numXVariables)
    * @return bilvector<int> representing the resulting polynomial in q

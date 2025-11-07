@@ -97,6 +97,11 @@ public:
 
   const bilvector<int> &getQPolynomial(const std::vector<int> &xPowers) const;
 
+  /**
+   * Return the number of non-zero terms
+   */
+  int nTerms() const;
+
 
   /**
    * Invert variable at target_index

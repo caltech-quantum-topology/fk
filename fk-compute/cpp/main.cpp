@@ -169,19 +169,7 @@ int main(int argc, char* argv[]) {
         // Show brief result statistics
         const auto& result = computation.getLastResult();
 
-        auto coeffs = result.getCoefficients();
-        int non_zero_count = 0;
-
-        for (const auto& [powers, coeff] : coeffs) {        // coeff is bilvector<int>
-            for (int i = coeff.getMaxNegativeIndex();
-                 i <= coeff.getMaxPositiveIndex(); ++i) {
-                if (coeff[i] != 0) {
-                    ++non_zero_count;
-                }
-            }
-        }
-
-        std::cout << "📊 Result contains " << non_zero_count
+        std::cout << "📊 Result contains " << result.nTerms()
                   << " non-zero terms\n";
 
     } catch (const std::exception& e) {

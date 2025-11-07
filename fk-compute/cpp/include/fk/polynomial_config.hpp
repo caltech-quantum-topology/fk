@@ -18,7 +18,7 @@
 #define POLYNOMIAL_TYPE 2  // Default to Multivariable Poly 
 #endif
 
-#if POLYNOMIAL_TYPE == 1
+#if POLYNOMIAL_TYPE == 0
     #include "fk/multivariable_polynomial.hpp"
     using PolynomialType = MultivariablePolynomial;
     #define POLYNOMIAL_CLASS_NAME "MultivariablePolynomial"

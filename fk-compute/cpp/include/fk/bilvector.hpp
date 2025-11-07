@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include <list>
-#include <vector>
 #include <iostream>
+#include <list>
 #include <stdexcept>
+#include <vector>
 
 template <typename T> struct bilvector {
 private:
@@ -89,6 +89,35 @@ public:
   int getMaxPositiveIndex() const { return maxPositiveIndex; }
   int getComponentSize() { return componentSize; }
   int getComponentSize() const { return componentSize; }
+  int nTerms() const {
+      int count = 0;
+
+      // Negative side
+      {
+          int idx = maxNegativeIndex;
+          for (const auto &block : negativeVectors) {
+              for (int k = 0; k < componentSize && idx < 0; ++k, ++idx) {
+                  if (block[k] != defaultValue) {
+                      ++count;
+                  }
+              }
+          }
+      }
+
+      // Positive side
+      {
+          int idx = 0;
+          for (const auto &block : positiveVectors) {
+              for (int k = 0; k < componentSize && idx <= maxPositiveIndex; ++k, ++idx) {
+                  if (block[k] != defaultValue) {
+                      ++count;
+                  }
+              }
+          }
+      }
+
+      return count;
+  }
 
   // Check if bilvector is zero (all coefficients are default value)
   bool isZero() const {
@@ -146,27 +175,26 @@ public:
 template <typename T>
 bilvector<T> makeLaurentPolynomial(int minExponent, int maxExponent,
                                    T defaultValue = T{}) {
-    int componentSize = 1;
+  int componentSize = 1;
 
-    int negativeCount = 0;
-    if (minExponent < 0) {
-        // exponents covered: -negativeCount, ..., -1
-        negativeCount = -minExponent;
-    }
+  int negativeCount = 0;
+  if (minExponent < 0) {
+    // exponents covered: -negativeCount, ..., -1
+    negativeCount = -minExponent;
+  }
 
-    int positiveCount = 0;
-    if (maxExponent >= 0) {
-        // exponents covered: 0, 1, ..., positiveCount - 1
-        positiveCount = maxExponent + 1;
-    }
+  int positiveCount = 0;
+  if (maxExponent >= 0) {
+    // exponents covered: 0, 1, ..., positiveCount - 1
+    positiveCount = maxExponent + 1;
+  }
 
-    return bilvector<T>(negativeCount, positiveCount, componentSize,
-                        defaultValue);
+  return bilvector<T>(negativeCount, positiveCount, componentSize,
+                      defaultValue);
 }
 
 template <typename T>
-bilvector<T> makeZeroLike(const bilvector<T> &proto,
-                          int minExponent,
+bilvector<T> makeZeroLike(const bilvector<T> &proto, int minExponent,
                           int maxExponent) {
   int componentSize = proto.getComponentSize();
 
@@ -234,11 +262,13 @@ bilvector<T> operator*(const bilvector<T> &lhs, const bilvector<T> &rhs) {
   for (int i = lhsMin; i <= lhsMax; ++i) {
     T a = lhs[i];
     // If you only use numeric T, you can optionally skip zeros:
-    if (a == T{}) continue;
+    if (a == T{})
+      continue;
 
     for (int j = rhsMin; j <= rhsMax; ++j) {
       T b = rhs[j];
-      if (b == T{}) continue;
+      if (b == T{})
+        continue;
       result[i + j] += a * b;
     }
   }
@@ -251,7 +281,6 @@ bilvector<T> &operator*=(bilvector<T> &lhs, const bilvector<T> &rhs) {
   lhs = lhs * rhs;
   return lhs;
 }
-
 
 // Multiply by q^power: shift exponents
 template <typename T>
@@ -281,7 +310,8 @@ bilvector<T> multiplyByQPower(const bilvector<T> &poly, int power) {
 
   for (int e = inMin; e <= inMax; ++e) {
     T c = poly[e];
-    if (c == T{}) continue;
+    if (c == T{})
+      continue;
     result[e + power] += c;
   }
 
@@ -289,17 +319,13 @@ bilvector<T> multiplyByQPower(const bilvector<T> &poly, int power) {
 }
 
 // Invert exponents of q in the Laurent polynomial
-template <typename T>
-bilvector<T> bilvector<T>::invertExponents() const {
-  bilvector<T> result(
-      this->negativeVectorCount,
-      this->positiveVectorCount,
-      this->componentSize,
-      this->defaultValue
-  );
+template <typename T> bilvector<T> bilvector<T>::invertExponents() const {
+  bilvector<T> result(this->negativeVectorCount, this->positiveVectorCount,
+                      this->componentSize, this->defaultValue);
 
   // Loop over all valid indices and assign to the mirrored exponent
-  for (int j = this->getMaxNegativeIndex(); j <= this->getMaxPositiveIndex(); ++j) {
+  for (int j = this->getMaxNegativeIndex(); j <= this->getMaxPositiveIndex();
+       ++j) {
     T coeff = (*this)[j];
     if (coeff != this->defaultValue) {
       result[-j] = coeff;
@@ -312,28 +338,30 @@ bilvector<T> bilvector<T>::invertExponents() const {
 // Print the Laurent polynomial in human-readable form
 template <typename T>
 void bilvector<T>::print(const std::string &varName) const {
-    bool first = true;
-    for (int e = this->getMaxNegativeIndex(); e <= this->getMaxPositiveIndex(); ++e) {
-        T coeff = (*this)[e];
-        if (coeff == this->defaultValue || coeff == 0) continue;
+  bool first = true;
+  for (int e = this->getMaxNegativeIndex(); e <= this->getMaxPositiveIndex();
+       ++e) {
+    T coeff = (*this)[e];
+    if (coeff == this->defaultValue || coeff == 0)
+      continue;
 
-        if (!first) {
-            std::cout << " + ";
-        } else {
-            first = false;
-        }
-
-        std::cout << coeff;
-
-        if (e != 0) {
-            std::cout << "*" << varName << "^" << e;
-        }
+    if (!first) {
+      std::cout << " + ";
+    } else {
+      first = false;
     }
 
-    if (first) {
-        std::cout << "0"; // all coefficients were zero
+    std::cout << coeff;
+
+    if (e != 0) {
+      std::cout << "*" << varName << "^" << e;
     }
-    std::cout << std::endl;
+  }
+
+  if (first) {
+    std::cout << "0"; // all coefficients were zero
+  }
+  std::cout << std::endl;
 }
 
 void print_pterms(std::vector<bilvector<int>> polynomial_terms);

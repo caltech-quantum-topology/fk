@@ -735,3 +735,16 @@ void MultivariablePolynomial::syncFromSparseVector(
     }
   }
 }
+
+
+int 
+MultivariablePolynomial::nTerms() const {
+  int n_nonzero_terms(0);
+
+  for (const auto &[xPowers, bilvec] : coeffs_) {
+    n_nonzero_terms += bilvec.nTerms();
+  }
+
+  return n_nonzero_terms;
+}
+

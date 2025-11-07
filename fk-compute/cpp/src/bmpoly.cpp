@@ -554,6 +554,19 @@ bilvector<int> BMPoly::evaluate(const std::vector<int> &point) const {
   return result;
 }
 
+int BMPoly::nTerms() const {
+  int totalTerms = 0;
+  
+  // Each coeffs_[i] is a polynomial in q for one x-multi-index
+  for (const auto &qPoly : coeffs_) {
+    if (!qPoly.isZero()) {
+      totalTerms += qPoly.nTerms();
+    }
+  }
+
+  return totalTerms;
+}
+
 void BMPoly::checkCompatibility(const BMPoly &other) const {
   if (numXVariables != other.numXVariables) {
     throw std::invalid_argument("Polynomials must have the same number of variables");
@@ -786,3 +799,4 @@ BMPoly operator*(const bilvector<int> &lhs, const BMPoly &rhs) {
   result *= lhs;
   return result;
 }
+
