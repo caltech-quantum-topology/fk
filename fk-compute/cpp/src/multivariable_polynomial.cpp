@@ -246,89 +246,19 @@ MultivariablePolynomial::getCoefficientMap() const {
   return coeffs_;
 }
 
-std::vector<bilvector<int>> MultivariablePolynomial::getCoefficients() const {
-  // Calculate total size needed for dense representation
-  int totalSize = 1;
-  for (int i = 0; i < numXVariables; i++) {
-    totalSize *= (maxXDegrees[i] + 1);
-  }
+using Term = std::pair<std::vector<int>, bilvector<int>>;
+const std::vector<std::pair<std::vector<int>, bilvector<int>>> 
+MultivariablePolynomial::getCoefficients() const {
+  std::vector<std::pair<std::vector<int>, bilvector<int>>> result;
+  result.reserve(coeffs_.size());
 
-  // Create dense vector initialized with zero bilvectors
-  std::vector<bilvector<int>> result(totalSize, bilvector<int>(0, 1, 20, 0));
-
-  // Fill in the non-zero entries from sparse map
   for (const auto &[xPowers, bilvec] : coeffs_) {
-    // Convert x-powers to linear index using old formula
-    int linearIndex = 0;
-    bool withinBounds = true;
-
-    for (int i = 0; i < numXVariables; i++) {
-      if (xPowers[i] < 0 || xPowers[i] > maxXDegrees[i]) {
-        withinBounds = false;
-        break;
-      }
-      linearIndex += xPowers[i] * blockSizes[i];
-    }
-
-    if (withinBounds && linearIndex >= 0 && linearIndex < totalSize) {
-      // Copy the bilvector - note: this is expensive but needed for
-      // compatibility
-      for (int j = bilvec.getMaxNegativeIndex();
-           j <= bilvec.getMaxPositiveIndex(); j++) {
-        if (bilvec[j] != 0) {
-          result[linearIndex][j] = bilvec[j];
-        }
-      }
-    }
+    // Copy key (degrees) and value (bilvector) into the vector
+    result.emplace_back(xPowers, bilvec);
   }
-
   return result;
 }
 
-std::vector<bilvector<int>> &MultivariablePolynomial::getCoefficients() {
-  // Create a thread-local copy for modification
-  static thread_local std::vector<bilvector<int>> temp_result;
-  temp_result =
-      static_cast<const MultivariablePolynomial *>(this)->getCoefficients();
-  return temp_result;
-}
-
-void MultivariablePolynomial::syncFromDenseVector(
-    const std::vector<bilvector<int>> &denseVector) {
-  // Clear current sparse representation
-  coeffs_.clear();
-
-  // Convert dense back to sparse
-  for (size_t linearIndex = 0; linearIndex < denseVector.size();
-       linearIndex++) {
-    // Convert linear index back to x-powers
-    std::vector<int> xPowers(numXVariables);
-    size_t remainingIndex = linearIndex;
-
-    for (int i = numXVariables - 1; i >= 0; i--) {
-      if (i < static_cast<int>(blockSizes.size()) && blockSizes[i] > 0) {
-        xPowers[i] = static_cast<int>(remainingIndex / blockSizes[i]) %
-                     (maxXDegrees[i] + 1);
-        remainingIndex %= blockSizes[i];
-      }
-    }
-
-    // Check if this bilvector has any non-zero coefficients
-    bool hasNonZero = false;
-    for (int j = denseVector[linearIndex].getMaxNegativeIndex();
-         j <= denseVector[linearIndex].getMaxPositiveIndex(); j++) {
-      if (denseVector[linearIndex][j] != 0) {
-        hasNonZero = true;
-        break;
-      }
-    }
-
-    if (hasNonZero) {
-      // Copy the entire bilvector using emplace
-      coeffs_.emplace(xPowers, denseVector[linearIndex]);
-    }
-  }
-}
 
 MultivariablePolynomial
 MultivariablePolynomial::invertVariable(const int target_index) {
@@ -344,25 +274,24 @@ MultivariablePolynomial::invertVariable(const int target_index) {
   return newPoly;
 }
 
-
 MultivariablePolynomial
 MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) {
-    MultivariablePolynomial newPoly(this->numXVariables, 0);
-    for (const auto &item : this->getCoefficientMap()) {
-        const std::vector<int> &xPowers = item.first;
-        const bilvector<int> &qPoly = item.second;
-        bool in_range = true;
-        for (int j = 0; j < this->numXVariables; ++j) {
-            if (!(xPowers[j] <= maxXdegrees[j])) {
-                in_range = false;
-                break;
-            }
-        }
-        if (in_range) {
-            newPoly.getQPolynomial(xPowers) = qPoly;
-        }
+  MultivariablePolynomial newPoly(this->numXVariables, 0);
+  for (const auto &item : this->getCoefficientMap()) {
+    const std::vector<int> &xPowers = item.first;
+    const bilvector<int> &qPoly = item.second;
+    bool in_range = true;
+    for (int j = 0; j < this->numXVariables; ++j) {
+      if (!(xPowers[j] <= maxXdegrees[j])) {
+        in_range = false;
+        break;
+      }
     }
-    return newPoly;
+    if (in_range) {
+      newPoly.getQPolynomial(xPowers) = qPoly;
+    }
+  }
+  return newPoly;
 }
 
 int MultivariablePolynomial::getNumXVariables() const { return numXVariables; }
@@ -436,31 +365,6 @@ void MultivariablePolynomial::print(int maxTerms) const {
   // Collect all terms and sort for deterministic output
   std::vector<std::tuple<std::vector<int>, int, int>> terms;
   for (const auto &[xPowers, bilvec] : coeffs_) {
-    for (int i = 0; i < xPowers.size(); ++i){
-      std::cout<<"x"<<i+1<<"^"<<xPowers[i];
-    }
-    std::cout<<": ";
-    bilvec.print();
-    std::cout<<std::endl;
-  }
-}
-
-/*
-void MultivariablePolynomial::print(int maxTerms) const {
-  std::cout << "Multivariable Polynomial P(q";
-  for (int i = 0; i < numXVariables; i++) {
-    std::cout << ", x" << (i + 1);
-  }
-  std::cout << "):\n";
-
-  if (coeffs_.empty()) {
-    std::cout << "0\n";
-    return;
-  }
-
-  // Collect all terms and sort for deterministic output
-  std::vector<std::tuple<std::vector<int>, int, int>> terms;
-  for (const auto &[xPowers, bilvec] : coeffs_) {
     for (int j = bilvec.getMaxNegativeIndex();
          j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
@@ -497,7 +401,7 @@ void MultivariablePolynomial::print(int maxTerms) const {
   }
   std::cout << std::endl;
 }
-*/
+
 
 void MultivariablePolynomial::checkCompatibility(
     const MultivariablePolynomial &other) const {
@@ -523,7 +427,6 @@ MultivariablePolynomial::operator+=(const MultivariablePolynomial &other) {
 
   return *this;
 }
-
 
 MultivariablePolynomial &
 MultivariablePolynomial::operator-=(const MultivariablePolynomial &other) {
@@ -808,4 +711,27 @@ MultivariablePolynomial operator*(const bilvector<int> &lhs,
   MultivariablePolynomial result = rhs;
   result *= lhs;
   return result;
+}
+
+void MultivariablePolynomial::syncFromSparseVector(
+    const std::vector<std::pair<std::vector<int>, bilvector<int>>> &sparseVector) {
+  coeffs_.clear();
+
+  for (const auto &term : sparseVector) {
+    const auto &xPowers = term.first;
+    const auto &bilvec  = term.second;
+
+    bool hasNonZero = false;
+    for (int j = bilvec.getMaxNegativeIndex();
+         j <= bilvec.getMaxPositiveIndex(); ++j) {
+      if (bilvec[j] != 0) {
+        hasNonZero = true;
+        break;
+      }
+    }
+
+    if (hasNonZero) {
+      coeffs_.emplace(xPowers, bilvec);
+    }
+  }
 }

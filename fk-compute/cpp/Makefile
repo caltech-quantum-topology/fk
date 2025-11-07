@@ -144,8 +144,8 @@ $(TREFOIL_COMPLETE_TARGET): $(BUILD_DIR)/trefoil_complete_example.o $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # FK Main executable (refactored API)
-$(FK_MAIN_TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+$(FK_MAIN_TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/bmpoly.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ -pthread
 
 # Parser comparison test executable
 $(PARSER_TEST_TARGET): $(BUILD_DIR)/parser_comparison_test.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o

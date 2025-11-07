@@ -145,17 +145,21 @@ public:
    * Run complete FK computation from input file to output file
    * @param input_filename Input CSV file (without extension)
    * @param output_filename Output file (without extension)
+   * @param num_threads Number of threads/engines to use (default: 1)
    */
   void compute(const std::string &input_filename,
-               const std::string &output_filename);
+               const std::string &output_filename,
+               int num_threads = 1);
 
   /**
    * Run computation with custom configuration
    * @param config Custom configuration
    * @param output_filename Output file
+   * @param num_threads Number of threads/engines to use (default: 1)
    */
   void compute(const FKConfiguration &config,
-               const std::string &output_filename);
+               const std::string &output_filename,
+               int num_threads = 1);
 
   /**
    * Get the last computed result
@@ -169,11 +173,14 @@ public:
 
 private:
   FKConfiguration config_;
-  std::unique_ptr<FKComputationEngine> engine_;
+  std::vector<std::unique_ptr<FKComputationEngine>> engines_;
   FKInputParser parser_;
   FKResultWriter writer_;
 
-  void initializeEngine();
+  void initializeEngine(int num_threads);
+  void setupWorkStealingComputation(const std::vector<std::vector<int>> &all_points);
+  void combineEngineResults();
+  void performFinalOffsetComputation();
 
   // Pooling functionality - moved from solution_pool_1a_double_links.cpp
   struct EnumerationState {

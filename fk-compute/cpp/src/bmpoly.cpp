@@ -350,12 +350,51 @@ BMPoly BMPoly::truncate(const std::vector<int> &maxXdegrees) {
   return result;
 }
 
-std::vector<bilvector<int>> BMPoly::getCoefficients() const {
+const std::vector<std::pair<std::vector<int>, bilvector<int>>> BMPoly::getCoefficients() const {
+  std::vector<std::pair<std::vector<int>, bilvector<int>>> result;
+  result.reserve(coeffs_.size());
+
+  for (size_t i = 0; i < coeffs_.size(); ++i) {
+    if (!coeffs_[i].isZero()) {
+      std::vector<int> xPowers = linearToMultiIndex(i);
+      result.emplace_back(xPowers, coeffs_[i]);
+    }
+  }
+
+  return result;
+}
+
+std::vector<bilvector<int>> &BMPoly::getCoefficientsDense() {
   return coeffs_;
 }
 
-std::vector<bilvector<int>> &BMPoly::getCoefficients() {
-  return coeffs_;
+void BMPoly::syncFromSparseVector(const std::vector<std::pair<std::vector<int>, bilvector<int>>> &sparseVector) {
+  // Clear current coefficients
+  clear();
+
+  // Process each term in the sparse vector
+  for (const auto &term : sparseVector) {
+    const auto &xPowers = term.first;
+    const auto &bilvec = term.second;
+
+    // Check if this term has non-zero coefficients
+    bool hasNonZero = false;
+    for (int j = bilvec.getMaxNegativeIndex(); j <= bilvec.getMaxPositiveIndex(); ++j) {
+      if (bilvec[j] != 0) {
+        hasNonZero = true;
+        break;
+      }
+    }
+
+    // Only store terms with non-zero coefficients
+    if (hasNonZero) {
+      expandStorageIfNeeded(xPowers);
+      int linearIndex = multiIndexToLinear(xPowers);
+      if (linearIndex >= 0 && linearIndex < static_cast<int>(coeffs_.size())) {
+        coeffs_[linearIndex] = bilvec;
+      }
+    }
+  }
 }
 
 void BMPoly::syncFromDenseVector(const std::vector<bilvector<int>> &denseVector) {
@@ -393,62 +432,51 @@ bool BMPoly::isZero() const {
 }
 
 void BMPoly::exportToJson(const std::string &fileName) const {
-  std::ofstream file(fileName);
-  if (!file.is_open()) {
-    throw std::runtime_error("Cannot open file for writing: " + fileName);
-  }
+  std::ofstream outputFile;
+  outputFile.open(fileName + ".json");
+  outputFile << "{\n\t\"terms\":[\n";
 
-  file << "{\n";
-  file << "  \"type\": \"BMPoly\",\n";
-  file << "  \"numXVariables\": " << numXVariables << ",\n";
-  file << "  \"maxXDegrees\": [";
-  for (size_t i = 0; i < maxXDegrees.size(); ++i) {
-    if (i > 0) file << ", ";
-    file << maxXDegrees[i];
-  }
-  file << "],\n";
-  file << "  \"groundXDegrees\": [";
-  for (size_t i = 0; i < groundXDegrees.size(); ++i) {
-    if (i > 0) file << ", ";
-    file << groundXDegrees[i];
-  }
-  file << "],\n";
-  file << "  \"coefficients\": {\n";
-
-  bool first = true;
+  bool firstTerm = true;
   for (size_t i = 0; i < coeffs_.size(); ++i) {
     if (!coeffs_[i].isZero()) {
-      if (!first) file << ",\n";
-      first = false;
-
       std::vector<int> xPowers = linearToMultiIndex(i);
-      file << "    \"[";
-      for (size_t j = 0; j < xPowers.size(); ++j) {
-        if (j > 0) file << ",";
-        file << xPowers[j];
-      }
-      file << "]\": {";
 
-      // Export non-zero q-coefficients
-      bool firstQ = true;
       int minQ = coeffs_[i].getMaxNegativeIndex();
       int maxQ = coeffs_[i].getMaxPositiveIndex();
 
-      for (int q = minQ; q <= maxQ; ++q) {
-        int coeff = coeffs_[i][q];
+      for (int j = minQ; j <= maxQ; j++) {
+        int coeff = coeffs_[i][j];
         if (coeff != 0) {
-          if (!firstQ) file << ", ";
-          firstQ = false;
-          file << "\"" << q << "\": " << coeff;
+          if (!firstTerm) {
+            outputFile << ",\n";
+          }
+          firstTerm = false;
+
+          outputFile << "\t\t{\"x\": [";
+          for (size_t k = 0; k < xPowers.size(); k++) {
+            outputFile << xPowers[k];
+            if (k < xPowers.size() - 1)
+              outputFile << ",";
+          }
+          outputFile << "], \"q\": " << j << ", \"c\": " << coeff << "}";
         }
       }
-      file << "}";
     }
   }
 
-  file << "\n  }\n";
-  file << "}\n";
-  file.close();
+  outputFile << "\n\t],\n";
+  outputFile << "\t\"metadata\": {\n";
+  outputFile << "\t\t\"num_x_variables\": " << numXVariables << ",\n";
+  outputFile << "\t\t\"max_x_degrees\": [";
+  for (int i = 0; i < numXVariables; i++) {
+    outputFile << maxXDegrees[i];
+    if (i < numXVariables - 1)
+      outputFile << ",";
+  }
+  outputFile << "],\n";
+  outputFile << "\t\t\"storage_type\": \"sparse\"\n";
+  outputFile << "\t}\n}";
+  outputFile.close();
 }
 
 void BMPoly::print(int maxTerms) const {

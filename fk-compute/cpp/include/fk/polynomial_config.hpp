@@ -15,10 +15,10 @@
 
 // Configuration: Set to 0, 1, or 2 to choose polynomial implementation
 #ifndef POLYNOMIAL_TYPE
-#define POLYNOMIAL_TYPE 0  // Default to Multivariable Poly 
+#define POLYNOMIAL_TYPE 2  // Default to Multivariable Poly 
 #endif
 
-#if POLYNOMIAL_TYPE == 0
+#if POLYNOMIAL_TYPE == 1
     #include "fk/multivariable_polynomial.hpp"
     using PolynomialType = MultivariablePolynomial;
     #define POLYNOMIAL_CLASS_NAME "MultivariablePolynomial"

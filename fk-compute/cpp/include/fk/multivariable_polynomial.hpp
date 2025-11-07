@@ -120,19 +120,21 @@ public:
    * Backward compatibility: Convert sparse representation to dense vector
    * This is needed for existing code that expects vector<bilvector<int>>
    */
-  std::vector<bilvector<int>> getCoefficients() const;
-
-  /**
-   * Backward compatibility: Non-const version
-   * WARNING: This creates a mutable copy that must be manually synced back
-   */
-  std::vector<bilvector<int>> &getCoefficients();
+  using Term = std::pair<std::vector<int>,bilvector<int>>;
+  const std::vector<Term> getCoefficients() const;
 
   /**
    * Sync dense vector back to sparse representation
    * This must be called after any operations that modify the dense vector
    */
   void syncFromDenseVector(const std::vector<bilvector<int>> &denseVector);
+
+  /**
+   * Sync sparse vector back to sparse map 
+   * This must be called after any operations that modify the sparse vector
+   */
+  void syncFromSparseVector(const std::vector<std::pair<std::vector<int>, bilvector<int>>> &sparseVector);
+
 
   /**
    * Get number of x variables
@@ -248,3 +250,4 @@ public:
   friend MultivariablePolynomial operator*(const bilvector<int> &lhs,
                                            const MultivariablePolynomial &rhs);
 };
+

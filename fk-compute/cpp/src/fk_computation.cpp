@@ -14,6 +14,31 @@
 #include <sstream>
 #include <stack>
 #include <stdexcept>
+#include <thread>
+#include <vector>
+#include <mutex>
+#include <deque>
+#include <atomic>
+
+void printTerms(const std::vector<Term> &terms) {
+  std::cout << "=== Terms (" << terms.size() << ") ===\n";
+
+  for (const auto &[xPowers, bilvec] : terms) {
+    // Print the x-powers
+    std::cout << "x-powers: [";
+    for (size_t i = 0; i < xPowers.size(); ++i) {
+      std::cout << xPowers[i];
+      if (i + 1 < xPowers.size())
+        std::cout << ", ";
+    }
+    std::cout << "]\n";
+
+    // Delegate to bilvector's own print function
+    std::cout << "  q-bilvector: ";
+    bilvec.print();
+    std::cout << "\n";
+  }
+}
 
 namespace fk {
 // FKConfiguration implementation
@@ -365,9 +390,8 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       result *= binomial;
 
       // Pochhammer part
-      const PolynomialType poch(
-          qpochhammer_xq_q(param_i - param_m, param_j, 1), config_.components,
-          bottom_comp);
+      const PolynomialType poch(qpochhammer_xq_q(param_i - param_m, param_j, 1),
+                                config_.components, bottom_comp);
       result *= poch;
       break;
     }
@@ -417,13 +441,13 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
 }
 
 void FKComputationEngine::performOffsetAdditionPoly(
-    const PolynomialType &source_poly,
-    const std::vector<int> &x_offset, int q_offset, int sign_multiplier) {
+    const PolynomialType &source_poly, const std::vector<int> &x_offset,
+    int q_offset, int sign_multiplier) {
 
   // Iterate through all coefficients in the source polynomial
-  const auto &coeff_map = source_poly.getCoefficientMap();
+  const auto coeffs = source_poly.getCoefficients();
 
-  for (const auto &[x_powers, q_poly] : coeff_map) {
+  for (const auto &[x_powers, q_poly] : coeffs) {
     // Calculate the offset x-powers
     std::vector<int> offset_x_powers = x_powers;
     for (size_t i = 0; i < x_powers.size(); ++i) {
@@ -445,8 +469,8 @@ void FKComputationEngine::performOffsetAdditionPoly(
 }
 
 void FKComputationEngine::accumulateResultPoly(
-    const PolynomialType &poly,
-    const std::vector<int> &x_power_accumulator, int q_power_accumulator) {
+    const PolynomialType &poly, const std::vector<int> &x_power_accumulator,
+    int q_power_accumulator) {
 
   performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator, 1);
 }
@@ -486,23 +510,28 @@ void FKResultWriter::writeToText(const PolynomialType &result,
 
 // FKComputation implementation
 void FKComputation::compute(const std::string &input_filename,
-                            const std::string &output_filename) {
+                            const std::string &output_filename,
+                            int num_threads) {
 
   FKConfiguration config = parser_.parseFromFile(input_filename);
 
   // Call the config-based compute method
-  compute(config, output_filename);
+  compute(config, output_filename, num_threads);
 }
 
 void FKComputation::compute(const FKConfiguration &config,
-                            const std::string &output_filename) {
+                            const std::string &output_filename,
+                            int num_threads) {
   if (!config.isValid()) {
     throw std::runtime_error("Invalid configuration provided");
   }
 
-  config_ = config;
+  if (num_threads < 1) {
+    throw std::runtime_error("Number of threads must be at least 1");
+  }
 
-  initializeEngine();
+  config_ = config;
+  initializeEngine(num_threads);
 
   // Find valid criteria
   ValidatedCriteria valid_criteria = findValidCriteria();
@@ -520,47 +549,30 @@ void FKComputation::compute(const FKConfiguration &config,
     all_points.insert(all_points.end(), points.begin(), points.end());
   }
 
-  // Run the function on all collected points
-  for (const auto &point : all_points) {
-    engine_->computeForAngles(point);
-  }
+  // Execute work stealing computation
+  setupWorkStealingComputation(all_points);
 
-  // Final offset addition
-  std::vector<int> increment_offset(config_.components, 0);
-  increment_offset[0] = 1;
-  std::vector<int> maxima(config_.components, config_.degree - 1);
+  // Combine results and perform final computations
+  combineEngineResults();
+  performFinalOffsetComputation();
 
-  auto result_coeffs1 = engine_->getResult().getCoefficients();
-  auto result_coeffs2 = engine_->getResult().getCoefficients();
-
-  std::vector<int> accumulator_block_sizes;
-  accumulator_block_sizes.push_back(1);
-  for (int i = 1; i < config_.components; i++) {
-    accumulator_block_sizes.push_back(accumulator_block_sizes[i - 1] *
-                                      (config_.degree + 1));
-  }
-
-  int components_copy = config_.components; // Make a mutable copy
-
-  performOffsetAddition(result_coeffs1, result_coeffs2, increment_offset, 0,
-                        components_copy, maxima, -1, accumulator_block_sizes,
-                        accumulator_block_sizes);
-
-  const_cast<PolynomialType &>(engine_->getResult())
-      .syncFromDenseVector(result_coeffs1);
-
-  writer_.writeToJson(engine_->getResult(), output_filename);
+  writer_.writeToJson(engines_[0]->getResult(), output_filename);
 }
 
 const PolynomialType &FKComputation::getLastResult() const {
-  if (!engine_) {
+  if (engines_.empty()) {
     throw std::runtime_error("No computation has been performed yet");
   }
-  return engine_->getResult();
+  return engines_[0]->getResult();
 }
 
-void FKComputation::initializeEngine() {
-  engine_ = std::make_unique<FKComputationEngine>(config_);
+void FKComputation::initializeEngine(int num_threads) {
+  engines_.clear();
+  engines_.reserve(num_threads);
+
+  for (int i = 0; i < num_threads; ++i) {
+    engines_.push_back(std::make_unique<FKComputationEngine>(config_));
+  }
 }
 
 // Pooling functionality implementations (moved from
@@ -987,6 +999,134 @@ FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
 
   // No valid criteria found
   return ValidatedCriteria();
+}
+
+void FKComputation::setupWorkStealingComputation(const std::vector<std::vector<int>> &all_points) {
+  int total_points = all_points.size();
+  int num_engines = engines_.size();
+
+  std::cout << "Processing " << total_points << " points with " << num_engines << " engines using work stealing" << std::endl;
+
+  // Work stealing data structures
+  std::vector<std::deque<int>> work_queues(num_engines);
+  std::vector<std::mutex> queue_mutexes(num_engines);
+  std::atomic<int> completed_points{0};
+  std::atomic<int> active_threads{num_engines};
+
+  // Initial work distribution - distribute points across queues
+  for (int i = 0; i < total_points; ++i) {
+    work_queues[i % num_engines].push_back(i);
+  }
+
+  // Create worker threads with work stealing
+  std::vector<std::thread> threads;
+  threads.reserve(num_engines);
+
+  for (int engine_idx = 0; engine_idx < num_engines; ++engine_idx) {
+    threads.emplace_back([this, engine_idx, &work_queues, &queue_mutexes, &all_points, &completed_points, &active_threads, num_engines, total_points]() {
+      int local_completed = 0;
+
+      while (completed_points.load() < total_points) {
+        int point_idx = -1;
+
+        // Try to get work from own queue first
+        {
+          std::lock_guard<std::mutex> lock(queue_mutexes[engine_idx]);
+          if (!work_queues[engine_idx].empty()) {
+            point_idx = work_queues[engine_idx].front();
+            work_queues[engine_idx].pop_front();
+          }
+        }
+
+        // If own queue is empty, try to steal from other queues
+        if (point_idx == -1) {
+          for (int steal_idx = 0; steal_idx < num_engines; ++steal_idx) {
+            if (steal_idx == engine_idx) continue;
+
+            std::lock_guard<std::mutex> lock(queue_mutexes[steal_idx]);
+            if (!work_queues[steal_idx].empty()) {
+              // Steal from the back of the queue (work stealing typically steals from opposite end)
+              point_idx = work_queues[steal_idx].back();
+              work_queues[steal_idx].pop_back();
+              break;
+            }
+          }
+        }
+
+        // If we got work, process it
+        if (point_idx != -1) {
+          engines_[engine_idx]->computeForAngles(all_points[point_idx]);
+          local_completed++;
+          completed_points.fetch_add(1);
+
+          // Print progress occasionally
+          if (local_completed % 50 == 0) {
+            std::cout << "Engine " << engine_idx + 1 << " completed " << local_completed
+                      << " points (total: " << completed_points.load() << "/" << total_points << ")" << std::endl;
+          }
+        } else {
+          // No work available, brief pause before checking again
+          std::this_thread::sleep_for(std::chrono::microseconds(10));
+        }
+      }
+
+      std::cout << "Engine " << engine_idx + 1 << " finished with " << local_completed << " points processed" << std::endl;
+      active_threads.fetch_sub(1);
+    });
+  }
+
+  // Wait for all threads to complete
+  std::cout << "Waiting for all engines to complete work stealing..." << std::endl;
+  for (auto& thread : threads) {
+    thread.join();
+  }
+  std::cout << "All engines completed! Total points processed: " << completed_points.load() << std::endl;
+}
+
+void FKComputation::combineEngineResults() {
+  int num_engines = engines_.size();
+  std::cout << "Combining results from " << num_engines << " engines..." << std::endl;
+
+  for (int engine_idx = 1; engine_idx < num_engines; ++engine_idx) {
+    auto engine_coeffs = engines_[engine_idx]->getResult().getCoefficients();
+
+    // Add this engine's results to the first engine's results
+    for (const auto &[x_powers, q_poly] : engine_coeffs) {
+      for (int q_power = q_poly.getMaxNegativeIndex(); q_power <= q_poly.getMaxPositiveIndex(); ++q_power) {
+        int coeff = q_poly[q_power];
+        if (coeff != 0) {
+          const_cast<PolynomialType &>(engines_[0]->getResult()).addToCoefficient(q_power, x_powers, coeff);
+        }
+      }
+    }
+  }
+}
+
+void FKComputation::performFinalOffsetComputation() {
+  // Final offset addition
+  std::vector<int> increment_offset(config_.components, 0);
+  increment_offset[0] = 1;
+  std::vector<int> maxima(config_.components, config_.degree - 1);
+
+  auto combined_coeffs1 = engines_[0]->getResult().getCoefficients();
+  auto combined_coeffs2 = engines_[0]->getResult().getCoefficients();
+
+  std::vector<int> accumulator_block_sizes;
+  accumulator_block_sizes.push_back(1);
+  for (int i = 1; i < config_.components; i++) {
+    accumulator_block_sizes.push_back(accumulator_block_sizes[i - 1] *
+                                      (config_.degree + 1));
+  }
+
+  int components_copy = config_.components; // Make a mutable copy
+
+  performOffsetAddition(combined_coeffs1, combined_coeffs2, increment_offset, 0, -1,
+                        components_copy, // dimensions
+                        maxima           // arrayLengths
+  );
+
+  const_cast<PolynomialType &>(engines_[0]->getResult())
+      .syncFromSparseVector(combined_coeffs1);
 }
 
 } // namespace fk

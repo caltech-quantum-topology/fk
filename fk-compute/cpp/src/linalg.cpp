@@ -1,5 +1,6 @@
 #include "fk/linalg.hpp"
 #include <iostream>
+#include <algorithm>
 
 
 int computeDotProduct(const std::vector<int> &a, const std::vector<int> &b) {
@@ -142,6 +143,73 @@ void performOffsetAddition(std::vector<bilvector<int>> &targetArray,
 
     if (d < 0) {
       done = true;
+    }
+  }
+}
+
+using Term = std::pair<std::vector<int>, bilvector<int>>;
+
+void performOffsetAddition(
+    std::vector<Term> &targetArray,
+    const std::vector<Term> &sourceArray,
+    const std::vector<int> &offsetVector,
+    int bilvectorOffset,
+    int signMultiplier,
+    int dimensions,
+    const std::vector<int> &arrayLengths) {
+  // We assume:
+  // - dimensions == arrayLengths.size()
+  // - for each term, term.first.size() >= dimensions
+  for (const auto &term : sourceArray) {
+    const std::vector<int> &indices = term.first;
+    const bilvector<int>   &srcBil  = term.second;
+
+    if (static_cast<int>(indices.size()) < dimensions) {
+      continue; // malformed, skip
+    }
+
+    // --- This is the key part: emulate dense iteration domain ---
+    bool inDomain = true;
+    for (int d = 0; d < dimensions; ++d) {
+      int i    = indices[d];
+      int low  = std::max(0, -offsetVector[d]);
+      int high = arrayLengths[d];  // inclusive (because loop went to < +1)
+
+      if (i < low || i > high) {
+        inDomain = false;
+        break;
+      }
+    }
+    if (!inDomain) {
+      continue; // dense code would never touch this index
+    }
+
+    // Compute shifted x-degrees (same as before)
+    std::vector<int> shifted(dimensions);
+    for (int d = 0; d < dimensions; ++d) {
+      shifted[d] = indices[d] + offsetVector[d];
+    }
+
+    // Find (or create) matching term in target
+    auto it = std::find_if(
+        targetArray.begin(), targetArray.end(),
+        [&](const Term &t) { return t.first == shifted; });
+
+    if (it == targetArray.end()) {
+      targetArray.emplace_back(shifted, bilvector<int>(0, 1, 20, 0));
+      it = std::prev(targetArray.end());
+    }
+
+    bilvector<int> &destBil = it->second;
+
+    // Add shifted q-coefficients
+    for (int q = srcBil.getMaxNegativeIndex();
+         q <= srcBil.getMaxPositiveIndex(); ++q) {
+
+      int coeff = srcBil[q];
+      if (coeff != 0) {
+        destBil[q + bilvectorOffset] += signMultiplier * coeff;
+      }
     }
   }
 }

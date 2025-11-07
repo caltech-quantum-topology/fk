@@ -110,16 +110,23 @@ public:
   BMPoly truncate(const std::vector<int> &maxXdegrees);
 
   /**
-   * Backward compatibility: Convert dense representation to vector format
-   * This is needed for existing code that expects vector<bilvector<int>>
+   * Get coefficients as sparse representation (same format as MultivariablePolynomial)
+   * Returns vector of pairs: (x-powers, q-polynomial) for non-zero terms only
    */
-  std::vector<bilvector<int>> getCoefficients() const;
+  using Term = std::pair<std::vector<int>, bilvector<int>>;
+  const std::vector<Term> getCoefficients() const;
 
   /**
-   * Backward compatibility: Non-const version
-   * WARNING: This creates a mutable copy that must be manually synced back
+   * Get coefficients as dense vector (original BMPoly format)
+   * Returns the internal dense vector representation
    */
-  std::vector<bilvector<int>> &getCoefficients();
+  std::vector<bilvector<int>> &getCoefficientsDense();
+
+  /**
+   * Sync sparse vector back to internal representation
+   * This must be called after any operations that modify the sparse vector
+   */
+  void syncFromSparseVector(const std::vector<std::pair<std::vector<int>, bilvector<int>>> &sparseVector);
 
   /**
    * Sync dense vector back to internal representation

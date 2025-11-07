@@ -9,11 +9,12 @@ void printUsage(const char* program_name) {
     std::cout << "  input_file   Input CSV filename (without .csv extension)\n";
     std::cout << "  output_file  Output JSON filename (without .json extension)\n";
     std::cout << "\nOptions:\n";
+    std::cout << "  --threads N  Number of computation engines/threads to use (default: 1)\n";
     std::cout << "  --verbose    Show detailed configuration information\n";
     std::cout << "  --help       Show this help message\n";
     std::cout << "\nExamples:\n";
     std::cout << "  " << program_name << " trefoil_ilp trefoil_output\n";
-    std::cout << "  " << program_name << " input output --verbose\n";
+    std::cout << "  " << program_name << " input output --threads 4 --verbose\n";
 }
 
 
@@ -99,11 +100,29 @@ int main(int argc, char* argv[]) {
     std::string input_file = argv[1];
     std::string output_file = argv[2];
     bool verbose = false;
+    int num_threads = 1;
 
     for (int i = 3; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--verbose") {
             verbose = true;
+        } else if (arg == "--threads") {
+            if (i + 1 < argc) {
+                try {
+                    num_threads = std::stoi(argv[++i]);
+                    if (num_threads < 1) {
+                        std::cerr << "Number of threads must be at least 1\n";
+                        return 1;
+                    }
+                } catch (const std::exception& e) {
+                    std::cerr << "Invalid thread count: " << argv[i] << "\n";
+                    return 1;
+                }
+            } else {
+                std::cerr << "--threads requires a number\n";
+                printUsage(argv[0]);
+                return 1;
+            }
         } else if (arg == "--help") {
             printUsage(argv[0]);
             return 0;
@@ -117,7 +136,8 @@ int main(int argc, char* argv[]) {
     std::cout << "FK Computation Tool\n";
     std::cout << "===================\n";
     std::cout << "Input file: " << input_file << ".csv\n";
-    std::cout << "Output file: " << output_file << ".json\n\n";
+    std::cout << "Output file: " << output_file << ".json\n";
+    std::cout << "Threads: " << num_threads << "\n\n";
 
     try {
         auto start_time = std::chrono::high_resolution_clock::now();
@@ -128,7 +148,7 @@ int main(int argc, char* argv[]) {
         // Perform computation
         std::cout << "Starting FK computation...\n";
 
-        computation.compute(input_file, output_file);
+        computation.compute(input_file, output_file, num_threads);
 
 
         auto end_time = std::chrono::high_resolution_clock::now();
@@ -148,16 +168,21 @@ int main(int argc, char* argv[]) {
 
         // Show brief result statistics
         const auto& result = computation.getLastResult();
+
         auto coeffs = result.getCoefficients();
         int non_zero_count = 0;
-        for (const auto& coeff : coeffs) {
-            for (int i = coeff.getMaxNegativeIndex(); i <= coeff.getMaxPositiveIndex(); ++i) {
+
+        for (const auto& [powers, coeff] : coeffs) {        // coeff is bilvector<int>
+            for (int i = coeff.getMaxNegativeIndex();
+                 i <= coeff.getMaxPositiveIndex(); ++i) {
                 if (coeff[i] != 0) {
-                    non_zero_count++;
+                    ++non_zero_count;
                 }
             }
         }
-        std::cout << "📊 Result contains " << non_zero_count << " non-zero terms\n";
+
+        std::cout << "📊 Result contains " << non_zero_count
+                  << " non-zero terms\n";
 
     } catch (const std::exception& e) {
         std::cerr << "\n❌ Error: " << e.what() << "\n";

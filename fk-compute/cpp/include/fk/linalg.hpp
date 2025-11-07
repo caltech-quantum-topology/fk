@@ -31,10 +31,12 @@ void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
                        int rankOffset, int &zVariable, int signMultiplier,
                        std::vector<int> blockSizes);
 
-
-void performOffsetAddition(std::vector<bilvector<int>> &targetArray,
-                           std::vector<bilvector<int>> sourceArray,
-                           std::vector<int> &offsetVector, int bilvectorOffset,
-                           int &dimensions, std::vector<int> arrayLengths,
-                           int signMultiplier, std::vector<int> targetBlocks,
-                           std::vector<int> sourceBlocks);
+using Term = std::pair<std::vector<int>, bilvector<int>>;
+void performOffsetAddition(
+    std::vector<Term> &targetArray,
+    const std::vector<Term> &sourceArray,
+    const std::vector<int> &offsetVector,
+    int bilvectorOffset,
+    int signMultiplier,
+    int dimensions,
+    const std::vector<int> &arrayLengths);
