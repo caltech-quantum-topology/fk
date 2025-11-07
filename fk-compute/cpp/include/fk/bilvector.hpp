@@ -4,7 +4,6 @@
 #pragma once
 
 #include <iostream>
-#include <list>
 #include <stdexcept>
 #include <vector>
 
@@ -16,8 +15,8 @@ private:
   int maxNegativeIndex = 0;
   int maxPositiveIndex = 0;
   T defaultValue;
-  std::list<std::vector<T>> negativeVectors = {};
-  std::list<std::vector<T>> positiveVectors = {};
+  std::vector<std::vector<T>> negativeVectors = {};
+  std::vector<std::vector<T>> positiveVectors = {};
 
 public:
   bilvector(int initialNegativeVectorCount, int initialPositiveVectorCount,
@@ -25,13 +24,9 @@ public:
     componentSize = componentSizeParam;
     defaultValue = defaultValueParam;
     negativeVectorCount = initialNegativeVectorCount;
-    for (int i = 0; i < initialNegativeVectorCount; i++) {
-      negativeVectors.push_back(std::vector<T>(componentSize, defaultValue));
-    }
+    negativeVectors.resize(initialNegativeVectorCount, std::vector<T>(componentSize, defaultValue));
     positiveVectorCount = initialPositiveVectorCount;
-    for (int i = 0; i < initialPositiveVectorCount; i++) {
-      positiveVectors.push_back(std::vector<T>(componentSize, defaultValue));
-    }
+    positiveVectors.resize(initialPositiveVectorCount, std::vector<T>(componentSize, defaultValue));
   }
   bilvector<T> invertExponents() const;
   void print(const std::string &varName = "q") const;
@@ -52,33 +47,19 @@ public:
       if (accessIndex >= (*this).getPositiveSize()) {
         int x = (accessIndex - (*this).getPositiveSize()) / componentSize;
         positiveVectorCount += x + 1;
-        for (int i = 0; i <= x; i++) {
-          positiveVectors.push_back(
-              std::vector<T>(componentSize, defaultValue));
-        }
+        positiveVectors.resize(positiveVectorCount, std::vector<T>(componentSize, defaultValue));
       }
-      auto it = positiveVectors.begin();
-      int j;
-      for (j = 0; j < accessIndex / componentSize; j++) {
-        ++it;
-      }
-      return (*it)[accessIndex - j * componentSize];
+      int vectorIndex = accessIndex / componentSize;
+      return positiveVectors[vectorIndex][accessIndex - vectorIndex * componentSize];
     } else {
       accessIndex = -1 - accessIndex;
       if (accessIndex >= (*this).getNegativeSize()) {
         int x = (accessIndex - (*this).getNegativeSize()) / componentSize;
         negativeVectorCount += x + 1;
-        for (int i = 0; i <= x; i++) {
-          negativeVectors.push_back(
-              std::vector<T>(componentSize, defaultValue));
-        }
+        negativeVectors.resize(negativeVectorCount, std::vector<T>(componentSize, defaultValue));
       }
-      auto it = negativeVectors.begin();
-      int j;
-      for (j = 0; j < accessIndex / componentSize; j++) {
-        ++it;
-      }
-      return (*it)[accessIndex - j * componentSize];
+      int vectorIndex = accessIndex / componentSize;
+      return negativeVectors[vectorIndex][accessIndex - vectorIndex * componentSize];
     }
   }
   int getNegativeVectorCount() { return negativeVectorCount; }
@@ -149,12 +130,8 @@ public:
         static T defaultVal = defaultValue;
         return defaultVal;
       }
-      auto it = positiveVectors.begin();
-      int j;
-      for (j = 0; j < accessIndex / componentSize; j++) {
-        ++it;
-      }
-      return (*it)[accessIndex - j * componentSize];
+      int vectorIndex = accessIndex / componentSize;
+      return positiveVectors[vectorIndex][accessIndex - vectorIndex * componentSize];
     } else {
       accessIndex = -1 - accessIndex;
       if (accessIndex >= this->getNegativeSize()) {
@@ -162,12 +139,8 @@ public:
         static T defaultVal = defaultValue;
         return defaultVal;
       }
-      auto it = negativeVectors.begin();
-      int j;
-      for (j = 0; j < accessIndex / componentSize; j++) {
-        ++it;
-      }
-      return (*it)[accessIndex - j * componentSize];
+      int vectorIndex = accessIndex / componentSize;
+      return negativeVectors[vectorIndex][accessIndex - vectorIndex * componentSize];
     }
   }
 };

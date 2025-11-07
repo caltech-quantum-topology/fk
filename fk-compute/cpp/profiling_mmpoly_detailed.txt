@@ -1,0 +1,593 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 1K of event 'cycles:Pu'
+# Event count (approx.): 1801066302
+#
+# Children      Self  Command  Shared Object         Symbol                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+# ........  ........  .......  ....................  ........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+#
+    24.76%    24.61%  fk_main  fk_main               [.] MultivariablePolynomial::operator*=(MultivariablePolynomial const&)
+            |
+            ---MultivariablePolynomial::operator*=(MultivariablePolynomial const&)
+
+    22.39%    22.10%  fk_main  fk_main               [.] bilvector<int>::operator[](int)
+            |          
+             --22.10%--bilvector<int>::operator[](int)
+
+    19.45%     0.00%  fk_main  [unknown]             [.] 0000000000000000
+            |
+            ---0
+               |          
+               |--8.54%--std::_Hashtable<std::vector<int, std::allocator<int> >, std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> >, std::allocator<std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> > >, std::__detail::_Select1st, std::equal_to<std::vector<int, std::allocator<int> > >, VectorHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_find_before_node(unsigned long, std::vector<int, std::allocator<int> > const&, unsigned long) const [clone .isra.0]
+               |          
+               |--3.17%--0x7f9ab7f7d76b
+               |          
+               |--2.00%--0x7f9ab7f7d765
+               |          
+               |--1.44%--0x7f9ab7f7d75e
+               |          
+               |--0.66%--0x7f9ab7f7d758
+               |          
+               |--0.55%--std::_Rb_tree_iterator<std::pair<int const, int> > std::_Rb_tree<int, std::pair<int const, int>, std::_Select1st<std::pair<int const, int> >, std::less<int>, std::allocator<std::pair<int const, int> > >::_M_emplace_hint_unique<std::piecewise_construct_t const&, std::tuple<int const&>, std::tuple<> >(std::_Rb_tree_const_iterator<std::pair<int const, int> >, std::piecewise_construct_t const&, std::tuple<int const&>&&, std::tuple<>&&) [clone .isra.0]
+               |          
+                --0.52%--std::_Rb_tree_insert_and_rebalance(bool, std::_Rb_tree_node_base*, std::_Rb_tree_node_base*, std::_Rb_tree_node_base&)
+
+    17.90%    17.90%  fk_main  fk_main               [.] bilvector<int>::operator[](int) const
+            |          
+             --17.59%--bilvector<int>::operator[](int) const
+
+    11.01%    10.94%  fk_main  fk_main               [.] std::_Hashtable<std::vector<int, std::allocator<int> >, std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> >, std::allocator<std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> > >, std::__detail::_Select1st, std::equal_to<std::vector<int, std::allocator<int> > >, VectorHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_find_before_node(unsigned long, std::vector<int, std::allocator<int> > const&, unsigned long) const [clone .isra.0]
+            |          
+            |--8.54%--0
+            |          std::_Hashtable<std::vector<int, std::allocator<int> >, std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> >, std::allocator<std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> > >, std::__detail::_Select1st, std::equal_to<std::vector<int, std::allocator<int> > >, VectorHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_find_before_node(unsigned long, std::vector<int, std::allocator<int> > const&, unsigned long) const [clone .isra.0]
+            |          
+             --2.47%--std::_Hashtable<std::vector<int, std::allocator<int> >, std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> >, std::allocator<std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> > >, std::__detail::_Select1st, std::equal_to<std::vector<int, std::allocator<int> > >, VectorHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_find_before_node(unsigned long, std::vector<int, std::allocator<int> > const&, unsigned long) const [clone .isra.0]
+
+     3.17%     3.17%  fk_main  libc.so.6             [.] 0x000000000017d76b
+            |
+            ---0
+               0x7f9ab7f7d76b
+
+     3.17%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7f7d76b
+            |
+            ---0x7f9ab7f7d76b
+
+     2.30%     0.95%  fk_main  libstdc++.so.6.0.34   [.] operator new(unsigned long)
+            |          
+             --1.43%--operator new(unsigned long)
+                       |          
+                        --1.36%--0x7f9ab7ea6b1f
+
+     2.00%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7f7d765
+            |
+            ---0x7f9ab7f7d765
+
+     2.00%     2.00%  fk_main  libc.so.6             [.] 0x000000000017d765
+            |
+            ---0
+               0x7f9ab7f7d765
+
+     1.90%     1.75%  fk_main  fk_main               [.] inverse_qpochhammer_xq_q(int, int, int, int)
+     1.88%     1.88%  fk_main  libc.so.6             [.] malloc
+            |          
+             --0.55%--0
+
+     1.85%     1.85%  fk_main  libc.so.6             [.] cfree
+     1.69%     0.52%  fk_main  fk_main               [.] bilvector<int>::bilvector(int, int, int, int)
+            |          
+             --1.62%--bilvector<int>::bilvector(int, int, int, int)
+                       |          
+                        --0.73%--operator new(unsigned long)
+
+     1.52%     0.59%  fk_main  fk_main               [.] QBinomialPositive(int, int)
+            |          
+             --1.22%--QBinomialPositive(int, int)
+
+     1.44%     1.44%  fk_main  libc.so.6             [.] 0x000000000017d75e
+            |
+            ---0
+               0x7f9ab7f7d75e
+
+     1.44%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7f7d75e
+            |
+            ---0x7f9ab7f7d75e
+
+     1.36%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea6b1f
+            |
+            ---0x7f9ab7ea6b1f
+
+     1.21%     1.07%  fk_main  fk_main               [.] MultivariablePolynomial::operator*=(bilvector<int> const&)
+            |          
+             --0.99%--MultivariablePolynomial::operator*=(bilvector<int> const&)
+
+     0.99%     0.29%  fk_main  fk_main               [.] std::_Rb_tree_iterator<std::pair<int const, int> > std::_Rb_tree<int, std::pair<int const, int>, std::_Select1st<std::pair<int const, int> >, std::less<int>, std::allocator<std::pair<int const, int> > >::_M_emplace_hint_unique<std::piecewise_construct_t const&, std::tuple<int const&>, std::tuple<> >(std::_Rb_tree_const_iterator<std::pair<int const, int> >, std::piecewise_construct_t const&, std::tuple<int const&>&&, std::tuple<>&&) [clone .isra.0]
+            |          
+             --0.70%--std::_Rb_tree_iterator<std::pair<int const, int> > std::_Rb_tree<int, std::pair<int const, int>, std::_Select1st<std::pair<int const, int> >, std::less<int>, std::allocator<std::pair<int const, int> > >::_M_emplace_hint_unique<std::piecewise_construct_t const&, std::tuple<int const&>, std::tuple<> >(std::_Rb_tree_const_iterator<std::pair<int const, int> >, std::piecewise_construct_t const&, std::tuple<int const&>&&, std::tuple<>&&) [clone .isra.0]
+
+     0.81%     0.00%  fk_main  [unknown]             [.] 0xbd17040fcbcfbc58
+            |
+            ---0xbd17040fcbcfbc58
+
+     0.66%     0.66%  fk_main  libc.so.6             [.] 0x000000000017d758
+            |
+            ---0
+               0x7f9ab7f7d758
+
+     0.66%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7f7d758
+            |
+            ---0x7f9ab7f7d758
+
+     0.61%     0.61%  fk_main  fk_main               [.] MultivariablePolynomial::addToCoefficient(int, std::vector<int, std::allocator<int> > const&, int)
+            |
+            ---MultivariablePolynomial::addToCoefficient(int, std::vector<int, std::allocator<int> > const&, int)
+
+     0.57%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9762b48
+            |
+            ---0x7f9ab9762b48
+               |          
+                --0.57%--0x7f9ab9763ca1
+                          |          
+                           --0.57%--0x7f9ab97625e6
+                                     |          
+                                      --0.56%--0x7f9ab9765d23
+                                                0x7f9ab9755e21
+
+     0.57%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9763ca1
+            |
+            ---0x7f9ab9763ca1
+               |          
+                --0.57%--0x7f9ab97625e6
+                          |          
+                           --0.56%--0x7f9ab9765d23
+                                     0x7f9ab9755e21
+
+     0.57%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab97625e6
+            |
+            ---0x7f9ab97625e6
+               |          
+                --0.56%--0x7f9ab9765d23
+                          0x7f9ab9755e21
+
+     0.56%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9765d23
+            |
+            ---0x7f9ab9765d23
+               0x7f9ab9755e21
+
+     0.56%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9755e21
+            |
+            ---0x7f9ab9755e21
+
+     0.54%     0.07%  fk_main  fk_main               [.] std::vector<bilvector<int>, std::allocator<bilvector<int> > >* std::__do_uninit_fill_n<std::vector<bilvector<int>, std::allocator<bilvector<int> > >*, unsigned long, std::vector<bilvector<int>, std::allocator<bilvector<int> > > >(std::vector<bilvector<int>, std::allocator<bilvector<int> > >*, unsigned long, std::vector<bilvector<int>, std::allocator<bilvector<int> > > const&)
+     0.53%     0.53%  fk_main  libstdc++.so.6.0.34   [.] std::_Rb_tree_insert_and_rebalance(bool, std::_Rb_tree_node_base*, std::_Rb_tree_node_base*, std::_Rb_tree_node_base&)
+            |          
+             --0.52%--0
+                       std::_Rb_tree_insert_and_rebalance(bool, std::_Rb_tree_node_base*, std::_Rb_tree_node_base*, std::_Rb_tree_node_base&)
+
+     0.47%     0.47%  fk_main  libc.so.6             [.] 0x000000000017d769
+     0.47%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7f7d769
+     0.44%     0.44%  fk_main  libc.so.6             [.] 0x00000000000a5af6
+     0.44%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5af6
+     0.41%     0.00%  fk_main  [unknown]             [.] 0x00007fffa7850478
+     0.39%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9753e10
+     0.37%     0.00%  fk_main  [unknown]             [.] 0x000000000000000d
+     0.37%     0.29%  fk_main  fk_main               [.] std::pair<std::__detail::_Node_iterator<std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> >, false, true>, bool> std::_Hashtable<std::vector<int, std::allocator<int> >, std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> >, std::allocator<std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> > >, std::__detail::_Select1st, std::equal_to<std::vector<int, std::allocator<int> > >, VectorHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_emplace_uniq<std::vector<int, std::allocator<int> > const&, bilvector<int> >(std::vector<int, std::allocator<int> > const&, bilvector<int>&&)
+     0.37%     0.37%  fk_main  libc.so.6             [.] 0x000000000017d74f
+     0.37%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7f7d74f
+     0.37%     0.07%  fk_main  fk_main               [.] void std::__cxx11::list<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >::_M_assign_dispatch<std::_List_const_iterator<std::vector<int, std::allocator<int> > > >(std::_List_const_iterator<std::vector<int, std::allocator<int> > >, std::_List_const_iterator<std::vector<int, std::allocator<int> > >, std::__false_type) [clone .isra.0]
+     0.37%     0.15%  fk_main  fk_main               [.] bilvector<int>::bilvector(bilvector<int> const&)
+     0.30%     0.00%  fk_main  [unknown]             [.] 0x00007fffa78503e0
+     0.30%     0.00%  fk_main  [unknown]             [.] 0x0000000000000001
+     0.29%     0.07%  fk_main  fk_main               [.] std::__detail::_Hash_node<std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> >, true>* std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> >, true> > >::_M_allocate_node<std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> > const&>(std::pair<std::vector<int, std::allocator<int> > const, bilvector<int> > const&) [clone .isra.0]
+     0.29%     0.29%  fk_main  libstdc++.so.6.0.34   [.] operator delete(void*)
+     0.29%     0.00%  fk_main  fk_main               [.] MultivariablePolynomial::getQPolynomial(std::vector<int, std::allocator<int> > const&)
+     0.24%     0.24%  fk_main  fk_main               [.] std::_Rb_tree<int, std::pair<int const, int>, std::_Select1st<std::pair<int const, int> >, std::less<int>, std::allocator<std::pair<int const, int> > >::_M_erase(std::_Rb_tree_node<std::pair<int const, int> >*) [clone .isra.0]
+     0.22%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4aef0
+     0.22%     0.22%  fk_main  fk_main               [.] operator delete(void*, unsigned long)@plt
+     0.22%     0.22%  fk_main  fk_main               [.] memcmp@plt
+     0.22%     0.22%  fk_main  fk_main               [.] operator new(unsigned long)@plt
+     0.22%     0.22%  fk_main  libc.so.6             [.] 0x00000000000a4e24
+     0.22%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4e24
+     0.22%     0.22%  fk_main  libc.so.6             [.] 0x00000000000a4e32
+     0.22%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4e32
+     0.22%     0.15%  fk_main  fk_main               [.] std::_Rb_tree<int, std::pair<int const, std::map<int, int, std::less<int>, std::allocator<std::pair<int const, int> > > >, std::_Select1st<std::pair<int const, std::map<int, int, std::less<int>, std::allocator<std::pair<int const, int> > > > >, std::less<int>, std::allocator<std::pair<int const, std::map<int, int, std::less<int>, std::allocator<std::pair<int const, int> > > > > >::_M_erase(std::_Rb_tree_node<std::pair<int const, std::map<int, int, std::less<int>, std::allocator<std::pair<int const, int> > > > >*) [clone .isra.0]
+     0.21%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974f8c2
+     0.19%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4ebd
+     0.19%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea49b0
+     0.16%     0.16%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000fd52
+     0.16%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9753d52
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x00007fffa78506f8
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60790
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b52470
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4dad0
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5fe90
+     0.15%     0.15%  fk_main  libc.so.6             [.] 0x00000000000a4e49
+     0.15%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4e49
+     0.15%     0.15%  fk_main  libc.so.6             [.] 0x00000000000a5a84
+     0.15%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5a84
+     0.15%     0.15%  fk_main  libstdc++.so.6.0.34   [.] std::_Rb_tree_increment(std::_Rb_tree_node_base*)
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b1e840
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60e20
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4f5d0
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x00007fffa7850430
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4cad0
+     0.15%     0.15%  fk_main  libc.so.6             [.] 0x000000000017d740
+     0.15%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7f7d740
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b3b600
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b0f160
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4ae30
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000000000000007
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4c390
+     0.15%     0.15%  fk_main  libc.so.6             [.] 0x000000000017d744
+     0.15%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7f7d744
+     0.15%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55fa0
+     0.14%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64c00
+     0.13%     0.00%  fk_main  [unknown]             [.] 0x0000564849b51490
+     0.11%     0.11%  fk_main  libc.so.6             [.] 0x00000000000a3835
+     0.11%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea3835
+     0.10%     0.10%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000b7bb
+     0.10%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974f7bb
+     0.10%     0.10%  fk_main  libc.so.6             [.] 0x00000000000a5a7a
+     0.10%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5a7a
+     0.09%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56830
+     0.09%     0.00%  fk_main  [unknown]             [.] 0x0000564849b538b0
+     0.09%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56c90
+     0.09%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56dd0
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x00007fffa78504e8
+     0.08%     0.08%  fk_main  libc.so.6             [.] 0x00000000000a5a9f
+     0.08%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5a9f
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55d00
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b52680
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4c660
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b548d0
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55ec0
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4ccb0
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b3caa0
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b48c60
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b62270
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b52610
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b3bc20
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b52420
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b54170
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b58920
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4ee00
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e840
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b50450
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b51950
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4e170
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5a1d0
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5fdc0
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60880
+     0.08%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56bc0
+     0.08%     0.08%  fk_main  [unknown]             [k] 0xffffffff82e015f0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b59000
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e150
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b600b0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b61160
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60570
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60010
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4f260
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b63570
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b59820
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4c760
+     0.07%     0.07%  fk_main  fk_main               [.] bilvector<int> multiplyByQPower<int>(bilvector<int> const&, int)
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5ce60
+     0.07%     0.00%  fk_main  [unknown]             [.] 0xffffffcd00000001
+     0.07%     0.07%  fk_main  fk_main               [.] MultivariablePolynomial::MultivariablePolynomial(MultivariablePolynomial const&, int, int, int, std::vector<int, std::allocator<int> > const&)
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e734
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b626c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b541c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b59b60
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5b800
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4ca80
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5c030
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b58d70
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55360
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b63300
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a4def
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b52e18
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4def
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4be30
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5d2d8
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5bb20
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4a560
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b49990
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e6a0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b63380
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56790
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b489d0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b65530
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b49cf0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4aa10
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55400
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5fbf0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5f2b0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5bde0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4a6f0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b51590
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b48fb0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b51930
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e970
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64660
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5c570
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4b7c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b54330
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e830
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55bc0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4cea8
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b49620
+     0.07%     0.00%  fk_main  [unknown]             [.] 0xfffffffb00000001
+     0.07%     0.07%  fk_main  libstdc++.so.6.0.34   [.] std::__detail::_List_node_base::_M_hook(std::__detail::_List_node_base*)
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56280
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4c140
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b54b68
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4bef0
+     0.07%     0.00%  fk_main  fk_main               [.] fk::FKComputationEngine::performOffsetAdditionPoly(MultivariablePolynomial const&, std::vector<int, std::allocator<int> > const&, int, int)
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a4e12
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64468
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b1dd90
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4e12
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b53950
+     0.07%     0.07%  fk_main  fk_main               [.] std::_Rb_tree<int, std::pair<int const, int>, std::_Select1st<std::pair<int const, int> >, std::less<int>, std::allocator<std::pair<int const, int> > >::_M_get_insert_hint_unique_pos(std::_Rb_tree_const_iterator<std::pair<int const, int> >, int const&) [clone .isra.0]
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a4ee0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5ea60
+     0.07%     0.00%  fk_main  fk_main               [.] fk::FKComputation::setupWorkStealingComputation(std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > > const&) [clone ._omp_fn.0]
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4ee0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64a70
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a4e36
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5ecc0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b3b8b0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b58b00
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4e36
+     0.07%     0.00%  fk_main  [unknown]             [.] 0xffffffe400000001
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60b38
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55300
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000000000000010
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4b6c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56db0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b3bae0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b51c80
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4fdb8
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b588d0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000000000000009
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000000200000000
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4cce4
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4a8b0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b49bb0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60430
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56c10
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b622f0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b62b10
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b3c2c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b538d0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b499b0
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a5a01
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b50018
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5a01
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b52f90
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4bb80
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b54f00
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a59d2
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea59d2
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a5ad7
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b646a0
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5ad7
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x00007fffa7850418
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a59a6
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea59a6
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b61998
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4d990
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b0dbe0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5d350
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4bc10
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b49168
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a395d
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea395d
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b54d50
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5d820
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b507d0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55010
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5d4e0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4f490
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5c2e0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4c210
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b54cf0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4d060
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b62090
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b49670
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b63690
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4d450
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64260
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5bfe0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e370
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5fa20
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a59ad
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea59ad
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b54540
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4c6c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b63e60
+     0.07%     0.00%  fk_main  [unknown]             [.] 0xfffffffc00000000
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b51450
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64930
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55820
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b63440
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5d240
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e7c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b61760
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55280
+     0.07%     0.00%  fk_main  [unknown]             [.] 0xffffffef00000000
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b616a0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b54660
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b52590
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a6a11
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea6a11
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a4dfd
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b65de0
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4dfd
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b61048
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a4e6d
+     0.07%     0.00%  fk_main  [unknown]             [.] 0xffffffd900000000
+     0.07%     0.00%  fk_main  fk_main               [.] QBinomialNegative(int, int)
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4e6d
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a5ae3
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x000000000000000b
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5ae3
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4cc40
+     0.07%     0.07%  fk_main  fk_main               [.] std::__cxx11::_List_base<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >::_M_clear()
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b621d0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5ccc0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5f210
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64510
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60f60
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4f640
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b642c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b66050
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5d5c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b587e0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64c70
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4d200
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5bf70
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4c3b0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b62200
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b618b0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60520
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55df0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56020
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60d60
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b59ca8
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5f040
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4a730
+     0.07%     0.07%  fk_main  fk_main               [.] MultivariablePolynomial::pruneZeros()
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b59030
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5ebe0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b55ee0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b62250
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b607e0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b627d8
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b550d0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000041700000000
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a5af8
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4a764
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5af8
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b59990
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a4dd4
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4b7e0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b63350
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64e50
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60810
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5ef40
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b48fe0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b49dd0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b598c0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b642a0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4cab0
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4dd4
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b612a8
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4cd50
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b558e0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5cd44
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b50670
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4ff30
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b513d0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b48890
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b54390
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b56be0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e200
+     0.07%     0.00%  fk_main  [unknown]             [.] 0xffffffe000000001
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x00007fffa78504a0
+     0.07%     0.07%  fk_main  libc.so.6             [.] 0x00000000000a5aa7
+     0.07%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5aa7
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b548f0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b49a80
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4c460
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b64c50
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b62bf0
+     0.07%     0.00%  fk_main  [unknown]             [.] 0x0000564849b58814
+     0.06%     0.06%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000ac95
+     0.06%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974ec95
+     0.05%     0.05%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000aefd
+     0.05%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974eefd
+     0.04%     0.04%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000b8e2
+     0.04%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974f8e2
+     0.04%     0.04%  fk_main  fk_main               [.] std::_Rb_tree_increment(std::_Rb_tree_node_base*)@plt
+     0.04%     0.04%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000b7ee
+     0.04%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974f7ee
+     0.03%     0.03%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000ace0
+     0.03%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974ece0
+     0.02%     0.00%  fk_main  [unknown]             [.] 0x0000564849b51e88
+     0.02%     0.02%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000ad1e
+     0.02%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974ed1e
+     0.02%     0.02%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000aaa8
+     0.02%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974eaa8
+     0.02%     0.02%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000ace4
+     0.02%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974ece4
+     0.02%     0.02%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000acf7
+     0.02%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974ecf7
+     0.01%     0.00%  fk_main  [unknown]             [.] 0x0000812200000000
+     0.01%     0.01%  fk_main  ld-linux-x86-64.so.2  [.] 0x0000000000014f55
+     0.01%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9765b0d
+     0.01%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9746359
+     0.01%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9763344
+     0.01%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab97596c0
+     0.01%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9758f55
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000c98c
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab97659b0
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9747ca3
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] _dl_catch_exception
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974783d
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974e870
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974dc72
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab975098c
+     0.00%     0.00%  fk_main  [unknown]             [.] 0x0000564849b4f5a0
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00000000000a5ac5
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5ac5
+     0.00%     0.00%  fk_main  [unknown]             [.] 0x0000564849b520d0
+     0.00%     0.00%  fk_main  [unknown]             [k] 0xffffffff82e01280
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab976258c
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9761698
+     0.00%     0.00%  fk_main  [unknown]             [.] 0xffffffff00000001
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000b93d
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974f93d
+     0.00%     0.00%  fk_main  [unknown]             [.] 0x0000564849b5e410
+     0.00%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60748
+     0.00%     0.00%  fk_main  fk_main               [.] std::_Rb_tree_iterator<std::pair<int const, std::map<int, int, std::less<int>, std::allocator<std::pair<int const, int> > > > > std::_Rb_tree<int, std::pair<int const, std::map<int, int, std::less<int>, std::allocator<std::pair<int const, int> > > >, std::_Select1st<std::pair<int const, std::map<int, int, std::less<int>, std::allocator<std::pair<int const, int> > > > >, std::less<int>, std::allocator<std::pair<int const, std::map<int, int, std::less<int>, std::allocator<std::pair<int const, int> > > > > >::_M_emplace_hint_unique<std::piecewise_construct_t const&, std::tuple<int const&>, std::tuple<> >(std::_Rb_tree_const_iterator<std::pair<int const, std::map<int, int, std::less<int>, std::allocator<std::pair<int const, int> > > > >, std::piecewise_construct_t const&, std::tuple<int const&>&&, std::tuple<>&&) [clone .isra.0]
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000001f724
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9763724
+     0.00%     0.00%  fk_main  [unknown]             [.] 0x0000564849b49240
+     0.00%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60760
+     0.00%     0.00%  fk_main  fk_main               [.] MultivariablePolynomial::~MultivariablePolynomial()
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00000000000a4dec
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea4dec
+     0.00%     0.00%  fk_main  fk_main               [.] MultivariablePolynomial::MultivariablePolynomial(int, int, std::vector<int, std::allocator<int> > const&)
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000afbd
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974efbd
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab97636b9
+     0.00%     0.00%  fk_main  fk_main               [.] std::vector<int, std::allocator<int> >::_M_default_append(unsigned long)
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5a37
+     0.00%     0.00%  fk_main  [unknown]             [.] 0x0000564849b60650
+     0.00%     0.00%  fk_main  [unknown]             [k] 0xffffffff82e01630
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00000000000a5a37
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000ab1a
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974efb9
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974eb1a
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000001f6b9
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974ef94
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9763694
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000af94
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000af96
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000000af9b
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00000000000a5a3b
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00000000000a6a25
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab9762b40
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x000000000001f694
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974ef96
+     0.00%     0.00%  fk_main  ld-linux-x86-64.so.2  [.] 0x00007f9ab974ef9b
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea5a3b
+     0.00%     0.00%  fk_main  libc.so.6             [.] 0x00007f9ab7ea6a25
+
+
+#
+# (Tip: Limit to show entries above 5% only: perf report --percent-limit 5)
+#
