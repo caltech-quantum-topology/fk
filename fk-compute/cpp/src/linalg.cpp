@@ -14,7 +14,7 @@ int computeDotProduct(const std::vector<int> &a, const std::vector<int> &b) {
 void matrixIndexColumnRecursive(int &dimensions, std::vector<int> arrayLengths,
                                 int &sliceIndex, int sliceValue,
                                 int accumulator, int currentIndex,
-                                std::vector<bilvector<int>> &polynomialTerms,
+                                std::vector<QPolynomialType> &polynomialTerms,
                                 int rankOffset, int &zVariable,
                                 int signMultiplier,
                                 std::vector<int> blockSizes) {
@@ -57,7 +57,7 @@ void matrixIndexColumnRecursive(int &dimensions, std::vector<int> arrayLengths,
 
 void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
                        int &sliceIndex, int sliceValue,
-                       std::vector<bilvector<int>> &polynomialTerms,
+                       std::vector<QPolynomialType> &polynomialTerms,
                        int rankOffset, int &zVariable, int signMultiplier,
                        std::vector<int> blockSizes) {
   if (sliceIndex == 0) {
@@ -91,8 +91,8 @@ void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
   }
 }
 
-void performOffsetAddition(std::vector<bilvector<int>> &targetArray,
-                           std::vector<bilvector<int>> sourceArray,
+void performOffsetAddition(std::vector<QPolynomialType> &targetArray,
+                           std::vector<QPolynomialType> sourceArray,
                            std::vector<int> &offsetVector, int bilvectorOffset,
                            int &dimensions, std::vector<int> arrayLengths,
                            int signMultiplier, std::vector<int> targetBlocks,
@@ -147,7 +147,7 @@ void performOffsetAddition(std::vector<bilvector<int>> &targetArray,
   }
 }
 
-using Term = std::pair<std::vector<int>, bilvector<int>>;
+using Term = std::pair<std::vector<int>, QPolynomialType>;
 
 void performOffsetAddition(
     std::vector<Term> &targetArray,
@@ -162,7 +162,7 @@ void performOffsetAddition(
   // - for each term, term.first.size() >= dimensions
   for (const auto &term : sourceArray) {
     const std::vector<int> &indices = term.first;
-    const bilvector<int>   &srcBil  = term.second;
+    const QPolynomialType   &srcBil  = term.second;
 
     if (static_cast<int>(indices.size()) < dimensions) {
       continue; // malformed, skip
@@ -196,11 +196,11 @@ void performOffsetAddition(
         [&](const Term &t) { return t.first == shifted; });
 
     if (it == targetArray.end()) {
-      targetArray.emplace_back(shifted, bilvector<int>(0, 1, 20, 0));
+      targetArray.emplace_back(shifted, QPolynomialType(0, 1, 20, 0));
       it = std::prev(targetArray.end());
     }
 
-    bilvector<int> &destBil = it->second;
+    QPolynomialType &destBil = it->second;
 
     // Add shifted q-coefficients
     for (int q = srcBil.getMaxNegativeIndex();

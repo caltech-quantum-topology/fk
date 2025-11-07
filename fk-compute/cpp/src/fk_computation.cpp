@@ -384,7 +384,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     switch (relation_type) {
     case 1: {
       // Binomial part
-      const bilvector<int> binomial =
+      const QPolynomialType binomial =
           (param_i > 0) ? QBinomialPositive(param_i, param_i - param_m)
                         : QBinomialNegative(param_i, param_i - param_m);
       result *= binomial;
@@ -421,7 +421,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     }
     case 4: {
       // Binomial part
-      const bilvector<int> binomial =
+      const QPolynomialType binomial =
           (param_j > 0)
               ? QBinomialPositive(param_j, param_j - param_k).invertExponents()
               : QBinomialNegative(param_j, param_j - param_k).invertExponents();

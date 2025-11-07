@@ -21,14 +21,17 @@
 #if POLYNOMIAL_TYPE == 0
     #include "fk/multivariable_polynomial.hpp"
     using PolynomialType = MultivariablePolynomial;
+    using QPolynomialType = bilvector<int>;
     #define POLYNOMIAL_CLASS_NAME "MultivariablePolynomial"
 #elif POLYNOMIAL_TYPE == 1
     #include "fk/fmpoly.hpp"
     using PolynomialType = FMPoly;
+    using QPolynomialType = QPolynomial;
     #define POLYNOMIAL_CLASS_NAME "FMPoly"
 #elif POLYNOMIAL_TYPE == 2
     #include "fk/bmpoly.hpp"
     using PolynomialType = BMPoly;
+    using QPolynomialType = bilvector<int>;
     #define POLYNOMIAL_CLASS_NAME "BMPoly"
 #else
     #error "Invalid POLYNOMIAL_TYPE: must be 0 (MultivariablePolynomial), 1 (FMPoly), or 2 (BMPoly)"

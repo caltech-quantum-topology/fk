@@ -16,7 +16,7 @@ void computePositiveQBinomialHelper(std::vector<int> &binomialCoefficients,
   }
 }
 
-void computePositiveQBinomial(std::vector<bilvector<int>> &polynomialTerms,
+void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
                               int upperLimit, int lowerLimit, bool neg) {
   int maxQDegree = lowerLimit * (upperLimit - lowerLimit);
   std::vector<int> binomialCoefficients(maxQDegree + 1, 0);
@@ -35,7 +35,7 @@ void computePositiveQBinomial(std::vector<bilvector<int>> &polynomialTerms,
     if (componentSize <= 0) {
       throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
     }
-    bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
+    QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
                                  polynomialTerms[0].getPositiveSize(),
                                  componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
@@ -57,7 +57,7 @@ void computePositiveQBinomial(std::vector<bilvector<int>> &polynomialTerms,
     if (componentSize <= 0) {
       throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
     }
-    bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
+    QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
                                  polynomialTerms[0].getPositiveSize(),
                                  componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
@@ -103,7 +103,7 @@ void computeNegativeQBinomialHelper(std::vector<int> &binomialCoefficients,
   }
 }
 
-void computeNegativeQBinomial(std::vector<bilvector<int>> &polynomialTerms,
+void computeNegativeQBinomial(std::vector<QPolynomialType> &polynomialTerms,
                               int upperLimit, int lowerLimit, bool neg) {
   int qDegreeDelta = -(1 + upperLimit) * lowerLimit;
   int maxQDegree = -lowerLimit * (lowerLimit + 1) / 2;
@@ -127,7 +127,7 @@ void computeNegativeQBinomial(std::vector<bilvector<int>> &polynomialTerms,
     if (componentSize <= 0) {
       throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
     }
-    bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
+    QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
                                  polynomialTerms[0].getPositiveSize(),
                                  componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
@@ -149,7 +149,7 @@ void computeNegativeQBinomial(std::vector<bilvector<int>> &polynomialTerms,
     if (componentSize <= 0) {
       throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
     }
-    bilvector<int> temporaryTerm(polynomialTerms[0].getNegativeSize(),
+    QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
                                  polynomialTerms[0].getPositiveSize(),
                                  componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
@@ -169,7 +169,7 @@ void computeNegativeQBinomial(std::vector<bilvector<int>> &polynomialTerms,
   }
 }
 
-void computeXQPochhammer(std::vector<bilvector<int>> &polynomialTerms,
+void computeXQPochhammer(std::vector<QPolynomialType> &polynomialTerms,
                          int upperBound, int lowerBound, int componentIndex,
                          int totalComponents, std::vector<int> componentLengths,
                          std::vector<int> blockSizes) {
@@ -184,7 +184,7 @@ void computeXQPochhammer(std::vector<bilvector<int>> &polynomialTerms,
   }
 }
 
-void computeXQInversePochhammer(std::vector<bilvector<int>> &polynomialTerms,
+void computeXQInversePochhammer(std::vector<QPolynomialType> &polynomialTerms,
                                 int upperBound, int lowerBound,
                                 int componentIndex, int totalComponents,
                                 std::vector<int> componentLengths,
@@ -205,24 +205,24 @@ void computeXQInversePochhammer(std::vector<bilvector<int>> &polynomialTerms,
 
 
 
-bilvector<int> QBinomialPositive(int upperLimit, int lowerLimit) {
+QPolynomialType QBinomialPositive(int upperLimit, int lowerLimit) {
   int n = upperLimit;
   int k = lowerLimit;
 
   // Zero polynomial if out of range
   if (k < 0 || n < 0 || k > n) {
-    return bilvector<int>(0, 1, 1, 0);  // all zero, only exponent 0 allocated
+    return QPolynomialType(0, 1, 1, 0);  // all zero, only exponent 0 allocated
   }
 
   auto makeConstOne = []() {
-    bilvector<int> p(0, 1, 1, 0);  // exponent 0 only
+    QPolynomialType p(0, 1, 1, 0);  // exponent 0 only
     p[0] = 1;
     return p;
   };
 
   // C[i][j] = [i choose j]_q
-  std::vector<std::vector<bilvector<int>>> C(
-      n + 1, std::vector<bilvector<int>>(k + 1, bilvector<int>(0, 1, 1, 0)));
+  std::vector<std::vector<QPolynomialType>> C(
+      n + 1, std::vector<QPolynomialType>(k + 1, QPolynomialType(0, 1, 1, 0)));
 
   C[0][0] = makeConstOne();
 
@@ -235,7 +235,7 @@ bilvector<int> QBinomialPositive(int upperLimit, int lowerLimit) {
         C[i][j] = makeConstOne();  // [i choose i]_q = 1
       } else {
         // [i choose j]_q = [i-1 choose j]_q + q^(i-j) [i-1 choose j-1]_q
-        bilvector<int> shifted = multiplyByQPower(C[i - 1][j - 1], i - j);
+        QPolynomialType shifted = multiplyByQPower(C[i - 1][j - 1], i - j);
         C[i][j] = C[i - 1][j] + shifted;
       }
     }
@@ -246,13 +246,13 @@ bilvector<int> QBinomialPositive(int upperLimit, int lowerLimit) {
 
 
 /*
-bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
+QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
   int k = lowerLimit;
   int u = upperLimit;
 
   // If k is out of range, return the zero polynomial
   if (k < 0) {
-    return bilvector<int>(0, 1, 1, 0); // zero, only exponent 0 allocated
+    return QPolynomialType(0, 1, 1, 0); // zero, only exponent 0 allocated
   }
 
   // If upperLimit is nonnegative, just defer to the positive version
@@ -267,13 +267,13 @@ bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
   //   [ -n choose k ]_q = (-1)^k q^(-n*k + k*(k-1)/2) [ n + k - 1 choose k ]_q
   //
   // First compute the positive q-binomial [ n + k - 1 choose k ]_q
-  bilvector<int> base = QBinomialPositive(n + k - 1, k);
+  QPolynomialType base = QBinomialPositive(n + k - 1, k);
 
   // Compute the q-exponent shift: -n*k + k*(k-1)/2
   int shift = -n * k + (k * (k - 1)) / 2;
 
   // Apply the q^shift factor
-  bilvector<int> result = multiplyByQPower(base, shift);
+  QPolynomialType result = multiplyByQPower(base, shift);
 
   // Apply the (-1)^k factor to all coefficients
   if (k % 2 != 0) { // k odd → multiply by -1
@@ -287,13 +287,13 @@ bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
   return result;
 }*/
 
-bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
+QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
   int k = lowerLimit;
   int u = upperLimit;
 
   // Handle nonsense k
   if (k < 0) {
-    return bilvector<int>(0, 1, 1, 0); // zero polynomial
+    return QPolynomialType(0, 1, 1, 0); // zero polynomial
   }
 
   // If upperLimit >= 0, just reuse the positive version
@@ -305,7 +305,7 @@ bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
   int n = -u;
 
   // Base positive q-binomial: [n + k - 1 choose k]_q
-  bilvector<int> base = QBinomialPositive(n + k - 1, k);
+  QPolynomialType base = QBinomialPositive(n + k - 1, k);
 
   // Shift exponent so that we match computeNegativeQBinomial.
   // Desired shift: u * k - k*(k-1)/2
@@ -313,7 +313,7 @@ bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit) {
   //  which is exactly what your old code produces)
   int shift = u * k - (k * (k - 1)) / 2;
 
-  bilvector<int> result = multiplyByQPower(base, shift);
+  QPolynomialType result = multiplyByQPower(base, shift);
 
   // Apply (-1)^k factor
   if (k % 2 != 0) { // k odd → multiply by -1

@@ -20,6 +20,8 @@ $(shell mkdir -p $(BUILD_DIR))
 SOURCES = $(SRC_DIR)/fk_segments_links.cpp \
           $(SRC_DIR)/multivariable_polynomial.cpp \
           $(SRC_DIR)/fmpoly.cpp \
+          $(SRC_DIR)/qpolynomial.cpp \
+          $(SRC_DIR)/fmpoly_class.cpp \
           $(SRC_DIR)/bmpoly.cpp \
           $(SRC_DIR)/qalg_links.cpp \
           $(SRC_DIR)/linalg.cpp \
@@ -33,6 +35,8 @@ OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 # Header files for dependency tracking
 HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
           $(INCLUDE_DIR)/fk/fmpoly.hpp \
+          $(INCLUDE_DIR)/fk/qpolynomial.hpp \
+          $(INCLUDE_DIR)/fk/fmpoly_class.hpp \
           $(INCLUDE_DIR)/fk/bmpoly.hpp \
           $(INCLUDE_DIR)/fk/qalg_links.hpp \
           $(INCLUDE_DIR)/fk/linalg.hpp \
@@ -88,23 +92,23 @@ $(POLYNOMIAL_EXAMPLE_TARGET): $(BUILD_DIR)/polynomial_example.o $(BUILD_DIR)/mul
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # FMPoly example executable
-$(FMPOLY_EXAMPLE_TARGET): $(BUILD_DIR)/fmpoly_example.o $(BUILD_DIR)/fmpoly.o
+$(FMPOLY_EXAMPLE_TARGET): $(BUILD_DIR)/fmpoly_example.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # FMPoly compatibility test executable
-$(FMPOLY_COMPATIBILITY_TARGET): $(BUILD_DIR)/fmpoly_compatibility_test.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/multivariable_polynomial.o
+$(FMPOLY_COMPATIBILITY_TARGET): $(BUILD_DIR)/fmpoly_compatibility_test.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o $(BUILD_DIR)/multivariable_polynomial.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Performance comparison test executable
-$(PERFORMANCE_COMPARISON_TARGET): $(BUILD_DIR)/performance_comparison_test.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/bmpoly.o
+$(PERFORMANCE_COMPARISON_TARGET): $(BUILD_DIR)/performance_comparison_test.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/bmpoly.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Test getQPolynomial executable
-$(TEST_GETQPOLY_TARGET): $(BUILD_DIR)/test_getQPolynomial.o $(BUILD_DIR)/fmpoly.o
+$(TEST_GETQPOLY_TARGET): $(BUILD_DIR)/test_getQPolynomial.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Debug FMPoly executable
-$(DEBUG_FMPOLY_TARGET): $(BUILD_DIR)/debug_fmpoly.o $(BUILD_DIR)/fmpoly.o
+$(DEBUG_FMPOLY_TARGET): $(BUILD_DIR)/debug_fmpoly.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Arithmetic test executable
@@ -144,8 +148,8 @@ $(TREFOIL_COMPLETE_TARGET): $(BUILD_DIR)/trefoil_complete_example.o $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # FK Main executable (refactored API)
-$(FK_MAIN_TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/bmpoly.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
-	$(CXX) $(CXXFLAGS) -o $@ $^ -pthread
+$(FK_MAIN_TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o $(BUILD_DIR)/bmpoly.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS) -pthread
 
 # Parser comparison test executable
 $(PARSER_TEST_TARGET): $(BUILD_DIR)/parser_comparison_test.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
@@ -207,7 +211,7 @@ $(XQ_EXMPL): $(TEST_DIR)/xq_poch_example.o $(BUILD_DIR)/multivariable_polynomial
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # Random FMPoly example
-$(RANDOM_FMPOLY_TARGET): $(BUILD_DIR)/random_fmpoly.o $(BUILD_DIR)/fmpoly.o
+$(RANDOM_FMPOLY_TARGET): $(BUILD_DIR)/random_fmpoly.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # BMPoly test
@@ -221,7 +225,9 @@ $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 # Specific dependencies for object files
 $(BUILD_DIR)/fk_segments_links.o: $(SRC_DIR)/fk_segments_links.cpp $(HEADERS)
 $(BUILD_DIR)/multivariable_polynomial.o: $(SRC_DIR)/multivariable_polynomial.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
-$(BUILD_DIR)/fmpoly.o: $(SRC_DIR)/fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
+$(BUILD_DIR)/fmpoly.o: $(SRC_DIR)/fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp $(INCLUDE_DIR)/fk/qpolynomial.hpp $(INCLUDE_DIR)/fk/fmpoly_class.hpp
+$(BUILD_DIR)/qpolynomial.o: $(SRC_DIR)/qpolynomial.cpp $(INCLUDE_DIR)/fk/qpolynomial.hpp
+$(BUILD_DIR)/fmpoly_class.o: $(SRC_DIR)/fmpoly_class.cpp $(INCLUDE_DIR)/fk/fmpoly_class.hpp $(INCLUDE_DIR)/fk/qpolynomial.hpp
 $(BUILD_DIR)/bmpoly.o: $(SRC_DIR)/bmpoly.cpp $(INCLUDE_DIR)/fk/bmpoly.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/qalg_links.o: $(SRC_DIR)/qalg_links.cpp $(INCLUDE_DIR)/fk/qalg_links.hpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/linalg.o: $(SRC_DIR)/linalg.cpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp

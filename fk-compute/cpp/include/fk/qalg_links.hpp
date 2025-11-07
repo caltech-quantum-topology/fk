@@ -4,12 +4,11 @@
 #include <vector>
 
 #include "fk/polynomial_config.hpp"
-#include "fk/bilvector.hpp"
 
 // Forward declarations
 void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
                        int &sliceIndex, int sliceValue,
-                       std::vector<bilvector<int>> &polynomialTerms,
+                       std::vector<QPolynomialType> &polynomialTerms,
                        int rankOffset, int &zVariable, int signMultiplier,
                        std::vector<int> blockSizes);
 
@@ -19,29 +18,29 @@ void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
 void computePositiveQBinomialHelper(std::vector<int> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift);
 
-void computePositiveQBinomial(std::vector<bilvector<int>> &polynomialTerms,
+void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
                               int upperLimit, int lowerLimit, bool neg);
 
 void computeNegativeQBinomialHelper(std::vector<int> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift,
                                     bool neg);
 
-void computeNegativeQBinomial(std::vector<bilvector<int>> &polynomialTerms,
+void computeNegativeQBinomial(std::vector<QPolynomialType> &polynomialTerms,
                               int upperLimit, int lowerLimit, bool neg);
 
-void computeXQPochhammer(std::vector<bilvector<int>> &polynomialTerms,
+void computeXQPochhammer(std::vector<QPolynomialType> &polynomialTerms,
                          int upperBound, int lowerBound, int componentIndex,
                          int totalComponents, std::vector<int> componentLengths,
                          std::vector<int> blockSizes);
 
-void computeXQInversePochhammer(std::vector<bilvector<int>> &polynomialTerms,
+void computeXQInversePochhammer(std::vector<QPolynomialType> &polynomialTerms,
                                 int upperBound, int lowerBound,
                                 int componentIndex, int totalComponents,
                                 std::vector<int> componentLengths,
                                 std::vector<int> blockSizes);
 
-bilvector<int> QBinomialPositive(int upperLimit, int lowerLimit);
-bilvector<int> QBinomialNegative(int upperLimit, int lowerLimit);
+QPolynomialType QBinomialPositive(int upperLimit, int lowerLimit);
+QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit);
 
 PolynomialType qpochhammer_xq_q(int n, int qpow, int lsign);
 PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign);

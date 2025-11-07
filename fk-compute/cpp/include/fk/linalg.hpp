@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fk/bilvector.hpp"
+#include "fk/polynomial_config.hpp"
 #include <vector>
 
 // x @ p <= xdeg <------- original inequality in angle variables; use a
@@ -20,18 +20,18 @@ int computeDotProduct(const std::vector<int> &a, const std::vector<int> &b);
 void matrixIndexColumnRecursive(int &dimensions, std::vector<int> arrayLengths,
                                 int &sliceIndex, int sliceValue,
                                 int accumulator, int currentIndex,
-                                std::vector<bilvector<int>> &polynomialTerms,
+                                std::vector<QPolynomialType> &polynomialTerms,
                                 int rankOffset, int &zVariable,
                                 int signMultiplier,
                                 std::vector<int> blockSizes);
 
 void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
                        int &sliceIndex, int sliceValue,
-                       std::vector<bilvector<int>> &polynomialTerms,
+                       std::vector<QPolynomialType> &polynomialTerms,
                        int rankOffset, int &zVariable, int signMultiplier,
                        std::vector<int> blockSizes);
 
-using Term = std::pair<std::vector<int>, bilvector<int>>;
+using Term = std::pair<std::vector<int>, QPolynomialType>;
 void performOffsetAddition(
     std::vector<Term> &targetArray,
     const std::vector<Term> &sourceArray,
