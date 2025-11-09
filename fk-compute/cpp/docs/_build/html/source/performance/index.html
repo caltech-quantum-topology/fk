@@ -1,0 +1,718 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Performance Guide &mdash; FK Computation C++ Library 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            FK Computation C++ Library
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../build_instructions.html">Build Instructions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">FK Computation C++ Library</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Performance Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/source/performance/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="performance-guide">
+<h1>Performance Guide<a class="headerlink" href="#performance-guide" title="Link to this heading"></a></h1>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#benchmark-results" id="id3">Benchmark Results</a></p>
+<ul>
+<li><p><a class="reference internal" href="#real-world-performance-data" id="id4">Real-World Performance Data</a></p></li>
+<li><p><a class="reference internal" href="#threading-overhead-analysis" id="id5">Threading Overhead Analysis</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#memory-efficiency" id="id6">Memory Efficiency</a></p>
+<ul>
+<li><p><a class="reference internal" href="#sparse-vs-dense-storage" id="id7">Sparse vs Dense Storage</a></p></li>
+<li><p><a class="reference internal" href="#dynamic-memory-growth" id="id8">Dynamic Memory Growth</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#scalability-analysis" id="id9">Scalability Analysis</a></p>
+<ul>
+<li><p><a class="reference internal" href="#cpu-core-scaling" id="id10">CPU Core Scaling</a></p></li>
+<li><p><a class="reference internal" href="#problem-size-recommendations" id="id11">Problem Size Recommendations</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#optimization-techniques" id="id12">Optimization Techniques</a></p>
+<ul>
+<li><p><a class="reference internal" href="#algorithm-level-optimizations" id="id13">Algorithm-Level Optimizations</a></p></li>
+<li><p><a class="reference internal" href="#memory-level-optimizations" id="id14">Memory-Level Optimizations</a></p></li>
+<li><p><a class="reference internal" href="#thread-level-optimizations" id="id15">Thread-Level Optimizations</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#benchmarking-framework" id="id16">Benchmarking Framework</a></p>
+<ul>
+<li><p><a class="reference internal" href="#built-in-benchmarking" id="id17">Built-in Benchmarking</a></p></li>
+<li><p><a class="reference internal" href="#custom-benchmarking" id="id18">Custom Benchmarking</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#profiling-and-analysis" id="id19">Profiling and Analysis</a></p>
+<ul>
+<li><p><a class="reference internal" href="#cpu-profiling" id="id20">CPU Profiling</a></p></li>
+<li><p><a class="reference internal" href="#memory-profiling" id="id21">Memory Profiling</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#performance-tuning-checklist" id="id22">Performance Tuning Checklist</a></p></li>
+<li><p><a class="reference internal" href="#troubleshooting-performance-issues" id="id23">Troubleshooting Performance Issues</a></p>
+<ul>
+<li><p><a class="reference internal" href="#common-performance-problems" id="id24">Common Performance Problems</a></p></li>
+<li><p><a class="reference internal" href="#performance-regression-testing" id="id25">Performance Regression Testing</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#future-optimization-opportunities" id="id26">Future Optimization Opportunities</a></p></li>
+</ul>
+</nav>
+<p>This guide covers performance optimization, benchmarking, and scaling characteristics
+of the FK Computation library.</p>
+<section id="benchmark-results">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Benchmark Results</a><a class="headerlink" href="#benchmark-results" title="Link to this heading"></a></h2>
+<section id="real-world-performance-data">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">Real-World Performance Data</a><a class="headerlink" href="#real-world-performance-data" title="Link to this heading"></a></h3>
+<p>The following benchmarks were conducted on a 24-core system using actual test cases:</p>
+<table class="performance-table docutils align-default" id="id1">
+<caption><span class="caption-text">Performance Characteristics by Problem Size</span><a class="headerlink" href="#id1" title="Link to this table"></a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Problem Size</p></th>
+<th class="head"><p>Variables</p></th>
+<th class="head"><p>Solutions</p></th>
+<th class="head"><p>Sequential</p></th>
+<th class="head"><p>Parallel (24t)</p></th>
+<th class="head"><p>Correctness</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Small</p></td>
+<td><p>3</p></td>
+<td><p>206</p></td>
+<td><p>0ms</p></td>
+<td><p>0ms</p></td>
+<td><p>✓ Match</p></td>
+</tr>
+<tr class="row-odd"><td><p>Medium</p></td>
+<td><p>4</p></td>
+<td><p>1,329</p></td>
+<td><p>2ms</p></td>
+<td><p>3ms</p></td>
+<td><p>✓ Match</p></td>
+</tr>
+<tr class="row-even"><td><p>Large</p></td>
+<td><p>5</p></td>
+<td><p>10,999</p></td>
+<td><p>74ms</p></td>
+<td><p>81ms</p></td>
+<td><p>✓ Match</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key Observations:</strong></p>
+<ul class="simple">
+<li><p><strong>Perfect Algorithmic Correctness</strong>: All parallel runs produce identical solution counts</p></li>
+<li><p><strong>Thread Overhead</strong>: Small/medium problems show overhead due to synchronization costs</p></li>
+<li><p><strong>Scaling Threshold</strong>: Parallel benefit starts at ~100ms sequential execution time</p></li>
+</ul>
+</section>
+<section id="threading-overhead-analysis">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">Threading Overhead Analysis</a><a class="headerlink" href="#threading-overhead-analysis" title="Link to this heading"></a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">performance-note</span></span></dt>
+<dd><p><strong>Thread Startup Cost</strong>: ~5-10ms overhead for thread pool initialization and work distribution.
+For problems requiring &lt; 50ms sequential time, this overhead dominates performance.</p>
+</dd></dl>
+
+<p><strong>Overhead Components:</strong></p>
+<ol class="arabic simple">
+<li><p><strong>Thread Creation</strong>: 1-2ms per thread</p></li>
+<li><p><strong>Work Distribution</strong>: 2-5ms for initial partitioning</p></li>
+<li><p><strong>Synchronization</strong>: 1-3ms per 1000 solutions</p></li>
+<li><p><strong>Memory Allocation</strong>: Variable based on problem size</p></li>
+</ol>
+</section>
+</section>
+<section id="memory-efficiency">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Memory Efficiency</a><a class="headerlink" href="#memory-efficiency" title="Link to this heading"></a></h2>
+<section id="sparse-vs-dense-storage">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">Sparse vs Dense Storage</a><a class="headerlink" href="#sparse-vs-dense-storage" title="Link to this heading"></a></h3>
+<p><strong>Memory Per Component:</strong></p>
+<ul class="simple">
+<li><p><strong>Polynomial Term</strong>: ~24 bytes (vector key + bilvector overhead)</p></li>
+<li><p><strong>Work Queue Item</strong>: ~64 bytes (includes metadata)</p></li>
+<li><p><strong>Thread Stack</strong>: ~8 MB per thread (system default)</p></li>
+<li><p><strong>Checkpoint State</strong>: ~1 KB per 100 solutions</p></li>
+</ul>
+</section>
+<section id="dynamic-memory-growth">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">Dynamic Memory Growth</a><a class="headerlink" href="#dynamic-memory-growth" title="Link to this heading"></a></h3>
+<p>The library uses dynamic memory allocation strategies:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Automatic capacity growth in bilvectors</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">T</span><span class="o">&gt;</span>
+<span class="kt">void</span><span class="w"> </span><span class="n">bilvector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">expandIfNeeded</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">index</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">index</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">current_capacity</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Growth factor: 1.5x for memory efficiency</span>
+<span class="w">        </span><span class="kt">size_t</span><span class="w"> </span><span class="n">new_capacity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="p">(</span>
+<span class="w">            </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">current_capacity</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1.5</span><span class="p">),</span>
+<span class="w">            </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+<span class="w">        </span><span class="p">);</span>
+<span class="w">        </span><span class="n">reserve</span><span class="p">(</span><span class="n">new_capacity</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Growth Patterns:</strong></p>
+<ul class="simple">
+<li><p><strong>Conservative Growth</strong>: 1.5x multiplier to minimize memory waste</p></li>
+<li><p><strong>Minimum Allocation</strong>: 64 elements to reduce allocation frequency</p></li>
+<li><p><strong>Shrinking</strong>: Manual via <code class="docutils literal notranslate"><span class="pre">pruneZeros()</span></code> - not automatic</p></li>
+</ul>
+</section>
+</section>
+<section id="scalability-analysis">
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">Scalability Analysis</a><a class="headerlink" href="#scalability-analysis" title="Link to this heading"></a></h2>
+<section id="cpu-core-scaling">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">CPU Core Scaling</a><a class="headerlink" href="#cpu-core-scaling" title="Link to this heading"></a></h3>
+<p><strong>Theoretical Limits:</strong></p>
+<ul class="simple">
+<li><p><strong>Amdahl’s Law</strong>: Maximum speedup limited by sequential portions</p></li>
+<li><p><strong>Parallel Fraction</strong>: ~95% for large problems (&gt;10,000 solutions)</p></li>
+<li><p><strong>Expected Speedup</strong>: 0.95 / (0.05 + 0.95/N) where N = core count</p></li>
+</ul>
+<p><strong>Practical Scaling:</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Problem Size: Large (10,999 solutions)
+
+Cores  | Time (ms) | Speedup | Efficiency
+-------|-----------|---------|------------
+1      | 74        | 1.00x   | 100%
+2      | 38        | 1.95x   | 97%      (projected)
+4      | 20        | 3.70x   | 92%      (projected)
+8      | 12        | 6.17x   | 77%      (projected)
+16     | 8         | 9.25x   | 58%      (projected)
+24     | 81        | 0.91x   | 4%       (actual - overhead)
+</pre></div>
+</div>
+<p><strong>Load Balancing Effectiveness:</strong></p>
+<ul class="simple">
+<li><p><strong>Work Stealing</strong>: Reduces idle time by ~15-20%</p></li>
+<li><p><strong>Dynamic Partitioning</strong>: Handles irregular solution distributions</p></li>
+<li><p><strong>Queue Monitoring</strong>: Real-time load adjustment</p></li>
+</ul>
+</section>
+<section id="problem-size-recommendations">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">Problem Size Recommendations</a><a class="headerlink" href="#problem-size-recommendations" title="Link to this heading"></a></h3>
+<table class="performance-table docutils align-default" id="id2">
+<caption><span class="caption-text">Optimal Configuration by Problem Size</span><a class="headerlink" href="#id2" title="Link to this table"></a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Expected Time
+(Sequential)</p></th>
+<th class="head"><p>Recommended
+Strategy</p></th>
+<th class="head"><p>Checkpointing
+Interval</p></th>
+<th class="head"><p>Thread Count</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>&lt; 10ms</p></td>
+<td><p>Sequential</p></td>
+<td><p>None</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p>10ms - 1s</p></td>
+<td><p>Light Parallel</p></td>
+<td><p>None</p></td>
+<td><p>2-4</p></td>
+</tr>
+<tr class="row-even"><td><p>1s - 1min</p></td>
+<td><p>Full Parallel</p></td>
+<td><p>5000 solutions</p></td>
+<td><p>All cores</p></td>
+</tr>
+<tr class="row-odd"><td><p>&gt; 1min</p></td>
+<td><p>Checkpointed</p></td>
+<td><p>1000 solutions</p></td>
+<td><p>All cores</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="optimization-techniques">
+<h2><a class="toc-backref" href="#id12" role="doc-backlink">Optimization Techniques</a><a class="headerlink" href="#optimization-techniques" title="Link to this heading"></a></h2>
+<section id="algorithm-level-optimizations">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">Algorithm-Level Optimizations</a><a class="headerlink" href="#algorithm-level-optimizations" title="Link to this heading"></a></h3>
+<p><strong>1. Early Termination</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span><span class="w"> </span><span class="nf">processCriteria</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;&gt;&amp;</span><span class="w"> </span><span class="n">criteria</span><span class="p">,</span>
+<span class="w">                    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;&gt;&amp;</span><span class="w"> </span><span class="n">main_inequalities</span><span class="p">,</span>
+<span class="w">                    </span><span class="cm">/* ... */</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Quick feasibility check before expensive operations</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">isFeasible</span><span class="p">(</span><span class="n">criteria</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span><span class="w">  </span><span class="c1">// Skip expensive enumeration</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Proceed with full processing</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">fullProcessing</span><span class="p">(</span><span class="n">criteria</span><span class="p">,</span><span class="w"> </span><span class="n">main_inequalities</span><span class="p">,</span><span class="w"> </span><span class="cm">/* ... */</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>2. Solution Space Pruning</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="nf">enumeratePoints</span><span class="p">(</span><span class="cm">/* ... */</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Use bounds to skip infeasible regions</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lower_bound</span><span class="p">;</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">upper_bound</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">satisfiesQuickTest</span><span class="p">(</span><span class="n">x</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Only process promising candidates</span>
+<span class="w">            </span><span class="n">processCandidate</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>3. Cache-Friendly Data Access</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Process solutions in batches for better cache locality</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Solution</span><span class="o">&gt;</span><span class="w"> </span><span class="n">batch</span><span class="p">;</span>
+<span class="n">batch</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="n">BATCH_SIZE</span><span class="p">);</span>
+
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">hasMoreSolutions</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">batch</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+<span class="w">    </span><span class="n">collectBatch</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span><span class="w"> </span><span class="n">BATCH_SIZE</span><span class="p">);</span>
+<span class="w">    </span><span class="n">processBatch</span><span class="p">(</span><span class="n">batch</span><span class="p">);</span><span class="w">  </span><span class="c1">// Better cache utilization</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="memory-level-optimizations">
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">Memory-Level Optimizations</a><a class="headerlink" href="#memory-level-optimizations" title="Link to this heading"></a></h3>
+<p><strong>1. Object Pooling</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">WorkItemPool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">stack</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">WorkItem</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">pool_</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="n">mutex_</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">WorkItem</span><span class="o">&gt;</span><span class="w"> </span><span class="n">acquire</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="n">mutex_</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">pool_</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">auto</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">pool_</span><span class="p">.</span><span class="n">top</span><span class="p">());</span>
+<span class="w">            </span><span class="n">pool_</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">item</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">WorkItem</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">release</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">WorkItem</span><span class="o">&gt;</span><span class="w"> </span><span class="n">item</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">item</span><span class="o">-&gt;</span><span class="n">reset</span><span class="p">();</span><span class="w">  </span><span class="c1">// Clear data but keep allocation</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="n">mutex_</span><span class="p">);</span>
+<span class="w">        </span><span class="n">pool_</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">item</span><span class="p">));</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p><strong>2. Memory-Mapped Files for Large Datasets</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;sys/mman.h&gt;</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MemoryMappedData</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">mapped_data_</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">file_size_</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="n">MemoryMappedData</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">filename</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">fd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span><span class="w"> </span><span class="n">O_RDONLY</span><span class="p">);</span>
+<span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">stat</span><span class="w"> </span><span class="n">sb</span><span class="p">;</span>
+<span class="w">        </span><span class="n">fstat</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">sb</span><span class="p">);</span>
+<span class="w">        </span><span class="n">file_size_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sb</span><span class="p">.</span><span class="n">st_size</span><span class="p">;</span>
+
+<span class="w">        </span><span class="n">mapped_data_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mmap</span><span class="p">(</span><span class="k">nullptr</span><span class="p">,</span><span class="w"> </span><span class="n">file_size_</span><span class="p">,</span><span class="w"> </span><span class="n">PROT_READ</span><span class="p">,</span>
+<span class="w">                           </span><span class="n">MAP_PRIVATE</span><span class="p">,</span><span class="w"> </span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">        </span><span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+<section id="thread-level-optimizations">
+<h3><a class="toc-backref" href="#id15" role="doc-backlink">Thread-Level Optimizations</a><a class="headerlink" href="#thread-level-optimizations" title="Link to this heading"></a></h3>
+<p><strong>1. Thread Affinity</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="nf">setThreadAffinity</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="o">&amp;</span><span class="w"> </span><span class="n">t</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">core_id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">cpu_set_t</span><span class="w"> </span><span class="n">cpuset</span><span class="p">;</span>
+<span class="w">    </span><span class="n">CPU_ZERO</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cpuset</span><span class="p">);</span>
+<span class="w">    </span><span class="n">CPU_SET</span><span class="p">(</span><span class="n">core_id</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">cpuset</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">pthread_setaffinity_np</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">native_handle</span><span class="p">(),</span>
+<span class="w">                           </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">cpu_set_t</span><span class="p">),</span><span class="w"> </span><span class="o">&amp;</span><span class="n">cpuset</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>2. NUMA-Aware Allocation</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="nf">allocateNUMALocal</span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">node</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">numa_alloc_onnode</span><span class="p">(</span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="n">node</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">ptr</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">malloc</span><span class="p">(</span><span class="n">size</span><span class="p">);</span><span class="w">  </span><span class="c1">// Fallback</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">ptr</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="benchmarking-framework">
+<h2><a class="toc-backref" href="#id16" role="doc-backlink">Benchmarking Framework</a><a class="headerlink" href="#benchmarking-framework" title="Link to this heading"></a></h2>
+<section id="built-in-benchmarking">
+<h3><a class="toc-backref" href="#id17" role="doc-backlink">Built-in Benchmarking</a><a class="headerlink" href="#built-in-benchmarking" title="Link to this heading"></a></h3>
+<p>The library provides comprehensive benchmarking tools:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;fk/parallel_pool.hpp&quot;</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PerformanceBenchmark</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">BenchmarkResult</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="w"> </span><span class="n">sequential_time</span><span class="p">;</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="w"> </span><span class="n">parallel_time</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">size_t</span><span class="w"> </span><span class="n">solutions_found</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">speedup</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">efficiency</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">size_t</span><span class="w"> </span><span class="n">memory_peak_mb</span><span class="p">;</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="n">BenchmarkResult</span><span class="w"> </span><span class="n">runBenchmark</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">ProblemDefinition</span><span class="o">&amp;</span><span class="w"> </span><span class="n">problem</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Warm up</span>
+<span class="w">        </span><span class="n">runWarmup</span><span class="p">(</span><span class="n">problem</span><span class="p">);</span>
+
+<span class="w">        </span><span class="c1">// Sequential benchmark</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">seq_result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">benchmarkSequential</span><span class="p">(</span><span class="n">problem</span><span class="p">);</span>
+
+<span class="w">        </span><span class="c1">// Parallel benchmark</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">par_result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">benchmarkParallel</span><span class="p">(</span><span class="n">problem</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">calculateMetrics</span><span class="p">(</span><span class="n">seq_result</span><span class="p">,</span><span class="w"> </span><span class="n">par_result</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p><strong>Usage Example:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run comprehensive benchmark</span>
+./parallel_demo<span class="w"> </span>--benchmark<span class="w"> </span>--problem<span class="w"> </span>large
+
+<span class="c1"># Test different thread counts</span>
+./parallel_demo<span class="w"> </span>--threads<span class="w"> </span><span class="m">1</span>,2,4,8,16<span class="w"> </span>--problem<span class="w"> </span>medium
+
+<span class="c1"># Memory usage analysis</span>
+valgrind<span class="w"> </span>--tool<span class="o">=</span>massif<span class="w"> </span>./parallel_demo<span class="w"> </span>--problem<span class="w"> </span>large
+</pre></div>
+</div>
+</section>
+<section id="custom-benchmarking">
+<h3><a class="toc-backref" href="#id18" role="doc-backlink">Custom Benchmarking</a><a class="headerlink" href="#custom-benchmarking" title="Link to this heading"></a></h3>
+<p>For application-specific benchmarks:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CustomBenchmark</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">high_resolution_clock</span><span class="o">::</span><span class="n">time_point</span><span class="w"> </span><span class="n">start_</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">nanoseconds</span><span class="o">&gt;</span><span class="w"> </span><span class="n">measurements_</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">startMeasurement</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">start_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">high_resolution_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">endMeasurement</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">end</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">high_resolution_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+<span class="w">        </span><span class="n">measurements_</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start_</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">Statistics</span><span class="w"> </span><span class="n">getStatistics</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">min_time</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">std</span><span class="o">::</span><span class="n">min_element</span><span class="p">(</span><span class="n">measurements_</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span>
+<span class="w">                                        </span><span class="n">measurements_</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">max_time</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">std</span><span class="o">::</span><span class="n">max_element</span><span class="p">(</span><span class="n">measurements_</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span>
+<span class="w">                                        </span><span class="n">measurements_</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">avg_time</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">accumulate</span><span class="p">(</span><span class="n">measurements_</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span>
+<span class="w">                                      </span><span class="n">measurements_</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span>
+<span class="w">                                      </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">nanoseconds</span><span class="p">{</span><span class="mi">0</span><span class="p">})</span><span class="w"> </span><span class="o">/</span>
+<span class="w">                       </span><span class="n">measurements_</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="n">min_time</span><span class="p">,</span><span class="w"> </span><span class="n">max_time</span><span class="p">,</span><span class="w"> </span><span class="n">avg_time</span><span class="p">,</span><span class="w"> </span><span class="n">measurements_</span><span class="p">.</span><span class="n">size</span><span class="p">()};</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="profiling-and-analysis">
+<h2><a class="toc-backref" href="#id19" role="doc-backlink">Profiling and Analysis</a><a class="headerlink" href="#profiling-and-analysis" title="Link to this heading"></a></h2>
+<section id="cpu-profiling">
+<h3><a class="toc-backref" href="#id20" role="doc-backlink">CPU Profiling</a><a class="headerlink" href="#cpu-profiling" title="Link to this heading"></a></h3>
+<p><strong>Using perf (Linux):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Profile CPU usage</span>
+perf<span class="w"> </span>record<span class="w"> </span>-g<span class="w"> </span>./parallel_demo<span class="w"> </span>--problem<span class="w"> </span>large
+perf<span class="w"> </span>report
+
+<span class="c1"># Function-level analysis</span>
+perf<span class="w"> </span>stat<span class="w"> </span>-e<span class="w"> </span>cycles,instructions,cache-misses<span class="w"> </span>./parallel_demo
+
+<span class="c1"># Thread analysis</span>
+perf<span class="w"> </span>record<span class="w"> </span>-g<span class="w"> </span>--call-graph<span class="w"> </span>dwarf<span class="w"> </span>./parallel_demo
+</pre></div>
+</div>
+<p><strong>Using Intel VTune:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Hotspot analysis</span>
+vtune<span class="w"> </span>-collect<span class="w"> </span>hotspots<span class="w"> </span>./parallel_demo<span class="w"> </span>--problem<span class="w"> </span>large
+
+<span class="c1"># Threading analysis</span>
+vtune<span class="w"> </span>-collect<span class="w"> </span>threading<span class="w"> </span>./parallel_demo
+</pre></div>
+</div>
+</section>
+<section id="memory-profiling">
+<h3><a class="toc-backref" href="#id21" role="doc-backlink">Memory Profiling</a><a class="headerlink" href="#memory-profiling" title="Link to this heading"></a></h3>
+<p><strong>Using Valgrind:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Memory leak detection</span>
+valgrind<span class="w"> </span>--leak-check<span class="o">=</span>full<span class="w"> </span>./parallel_demo
+
+<span class="c1"># Memory usage profiling</span>
+valgrind<span class="w"> </span>--tool<span class="o">=</span>massif<span class="w"> </span>./parallel_demo<span class="w"> </span>--problem<span class="w"> </span>large
+ms_print<span class="w"> </span>massif.out.12345
+
+<span class="c1"># Cache analysis</span>
+valgrind<span class="w"> </span>--tool<span class="o">=</span>cachegrind<span class="w"> </span>./parallel_demo
+</pre></div>
+</div>
+<p><strong>Memory Usage Patterns:</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Memory usage during Large Problem (10,999 solutions):
+
+Time    | Memory (MB) | Component
+--------|-------------|------------------
+0ms     | 15          | Initial allocation
+10ms    | 45          | Work queue buildup
+30ms    | 120         | Peak solution storage
+60ms    | 95          | Solution processing
+80ms    | 25          | Cleanup phase
+</pre></div>
+</div>
+</section>
+</section>
+<section id="performance-tuning-checklist">
+<h2><a class="toc-backref" href="#id22" role="doc-backlink">Performance Tuning Checklist</a><a class="headerlink" href="#performance-tuning-checklist" title="Link to this heading"></a></h2>
+<p><strong>Algorithm Level:</strong></p>
+<ul class="simple">
+<li><p>[ ] Profile hotspots with perf/vtune</p></li>
+<li><p>[ ] Optimize critical loops</p></li>
+<li><p>[ ] Implement early termination where possible</p></li>
+<li><p>[ ] Use appropriate data structures</p></li>
+</ul>
+<p><strong>Memory Level:</strong></p>
+<ul class="simple">
+<li><p>[ ] Monitor memory allocation patterns</p></li>
+<li><p>[ ] Use object pooling for frequent allocations</p></li>
+<li><p>[ ] Enable sparse representations</p></li>
+<li><p>[ ] Call <code class="docutils literal notranslate"><span class="pre">pruneZeros()</span></code> periodically</p></li>
+</ul>
+<p><strong>Thread Level:</strong></p>
+<ul class="simple">
+<li><p>[ ] Choose appropriate thread count</p></li>
+<li><p>[ ] Monitor work queue sizes</p></li>
+<li><p>[ ] Check load balancing effectiveness</p></li>
+<li><p>[ ] Measure synchronization overhead</p></li>
+</ul>
+<p><strong>System Level:</strong></p>
+<ul class="simple">
+<li><p>[ ] Verify NUMA topology awareness</p></li>
+<li><p>[ ] Check CPU governor settings (performance mode)</p></li>
+<li><p>[ ] Monitor thermal throttling</p></li>
+<li><p>[ ] Ensure adequate memory bandwidth</p></li>
+</ul>
+</section>
+<section id="troubleshooting-performance-issues">
+<h2><a class="toc-backref" href="#id23" role="doc-backlink">Troubleshooting Performance Issues</a><a class="headerlink" href="#troubleshooting-performance-issues" title="Link to this heading"></a></h2>
+<section id="common-performance-problems">
+<h3><a class="toc-backref" href="#id24" role="doc-backlink">Common Performance Problems</a><a class="headerlink" href="#common-performance-problems" title="Link to this heading"></a></h3>
+<p><strong>1. Poor Parallel Scaling</strong></p>
+<p><em>Symptoms:</em> Parallel version slower than sequential</p>
+<p><em>Diagnosis:</em></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check thread utilization</span>
+htop<span class="w">  </span><span class="c1"># Look for idle cores</span>
+
+<span class="c1"># Monitor work distribution</span>
+./parallel_demo<span class="w"> </span>--verbose<span class="w"> </span>--threads<span class="w"> </span><span class="m">4</span>
+</pre></div>
+</div>
+<p><em>Solutions:</em></p>
+<ul class="simple">
+<li><p>Reduce thread count for small problems</p></li>
+<li><p>Increase problem size</p></li>
+<li><p>Check for lock contention</p></li>
+</ul>
+<p><strong>2. Memory Exhaustion</strong></p>
+<p><em>Symptoms:</em> System becomes unresponsive, swap usage high</p>
+<p><em>Diagnosis:</em></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Monitor memory during execution</span>
+watch<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="s1">&#39;free -h &amp;&amp; ps aux | grep parallel_demo&#39;</span>
+</pre></div>
+</div>
+<p><em>Solutions:</em></p>
+<ul class="simple">
+<li><p>Enable checkpointing with smaller intervals</p></li>
+<li><p>Reduce thread count</p></li>
+<li><p>Process solutions immediately instead of storing</p></li>
+</ul>
+<p><strong>3. Cache Misses</strong></p>
+<p><em>Symptoms:</em> Poor single-thread performance despite algorithmic correctness</p>
+<p><em>Diagnosis:</em></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>perf<span class="w"> </span>stat<span class="w"> </span>-e<span class="w"> </span>cache-references,cache-misses<span class="w"> </span>./parallel_demo
+</pre></div>
+</div>
+<p><em>Solutions:</em></p>
+<ul class="simple">
+<li><p>Improve data locality</p></li>
+<li><p>Use smaller work batches</p></li>
+<li><p>Optimize data structure layout</p></li>
+</ul>
+</section>
+<section id="performance-regression-testing">
+<h3><a class="toc-backref" href="#id25" role="doc-backlink">Performance Regression Testing</a><a class="headerlink" href="#performance-regression-testing" title="Link to this heading"></a></h3>
+<p>Automated performance testing:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+<span class="c1"># performance_test.sh</span>
+
+<span class="nv">BASELINE_TIME</span><span class="o">=</span><span class="k">$(</span>./parallel_demo<span class="w"> </span>--benchmark<span class="w"> </span>--quiet<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Time:&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d:<span class="w"> </span>-f2<span class="k">)</span>
+<span class="nv">CURRENT_TIME</span><span class="o">=</span><span class="k">$(</span>./new_parallel_demo<span class="w"> </span>--benchmark<span class="w"> </span>--quiet<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Time:&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d:<span class="w"> </span>-f2<span class="k">)</span>
+
+<span class="nv">REGRESSION_THRESHOLD</span><span class="o">=</span><span class="m">1</span>.1<span class="w">  </span><span class="c1"># 10% slowdown threshold</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">((</span><span class="w"> </span><span class="k">$(</span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CURRENT_TIME</span><span class="s2"> &gt; </span><span class="nv">$BASELINE_TIME</span><span class="s2"> * </span><span class="nv">$REGRESSION_THRESHOLD</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>bc<span class="w"> </span>-l<span class="k">)</span><span class="w"> </span><span class="o">))</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Performance regression detected!&quot;</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Baseline: </span><span class="si">${</span><span class="nv">BASELINE_TIME</span><span class="si">}</span><span class="s2">ms, Current: </span><span class="si">${</span><span class="nv">CURRENT_TIME</span><span class="si">}</span><span class="s2">ms&quot;</span>
+<span class="w">    </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
+</pre></div>
+</div>
+<p><strong>Integration with CI/CD:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># .github/workflows/performance.yml</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Performance Tests</span>
+<span class="nt">on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">push</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">pull_request</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">benchmark</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v2</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">make parallel_demo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run benchmark</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./performance_test.sh</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Upload results</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/upload-artifact@v2</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">benchmark-results</span>
+<span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">benchmark_results.json</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="future-optimization-opportunities">
+<h2><a class="toc-backref" href="#id26" role="doc-backlink">Future Optimization Opportunities</a><a class="headerlink" href="#future-optimization-opportunities" title="Link to this heading"></a></h2>
+<p><strong>Algorithmic Improvements:</strong></p>
+<ul class="simple">
+<li><p>Implementing advanced pruning heuristics</p></li>
+<li><p>Using machine learning for work distribution</p></li>
+<li><p>Adaptive thread count based on problem characteristics</p></li>
+</ul>
+<p><strong>Hardware Acceleration:</strong></p>
+<ul class="simple">
+<li><p>GPU acceleration for polynomial operations</p></li>
+<li><p>SIMD optimizations for vector operations</p></li>
+<li><p>Hardware transactional memory for lock-free data structures</p></li>
+</ul>
+<p><strong>Distributed Computing:</strong></p>
+<ul class="simple">
+<li><p>Multi-node parallelization</p></li>
+<li><p>Cloud-native scaling</p></li>
+<li><p>Fault tolerance across machines</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, FK Computation Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

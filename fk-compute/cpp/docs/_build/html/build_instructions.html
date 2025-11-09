@@ -1,0 +1,633 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Build Instructions &mdash; FK Computation C++ Library 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Examples" href="examples.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            FK Computation C++ Library
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Build Instructions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#system-requirements">System Requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#installing-dependencies">Installing Dependencies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ubuntu-debian">Ubuntu/Debian</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#centos-rhel-fedora">CentOS/RHEL/Fedora</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#macos">macOS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#windows">Windows</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#building-the-library">Building the Library</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#using-cmake-recommended">Using CMake (Recommended)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-direct-compilation">Using Direct Compilation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#building-documentation">Building Documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#documentation-dependencies">Documentation Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Building Documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#documentation-configuration">Documentation Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting-build-issues">Troubleshooting Build Issues</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#common-problems-and-solutions">Common Problems and Solutions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#performance-optimization">Performance Optimization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#compiler-optimizations">Compiler Optimizations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#link-time-optimization">Link-Time Optimization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-the-build">Testing the Build</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#running-tests">Running Tests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#validation">Validation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#system-installation">System Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#package-creation">Package Creation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FK Computation C++ Library</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Build Instructions</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/build_instructions.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="build-instructions">
+<h1>Build Instructions<a class="headerlink" href="#build-instructions" title="Link to this heading"></a></h1>
+<p>This document provides comprehensive instructions for building the FK Computation C++ Library and its documentation.</p>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading"></a></h2>
+<section id="system-requirements">
+<h3>System Requirements<a class="headerlink" href="#system-requirements" title="Link to this heading"></a></h3>
+<p><strong>Supported Platforms:</strong>
+- Linux (Ubuntu 18.04+, CentOS 7+, Arch Linux, etc.)
+- macOS (10.14+)
+- Windows (Windows 10 with WSL2 or native MSVC)</p>
+<p><strong>Required Tools:</strong>
+- C++ compiler with C++17 support (GCC 8+, Clang 10+, MSVC 2019+)
+- CMake 3.15 or later (recommended for building)
+- Make or Ninja build system</p>
+<p><strong>Required Libraries:</strong>
+- FLINT 2.9.0+ (Fast Library for Number Theory)
+- OpenMP (optional, for parallel processing)</p>
+<p><strong>Documentation Requirements:</strong>
+- Python 3.7+ (for Sphinx documentation)
+- Doxygen 1.8.0+ (for C++ API documentation)
+- Sphinx and extensions (see documentation setup below)</p>
+</section>
+</section>
+<section id="installing-dependencies">
+<h2>Installing Dependencies<a class="headerlink" href="#installing-dependencies" title="Link to this heading"></a></h2>
+<section id="ubuntu-debian">
+<h3>Ubuntu/Debian<a class="headerlink" href="#ubuntu-debian" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Update package list</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>update
+
+<span class="c1"># Install build tools</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>build-essential<span class="w"> </span>cmake<span class="w"> </span>ninja-build
+
+<span class="c1"># Install FLINT library</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>libflint-dev
+
+<span class="c1"># Install OpenMP (usually included with GCC)</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>libomp-dev
+
+<span class="c1"># Install documentation tools</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>doxygen<span class="w"> </span>python3-pip
+pip3<span class="w"> </span>install<span class="w"> </span>sphinx<span class="w"> </span>breathe<span class="w"> </span>exhale<span class="w"> </span>sphinx-rtd-theme
+</pre></div>
+</div>
+</section>
+<section id="centos-rhel-fedora">
+<h3>CentOS/RHEL/Fedora<a class="headerlink" href="#centos-rhel-fedora" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># For CentOS/RHEL</span>
+sudo<span class="w"> </span>yum<span class="w"> </span>groupinstall<span class="w"> </span><span class="s2">&quot;Development Tools&quot;</span>
+sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>cmake<span class="w"> </span>ninja-build
+
+<span class="c1"># For Fedora</span>
+sudo<span class="w"> </span>dnf<span class="w"> </span>groupinstall<span class="w"> </span><span class="s2">&quot;Development Tools&quot;</span>
+sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>cmake<span class="w"> </span>ninja-build
+
+<span class="c1"># Install FLINT (may need EPEL repository)</span>
+sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>epel-release<span class="w">  </span><span class="c1"># CentOS/RHEL only</span>
+sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>flint-devel<span class="w">   </span><span class="c1"># or dnf for Fedora</span>
+
+<span class="c1"># Install documentation tools</span>
+sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>doxygen<span class="w"> </span>python3-pip<span class="w">  </span><span class="c1"># or dnf for Fedora</span>
+pip3<span class="w"> </span>install<span class="w"> </span>sphinx<span class="w"> </span>breathe<span class="w"> </span>exhale<span class="w"> </span>sphinx-rtd-theme
+</pre></div>
+</div>
+</section>
+<section id="macos">
+<h3>macOS<a class="headerlink" href="#macos" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install Homebrew if not already installed</span>
+/bin/bash<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh<span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="c1"># Install build tools</span>
+brew<span class="w"> </span>install<span class="w"> </span>cmake<span class="w"> </span>ninja
+
+<span class="c1"># Install FLINT</span>
+brew<span class="w"> </span>install<span class="w"> </span>flint
+
+<span class="c1"># Install OpenMP for Clang</span>
+brew<span class="w"> </span>install<span class="w"> </span>libomp
+
+<span class="c1"># Install documentation tools</span>
+brew<span class="w"> </span>install<span class="w"> </span>doxygen<span class="w"> </span>python3
+pip3<span class="w"> </span>install<span class="w"> </span>sphinx<span class="w"> </span>breathe<span class="w"> </span>exhale<span class="w"> </span>sphinx-rtd-theme
+</pre></div>
+</div>
+</section>
+<section id="windows">
+<h3>Windows<a class="headerlink" href="#windows" title="Link to this heading"></a></h3>
+<p><strong>Option 1: WSL2 (Recommended)</strong></p>
+<p>Install WSL2 and Ubuntu, then follow Ubuntu instructions above.</p>
+<p><strong>Option 2: Native Windows with vcpkg</strong></p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span># Install Visual Studio 2019 or later with C++ support
+# Install vcpkg package manager
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+.\\bootstrap-vcpkg.bat
+
+# Install dependencies
+.\\vcpkg install flint:x64-windows
+.\\vcpkg install openmp:x64-windows
+
+# Install Python and documentation tools
+# Download and install Python from python.org
+pip install sphinx breathe exhale sphinx-rtd-theme
+</pre></div>
+</div>
+</section>
+</section>
+<section id="building-the-library">
+<h2>Building the Library<a class="headerlink" href="#building-the-library" title="Link to this heading"></a></h2>
+<section id="using-cmake-recommended">
+<h3>Using CMake (Recommended)<a class="headerlink" href="#using-cmake-recommended" title="Link to this heading"></a></h3>
+<p><strong>Basic Build:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clone/navigate to project directory</span>
+<span class="nb">cd</span><span class="w"> </span>/path/to/fk-compute/cpp
+
+<span class="c1"># Create build directory</span>
+mkdir<span class="w"> </span>build
+<span class="nb">cd</span><span class="w"> </span>build
+
+<span class="c1"># Configure build</span>
+cmake<span class="w"> </span>..
+
+<span class="c1"># Build library and examples</span>
+make<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</span>
+
+<span class="c1"># Or with Ninja for faster builds</span>
+cmake<span class="w"> </span>-GNinja<span class="w"> </span>..
+ninja
+</pre></div>
+</div>
+<p><strong>Configuration Options:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Choose polynomial backend</span>
+cmake<span class="w"> </span>-DPOLYNOMIAL_TYPE<span class="o">=</span><span class="m">0</span><span class="w"> </span>..<span class="w">  </span><span class="c1"># MultivariablePolynomial (default)</span>
+cmake<span class="w"> </span>-DPOLYNOMIAL_TYPE<span class="o">=</span><span class="m">1</span><span class="w"> </span>..<span class="w">  </span><span class="c1"># FMPoly (FLINT-based)</span>
+cmake<span class="w"> </span>-DPOLYNOMIAL_TYPE<span class="o">=</span><span class="m">2</span><span class="w"> </span>..<span class="w">  </span><span class="c1"># BMPoly (Basic)</span>
+
+<span class="c1"># Build type</span>
+cmake<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span>..<span class="w">    </span><span class="c1"># Optimized (default)</span>
+cmake<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Debug<span class="w"> </span>..<span class="w">      </span><span class="c1"># Debug symbols</span>
+cmake<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>RelWithDebInfo<span class="w"> </span>..<span class="w">  </span><span class="c1"># Optimized + debug</span>
+
+<span class="c1"># OpenMP support</span>
+cmake<span class="w"> </span>-DUSE_OPENMP<span class="o">=</span>ON<span class="w"> </span>..<span class="w">   </span><span class="c1"># Enable parallel processing</span>
+cmake<span class="w"> </span>-DUSE_OPENMP<span class="o">=</span>OFF<span class="w"> </span>..<span class="w">  </span><span class="c1"># Disable OpenMP</span>
+
+<span class="c1"># Custom install prefix</span>
+cmake<span class="w"> </span>-DCMAKE_INSTALL_PREFIX<span class="o">=</span>/usr/local<span class="w"> </span>..
+
+<span class="c1"># Verbose makefiles for debugging</span>
+cmake<span class="w"> </span>-DCMAKE_VERBOSE_MAKEFILE<span class="o">=</span>ON<span class="w"> </span>..
+</pre></div>
+</div>
+<p><strong>Advanced Configuration:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Cross-compilation for different architectures</span>
+cmake<span class="w"> </span>-DCMAKE_TOOLCHAIN_FILE<span class="o">=</span>toolchain.cmake<span class="w"> </span>..
+
+<span class="c1"># Static linking</span>
+cmake<span class="w"> </span>-DBUILD_SHARED_LIBS<span class="o">=</span>OFF<span class="w"> </span>..
+
+<span class="c1"># Custom FLINT location</span>
+cmake<span class="w"> </span>-DFLINT_ROOT<span class="o">=</span>/custom/path/to/flint<span class="w"> </span>..
+
+<span class="c1"># Enable additional warnings</span>
+cmake<span class="w"> </span>-DCMAKE_CXX_FLAGS<span class="o">=</span><span class="s2">&quot;-Wall -Wextra -Wpedantic&quot;</span><span class="w"> </span>..
+</pre></div>
+</div>
+<p><strong>Windows with vcpkg:</strong></p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span># Configure with vcpkg toolchain
+cmake -DCMAKE_TOOLCHAIN_FILE=C:\\path\\to\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake ..
+
+# Build with MSBuild
+cmake --build . --config Release
+</pre></div>
+</div>
+</section>
+<section id="using-direct-compilation">
+<h3>Using Direct Compilation<a class="headerlink" href="#using-direct-compilation" title="Link to this heading"></a></h3>
+<p>For simple builds without CMake:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Basic compilation flags</span>
+<span class="nv">CXX_FLAGS</span><span class="o">=</span><span class="s2">&quot;-std=c++17 -O3 -DNDEBUG&quot;</span>
+<span class="nv">INCLUDE_FLAGS</span><span class="o">=</span><span class="s2">&quot;-I./include&quot;</span>
+<span class="nv">LINK_FLAGS</span><span class="o">=</span><span class="s2">&quot;-lflint&quot;</span>
+
+<span class="c1"># With OpenMP</span>
+<span class="nv">OPENMP_FLAGS</span><span class="o">=</span><span class="s2">&quot;-fopenmp&quot;</span>
+
+<span class="c1"># Compile examples</span>
+g++<span class="w"> </span><span class="nv">$CXX_FLAGS</span><span class="w"> </span><span class="nv">$INCLUDE_FLAGS</span><span class="w"> </span><span class="nv">$OPENMP_FLAGS</span><span class="w"> </span>examples/example.cpp<span class="w"> </span><span class="nv">$LINK_FLAGS</span><span class="w"> </span>-o<span class="w"> </span>example
+
+<span class="c1"># Compile with specific polynomial backend</span>
+g++<span class="w"> </span><span class="nv">$CXX_FLAGS</span><span class="w"> </span>-DPOLYNOMIAL_TYPE<span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">$INCLUDE_FLAGS</span><span class="w"> </span>examples/fk_computation_test.cpp<span class="w"> </span><span class="nv">$LINK_FLAGS</span><span class="w"> </span><span class="nv">$OPENMP_FLAGS</span><span class="w"> </span>-o<span class="w"> </span>fk_test
+</pre></div>
+</div>
+<p><strong>Makefile Example:</strong></p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">CXX</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>g++
+<span class="nv">CXXFLAGS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-O3<span class="w"> </span>-DNDEBUG<span class="w"> </span>-Wall<span class="w"> </span>-Wextra
+<span class="nv">INCLUDES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>-I./include
+<span class="nv">LIBS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>-lflint<span class="w"> </span>-lgomp
+<span class="nv">SOURCES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">$(</span>wildcard<span class="w"> </span>examples/*.cpp<span class="k">)</span>
+<span class="nv">TARGETS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">$(</span>SOURCES:.cpp<span class="o">=</span><span class="k">)</span>
+
+<span class="nf">all</span><span class="o">:</span><span class="w"> </span><span class="k">$(</span><span class="nv">TARGETS</span><span class="k">)</span>
+
+<span class="nf">%</span><span class="o">:</span><span class="w"> </span>%.<span class="n">cpp</span>
+<span class="w">     </span><span class="k">$(</span>CXX<span class="k">)</span><span class="w"> </span><span class="k">$(</span>CXXFLAGS<span class="k">)</span><span class="w"> </span><span class="k">$(</span>INCLUDES<span class="k">)</span><span class="w"> </span>$&lt;<span class="w"> </span><span class="k">$(</span>LIBS<span class="k">)</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">$@</span>
+
+<span class="nf">clean</span><span class="o">:</span>
+<span class="w">     </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="k">$(</span>TARGETS<span class="k">)</span>
+
+<span class="nf">.PHONY</span><span class="o">:</span><span class="w"> </span><span class="n">all</span> <span class="n">clean</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="building-documentation">
+<h2>Building Documentation<a class="headerlink" href="#building-documentation" title="Link to this heading"></a></h2>
+<p>The documentation system uses Sphinx with Doxygen integration for comprehensive C++ API documentation.</p>
+<section id="documentation-dependencies">
+<h3>Documentation Dependencies<a class="headerlink" href="#documentation-dependencies" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install Python documentation tools</span>
+pip3<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>docs/requirements.txt
+
+<span class="c1"># Or install manually</span>
+pip3<span class="w"> </span>install<span class="w"> </span>sphinx&gt;<span class="o">=</span><span class="m">4</span>.0
+pip3<span class="w"> </span>install<span class="w"> </span>breathe&gt;<span class="o">=</span><span class="m">4</span>.30
+pip3<span class="w"> </span>install<span class="w"> </span>exhale&gt;<span class="o">=</span><span class="m">0</span>.3
+pip3<span class="w"> </span>install<span class="w"> </span>sphinx-rtd-theme&gt;<span class="o">=</span><span class="m">1</span>.0
+</pre></div>
+</div>
+<p><strong>docs/requirements.txt:</strong></p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>sphinx&gt;=4.0.0
+breathe&gt;=4.30.0
+exhale&gt;=0.3.0
+sphinx-rtd-theme&gt;=1.0.0
+</pre></div>
+</div>
+</section>
+<section id="id1">
+<h3>Building Documentation<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Navigate to docs directory</span>
+<span class="nb">cd</span><span class="w"> </span>docs
+
+<span class="c1"># Clean previous builds</span>
+make<span class="w"> </span>clean
+
+<span class="c1"># Build HTML documentation</span>
+make<span class="w"> </span>html
+
+<span class="c1"># Open documentation</span>
+open<span class="w"> </span>_build/html/index.html<span class="w">  </span><span class="c1"># macOS</span>
+xdg-open<span class="w"> </span>_build/html/index.html<span class="w">  </span><span class="c1"># Linux</span>
+</pre></div>
+</div>
+<p><strong>Alternative build methods:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build with specific builder</span>
+sphinx-build<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span>.<span class="w"> </span>_build/html
+
+<span class="c1"># Build with warnings as errors</span>
+sphinx-build<span class="w"> </span>-W<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span>.<span class="w"> </span>_build/html
+
+<span class="c1"># Build PDF documentation (requires LaTeX)</span>
+make<span class="w"> </span>latexpdf
+
+<span class="c1"># Build EPUB documentation</span>
+make<span class="w"> </span>epub
+</pre></div>
+</div>
+</section>
+<section id="documentation-configuration">
+<h3>Documentation Configuration<a class="headerlink" href="#documentation-configuration" title="Link to this heading"></a></h3>
+<p>The documentation is configured in <code class="docutils literal notranslate"><span class="pre">docs/conf.py</span></code>. Key settings:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Project information</span>
+<span class="n">project</span> <span class="o">=</span> <span class="s1">&#39;FK Computation C++ Library&#39;</span>
+<span class="n">release</span> <span class="o">=</span> <span class="s1">&#39;1.0.0&#39;</span>
+
+<span class="c1"># Doxygen integration</span>
+<span class="n">breathe_projects</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;fk-compute&quot;</span><span class="p">:</span> <span class="s2">&quot;_build/doxygen/xml/&quot;</span><span class="p">}</span>
+<span class="n">breathe_default_project</span> <span class="o">=</span> <span class="s2">&quot;fk-compute&quot;</span>
+
+<span class="c1"># Exhale for automatic API generation</span>
+<span class="n">exhale_args</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;containmentFolder&quot;</span><span class="p">:</span> <span class="s2">&quot;./api&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rootFileName&quot;</span><span class="p">:</span> <span class="s2">&quot;library_root.rst&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;exhaleExecutesDoxygen&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s2">&quot;exhaleDoxygenStdin&quot;</span><span class="p">:</span> <span class="s2">&quot;INPUT = ../include</span><span class="se">\\</span><span class="s2">n&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="troubleshooting-build-issues">
+<h2>Troubleshooting Build Issues<a class="headerlink" href="#troubleshooting-build-issues" title="Link to this heading"></a></h2>
+<section id="common-problems-and-solutions">
+<h3>Common Problems and Solutions<a class="headerlink" href="#common-problems-and-solutions" title="Link to this heading"></a></h3>
+<p><strong>FLINT Not Found:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check FLINT installation</span>
+pkg-config<span class="w"> </span>--cflags<span class="w"> </span>--libs<span class="w"> </span>flint
+
+<span class="c1"># If not found, install or set PKG_CONFIG_PATH</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PKG_CONFIG_PATH</span><span class="o">=</span>/path/to/flint/lib/pkgconfig:<span class="nv">$PKG_CONFIG_PATH</span>
+
+<span class="c1"># Or specify FLINT location in CMake</span>
+cmake<span class="w"> </span>-DFLINT_ROOT<span class="o">=</span>/path/to/flint<span class="w"> </span>..
+</pre></div>
+</div>
+<p><strong>OpenMP Issues:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># GCC: Use -fopenmp</span>
+g++<span class="w"> </span>-fopenmp<span class="w"> </span>...
+
+<span class="c1"># Clang on macOS: Install libomp and use specific flags</span>
+brew<span class="w"> </span>install<span class="w"> </span>libomp
+clang++<span class="w"> </span>-Xpreprocessor<span class="w"> </span>-fopenmp<span class="w"> </span>-lomp<span class="w"> </span>...
+
+<span class="c1"># Check OpenMP availability</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;#include &lt;omp.h&gt;&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>g++<span class="w"> </span>-x<span class="w"> </span>c++<span class="w"> </span>-fopenmp<span class="w"> </span>-E<span class="w"> </span>-<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;OpenMP available&quot;</span>
+</pre></div>
+</div>
+<p><strong>Template Compilation Errors:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure C++17 support</span>
+g++<span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>...
+
+<span class="c1"># Check compiler version</span>
+g++<span class="w"> </span>--version
+
+<span class="c1"># Update compiler if necessary</span>
+</pre></div>
+</div>
+<p><strong>Memory Issues During Build:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Reduce parallel jobs</span>
+make<span class="w"> </span>-j2<span class="w">  </span><span class="c1"># Instead of -j$(nproc)</span>
+
+<span class="c1"># Use Ninja for more efficient builds</span>
+cmake<span class="w"> </span>-GNinja<span class="w"> </span>..
+ninja
+</pre></div>
+</div>
+<p><strong>Documentation Build Issues:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check Sphinx installation</span>
+sphinx-build<span class="w"> </span>--version
+
+<span class="c1"># Check Doxygen installation</span>
+doxygen<span class="w"> </span>--version
+
+<span class="c1"># Install missing Python packages</span>
+pip3<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>sphinx<span class="w"> </span>breathe<span class="w"> </span>exhale
+
+<span class="c1"># Clean and rebuild</span>
+<span class="nb">cd</span><span class="w"> </span>docs
+make<span class="w"> </span>clean
+make<span class="w"> </span>html
+</pre></div>
+</div>
+<p><strong>Windows-Specific Issues:</strong></p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM Ensure vcpkg integration
+vcpkg integrate install
+
+REM Use correct architecture
+cmake -A x64 ..
+
+REM Check Visual Studio version
+cmake --version
+</pre></div>
+</div>
+</section>
+</section>
+<section id="performance-optimization">
+<h2>Performance Optimization<a class="headerlink" href="#performance-optimization" title="Link to this heading"></a></h2>
+<section id="compiler-optimizations">
+<h3>Compiler Optimizations<a class="headerlink" href="#compiler-optimizations" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Maximum optimization</span>
+cmake<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release<span class="w"> </span>-DCMAKE_CXX_FLAGS<span class="o">=</span><span class="s2">&quot;-O3 -march=native -DNDEBUG&quot;</span><span class="w"> </span>..
+
+<span class="c1"># Profile-guided optimization (advanced)</span>
+<span class="c1"># Step 1: Build with profiling</span>
+cmake<span class="w"> </span>-DCMAKE_CXX_FLAGS<span class="o">=</span><span class="s2">&quot;-O3 -fprofile-generate&quot;</span><span class="w"> </span>..
+make<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./run_benchmarks
+
+<span class="c1"># Step 2: Rebuild with profile data</span>
+cmake<span class="w"> </span>-DCMAKE_CXX_FLAGS<span class="o">=</span><span class="s2">&quot;-O3 -fprofile-use&quot;</span><span class="w"> </span>..
+make
+</pre></div>
+</div>
+</section>
+<section id="link-time-optimization">
+<h3>Link-Time Optimization<a class="headerlink" href="#link-time-optimization" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Enable LTO for better optimization</span>
+cmake<span class="w"> </span>-DCMAKE_INTERPROCEDURAL_OPTIMIZATION<span class="o">=</span>TRUE<span class="w"> </span>..
+
+<span class="c1"># Or manually</span>
+cmake<span class="w"> </span>-DCMAKE_CXX_FLAGS<span class="o">=</span><span class="s2">&quot;-flto&quot;</span><span class="w"> </span>..
+</pre></div>
+</div>
+</section>
+</section>
+<section id="testing-the-build">
+<h2>Testing the Build<a class="headerlink" href="#testing-the-build" title="Link to this heading"></a></h2>
+<section id="running-tests">
+<h3>Running Tests<a class="headerlink" href="#running-tests" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build and run basic example</span>
+<span class="nb">cd</span><span class="w"> </span>build/examples<span class="w">  </span><span class="c1"># or wherever examples are built</span>
+./example
+
+<span class="c1"># Run FK computation test</span>
+./fk_computation_test
+
+<span class="c1"># Test parallel processing</span>
+./parallel_demo
+
+<span class="c1"># Performance benchmark</span>
+<span class="nb">time</span><span class="w"> </span>./trefoil_complete_example
+</pre></div>
+</div>
+</section>
+<section id="validation">
+<h3>Validation<a class="headerlink" href="#validation" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check library symbols</span>
+nm<span class="w"> </span>libfk_compute.a<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;(FKComputation|MultivariablePolynomial)&quot;</span>
+
+<span class="c1"># Verify OpenMP integration</span>
+./parallel_demo<span class="w">  </span><span class="c1"># Should show multiple threads</span>
+
+<span class="c1"># Test with different polynomial backends</span>
+<span class="k">for</span><span class="w"> </span>backend<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Testing backend </span><span class="nv">$backend</span><span class="s2">&quot;</span>
+<span class="w">    </span>g++<span class="w"> </span>-DPOLYNOMIAL_TYPE<span class="o">=</span><span class="nv">$backend</span><span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-I../include<span class="w"> </span>-lflint<span class="w"> </span>examples/example.cpp<span class="w"> </span>-o<span class="w"> </span>test_<span class="nv">$backend</span>
+<span class="w">    </span>./test_<span class="nv">$backend</span>
+<span class="k">done</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<section id="system-installation">
+<h3>System Installation<a class="headerlink" href="#system-installation" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install library and headers</span>
+<span class="nb">cd</span><span class="w"> </span>build
+sudo<span class="w"> </span>make<span class="w"> </span>install
+
+<span class="c1"># Or with custom prefix</span>
+cmake<span class="w"> </span>-DCMAKE_INSTALL_PREFIX<span class="o">=</span><span class="nv">$HOME</span>/local<span class="w"> </span>..
+make<span class="w"> </span>install
+
+<span class="c1"># Update library cache (Linux)</span>
+sudo<span class="w"> </span>ldconfig
+</pre></div>
+</div>
+</section>
+<section id="package-creation">
+<h3>Package Creation<a class="headerlink" href="#package-creation" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create packages with CPack</span>
+<span class="nb">cd</span><span class="w"> </span>build
+cpack
+
+<span class="c1"># Create specific package types</span>
+cpack<span class="w"> </span>-G<span class="w"> </span>DEB<span class="w">     </span><span class="c1"># Debian package</span>
+cpack<span class="w"> </span>-G<span class="w"> </span>RPM<span class="w">     </span><span class="c1"># RPM package</span>
+cpack<span class="w"> </span>-G<span class="w"> </span>TGZ<span class="w">     </span><span class="c1"># Tarball</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<p>After successful build:</p>
+<ol class="arabic simple">
+<li><p>Run the examples to verify functionality</p></li>
+<li><p>Read the <a class="reference internal" href="user_guide.html"><span class="doc">User Guide</span></a> for usage patterns</p></li>
+<li><p>Explore the <span class="xref std std-doc">api/library_root</span> for detailed API reference</p></li>
+<li><p>Consider contributing improvements or reporting issues</p></li>
+</ol>
+<p>For ongoing development:</p>
+<ol class="arabic simple">
+<li><p>Set up your IDE with the include paths</p></li>
+<li><p>Configure debugging with appropriate symbols</p></li>
+<li><p>Set up continuous integration for your project</p></li>
+<li><p>Consider using package managers like Conan or vcpkg for dependencies</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, FK Computation Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

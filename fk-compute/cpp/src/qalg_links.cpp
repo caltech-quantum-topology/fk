@@ -327,49 +327,30 @@ QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
   return result;
 }
 
-// Compute (x q; q)_n as a MultivariablePolynomial in one x-variable
-// P(q, x) = ∏_{k=1}^n (1 - x q^{qpow + lsign*k})
-// Optimized using direct coefficient computation
+
 PolynomialType qpochhammer_xq_q(int n, int qpow, int lsign) {
-    const int numXVars = 1;
+    const int numXVars   = 1;
     const int maxXDegree = n;
-
-    // Coefficients map: coeffs[x_degree][q_power] = coefficient
-    std::map<int, std::map<int, int>> coeffs;
-    coeffs[0][0] = 1; // Initialize with 1
-
-    // For each factor (1 - x q^{qpow + lsign*k})
-    for (int k = 1; k <= n; ++k) {
-        const int q_factor = qpow + lsign * k;
-        std::map<int, std::map<int, int>> new_coeffs;
-
-        // Multiply current polynomial by (1 - x q^q_factor)
-        for (const auto &[x_deg, q_map] : coeffs) {
-            for (const auto &[q_pow, coeff] : q_map) {
-                if (coeff != 0) {
-                    // Add the "1" term: same x_deg and q_pow
-                    new_coeffs[x_deg][q_pow] += coeff;
-
-                    // Add the "-x q^q_factor" term: x_deg+1 and q_pow+q_factor
-                    if (x_deg + 1 <= maxXDegree) {
-                        new_coeffs[x_deg + 1][q_pow + q_factor] -= coeff;
-                    }
-                }
-            }
-        }
-        coeffs = std::move(new_coeffs);
-    }
-
-    // Build result polynomial
     PolynomialType result(numXVars, maxXDegree);
-    for (const auto &[x_deg, q_map] : coeffs) {
-        if (x_deg <= maxXDegree) {
-            for (const auto &[q_pow, coeff] : q_map) {
-                if (coeff != 0) {
-                    result.addToCoefficient(q_pow, {x_deg}, coeff);
-                }
-            }
+
+    for (int m = 0; m <= n; ++m) {
+        // q-binomial [n choose m]_q as polynomial in q
+        QPolynomialType qb = QBinomialPositive(n, m);
+
+        if (m % 2 == 1) {
+            qb *= -1;  // or qb.negate()
         }
+
+        const int shift = m * qpow + (m * (m + 1)) / 2;
+
+        // Shift q-exponents: q^r ↦ q^{r + shift}
+        QPolynomialType shifted = multiplyByQPower(qb, shift); // you already have something like this
+
+        // Now add as coefficient of x^m
+        // (Loop over non-zero entries in 'shifted' and call result.addToCoefficient)
+        shifted.forEachNonZero([&](int q_pow, int coeff) {
+            result.addToCoefficient(q_pow, {m}, coeff);
+        });
     }
 
     return result;

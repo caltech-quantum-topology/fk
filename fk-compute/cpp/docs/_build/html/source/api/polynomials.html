@@ -1,0 +1,600 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multivariable Polynomials API &mdash; FK Computation C++ Library 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            FK Computation C++ Library
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../build_instructions.html">Build Instructions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">FK Computation C++ Library</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Multivariable Polynomials API</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/source/api/polynomials.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="multivariable-polynomials-api">
+<h1>Multivariable Polynomials API<a class="headerlink" href="#multivariable-polynomials-api" title="Link to this heading"></a></h1>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#overview" id="id17">Overview</a></p></li>
+<li><p><a class="reference internal" href="#class-reference" id="id18">Class Reference</a></p>
+<ul>
+<li><p><a class="reference internal" href="#multivariablepolynomial" id="id19">MultivariablePolynomial</a></p></li>
+<li><p><a class="reference internal" href="#constructors" id="id20">Constructors</a></p></li>
+<li><p><a class="reference internal" href="#arithmetic-operations" id="id21">Arithmetic Operations</a></p></li>
+<li><p><a class="reference internal" href="#in-place-operations" id="id22">In-Place Operations</a></p></li>
+<li><p><a class="reference internal" href="#coefficient-access" id="id23">Coefficient Access</a></p></li>
+<li><p><a class="reference internal" href="#backward-compatibility" id="id24">Backward Compatibility</a></p></li>
+<li><p><a class="reference internal" href="#utility-methods" id="id25">Utility Methods</a></p></li>
+<li><p><a class="reference internal" href="#export-functions" id="id26">Export Functions</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#helper-classes" id="id27">Helper Classes</a></p>
+<ul>
+<li><p><a class="reference internal" href="#vectorhash" id="id28">VectorHash</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#usage-patterns" id="id29">Usage Patterns</a></p>
+<ul>
+<li><p><a class="reference internal" href="#pattern-1-building-polynomials-term-by-term" id="id30">Pattern 1: Building Polynomials Term by Term</a></p></li>
+<li><p><a class="reference internal" href="#pattern-2-polynomial-arithmetic-chains" id="id31">Pattern 2: Polynomial Arithmetic Chains</a></p></li>
+<li><p><a class="reference internal" href="#pattern-3-thread-safe-reading" id="id32">Pattern 3: Thread-Safe Reading</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#performance-considerations" id="id33">Performance Considerations</a></p></li>
+<li><p><a class="reference internal" href="#thread-safety-details" id="id34">Thread Safety Details</a></p></li>
+<li><p><a class="reference internal" href="#error-handling" id="id35">Error Handling</a></p></li>
+</ul>
+</nav>
+<section id="overview">
+<h2><a class="toc-backref" href="#id17" role="doc-backlink">Overview</a><a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The <a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">MultivariablePolynomial</span></code></a> class provides a memory-efficient sparse representation
+of polynomials in variables q, x₁, x₂, …, xₙ with support for negative exponents.</p>
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">feature-check</span></span></dt>
+<dd><p>Thread-safe for read operations, requires external synchronization for writes</p>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">feature-check</span></span></dt>
+<dd><p>Memory efficient: 90%+ reduction vs dense representation</p>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">feature-check</span></span></dt>
+<dd><p>Supports arbitrary positive/negative q powers</p>
+</dd></dl>
+
+</section>
+<section id="class-reference">
+<h2><a class="toc-backref" href="#id18" role="doc-backlink">Class Reference</a><a class="headerlink" href="#class-reference" title="Link to this heading"></a></h2>
+<section id="multivariablepolynomial">
+<h3><a class="toc-backref" href="#id19" role="doc-backlink">MultivariablePolynomial</a><a class="headerlink" href="#multivariablepolynomial" title="Link to this heading"></a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv423MultivariablePolynomial">
+<span id="_CPPv323MultivariablePolynomial"></span><span id="_CPPv223MultivariablePolynomial"></span><span id="MultivariablePolynomial"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MultivariablePolynomial</span></span></span><a class="headerlink" href="#_CPPv423MultivariablePolynomial" title="Link to this definition"></a><br /></dt>
+<dd><p>Represents polynomials of the form:</p>
+<div class="math notranslate nohighlight">
+\[P(q, x_1, x_2, \ldots, x_n) = \sum_{i,j} c_{i,j} \times q^j \times x_1^{a_{1,i}} \times x_2^{a_{2,i}} \times \cdots \times x_n^{a_{n,i}}\]</div>
+<p><strong>Storage</strong>: Uses sparse representation with <code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">std::unordered_map</span></code> for coefficients.</p>
+<p><strong>Thread Safety</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">thread-safe</span></code> for read operations, requires synchronization for writes.</p>
+</dd></dl>
+
+</section>
+<section id="constructors">
+<h3><a class="toc-backref" href="#id20" role="doc-backlink">Constructors</a><a class="headerlink" href="#constructors" title="Link to this heading"></a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N23MultivariablePolynomial23MultivariablePolynomialEiiRKNSt6vectorIiEE">
+<span id="_CPPv3N23MultivariablePolynomial23MultivariablePolynomialEiiRKNSt6vectorIiEE"></span><span id="_CPPv2N23MultivariablePolynomial23MultivariablePolynomialEiiRKNSt6vectorIiEE"></span><span id="MultivariablePolynomial::MultivariablePolynomial__i.i.std::vector:i:CR"></span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv4N23MultivariablePolynomial23MultivariablePolynomialEiiRKNSt6vectorIiEE" title="MultivariablePolynomial::MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">MultivariablePolynomial</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">numVariables</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">degree</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">10</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">maxDegrees</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N23MultivariablePolynomial23MultivariablePolynomialEiiRKNSt6vectorIiEE" title="Link to this definition"></a><br /></dt>
+<dd><p>Creates a new multivariable polynomial.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>numVariables</strong> – Number of x variables (x₁, x₂, …, xₙ)</p></li>
+<li><p><strong>degree</strong> – Default maximum degree hint (advisory only)</p></li>
+<li><p><strong>maxDegrees</strong> – Per-variable degree hints (advisory only)</p></li>
+</ul>
+</dd>
+</dl>
+<p><strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Polynomial in 3 variables with default settings</span>
+<span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="nf">poly1</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+
+<span class="c1">// Polynomial with degree hints</span>
+<span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="nf">poly2</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">);</span>
+
+<span class="c1">// Polynomial with per-variable degree hints</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">degrees</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">7</span><span class="p">};</span>
+<span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="nf">poly3</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">degrees</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Complexity</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">complexity-o</span></code> O(1)</p>
+</dd></dl>
+
+</section>
+<section id="arithmetic-operations">
+<h3><a class="toc-backref" href="#id21" role="doc-backlink">Arithmetic Operations</a><a class="headerlink" href="#arithmetic-operations" title="Link to this heading"></a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK23MultivariablePolynomialplERK23MultivariablePolynomial">
+<span id="_CPPv3NK23MultivariablePolynomialplERK23MultivariablePolynomial"></span><span id="_CPPv2NK23MultivariablePolynomialplERK23MultivariablePolynomial"></span><span id="MultivariablePolynomial::add-operator__MultivariablePolynomialCRC"></span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">+</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK23MultivariablePolynomialplERK23MultivariablePolynomial" title="Link to this definition"></a><br /></dt>
+<dd><p>Polynomial addition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> – Polynomial to add</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New polynomial representing the sum</p>
+</dd>
+<dt class="field-odd">Throws<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span><span class="cpp-expr sig sig-inline cpp"><span class="n">std</span><span class="p">::</span><span class="n">invalid_argument</span></span></span> – If polynomials have incompatible dimensions</p>
+</dd>
+</dl>
+<p><strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="nf">p1</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="n">p2</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+<span class="n">p1</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w">  </span><span class="c1">// 3*x₁</span>
+<span class="n">p2</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w">  </span><span class="c1">// 2*x₂</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">p1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">p2</span><span class="p">;</span><span class="w">  </span><span class="c1">// 3*x₁ + 2*x₂</span>
+</pre></div>
+</div>
+<p><strong>Complexity</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">complexity-o</span></code> O(<a href="#id1"><span class="problematic" id="id2">|terms₁|</span></a> + <a href="#id3"><span class="problematic" id="id4">|terms₂|</span></a>)</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK23MultivariablePolynomialmiERK23MultivariablePolynomial">
+<span id="_CPPv3NK23MultivariablePolynomialmiERK23MultivariablePolynomial"></span><span id="_CPPv2NK23MultivariablePolynomialmiERK23MultivariablePolynomial"></span><span id="MultivariablePolynomial::sub-operator__MultivariablePolynomialCRC"></span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">-</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK23MultivariablePolynomialmiERK23MultivariablePolynomial" title="Link to this definition"></a><br /></dt>
+<dd><p>Polynomial subtraction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> – Polynomial to subtract</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New polynomial representing the difference</p>
+</dd>
+</dl>
+<p><strong>Complexity</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">complexity-o</span></code> O(<a href="#id5"><span class="problematic" id="id6">|terms₁|</span></a> + <a href="#id7"><span class="problematic" id="id8">|terms₂|</span></a>)</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK23MultivariablePolynomialmlERK23MultivariablePolynomial">
+<span id="_CPPv3NK23MultivariablePolynomialmlERK23MultivariablePolynomial"></span><span id="_CPPv2NK23MultivariablePolynomialmlERK23MultivariablePolynomial"></span><span id="MultivariablePolynomial::mul-operator__MultivariablePolynomialCRC"></span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK23MultivariablePolynomialmlERK23MultivariablePolynomial" title="Link to this definition"></a><br /></dt>
+<dd><p>Polynomial multiplication.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> – Polynomial to multiply</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New polynomial representing the product</p>
+</dd>
+</dl>
+<p><strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="nf">p1</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="n">p2</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+<span class="n">p1</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w">  </span><span class="c1">// 2*x₁</span>
+<span class="n">p2</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">})[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w">  </span><span class="c1">// 3*q*x₂</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">product</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">p1</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">p2</span><span class="p">;</span><span class="w">  </span><span class="c1">// 6*q*x₁*x₂</span>
+<span class="c1">// Result: coefficient 6 at exponents {1,1} for q^1</span>
+</pre></div>
+</div>
+<p><strong>Complexity</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">complexity-o</span></code> O(<a href="#id9"><span class="problematic" id="id10">|terms₁|</span></a> × <a href="#id11"><span class="problematic" id="id12">|terms₂|</span></a>)</p>
+</dd></dl>
+
+</section>
+<section id="in-place-operations">
+<h3><a class="toc-backref" href="#id22" role="doc-backlink">In-Place Operations</a><a class="headerlink" href="#in-place-operations" title="Link to this heading"></a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N23MultivariablePolynomialpLERK23MultivariablePolynomial">
+<span id="_CPPv3N23MultivariablePolynomialpLERK23MultivariablePolynomial"></span><span id="_CPPv2N23MultivariablePolynomialpLERK23MultivariablePolynomial"></span><span id="MultivariablePolynomial::add-assign-operator__MultivariablePolynomialCR"></span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">+=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N23MultivariablePolynomialpLERK23MultivariablePolynomial" title="Link to this definition"></a><br /></dt>
+<dd><p>In-place addition (more memory efficient).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> – Polynomial to add</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Reference to this polynomial</p>
+</dd>
+</dl>
+<p><strong>Performance Note</strong>: Preferred over <code class="docutils literal notranslate"><span class="pre">operator+</span></code> for performance-critical code.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N23MultivariablePolynomialmIERK23MultivariablePolynomial">
+<span id="_CPPv3N23MultivariablePolynomialmIERK23MultivariablePolynomial"></span><span id="_CPPv2N23MultivariablePolynomialmIERK23MultivariablePolynomial"></span><span id="MultivariablePolynomial::sub-assign-operator__MultivariablePolynomialCR"></span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">-=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N23MultivariablePolynomialmIERK23MultivariablePolynomial" title="Link to this definition"></a><br /></dt>
+<dd><p>In-place subtraction.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N23MultivariablePolynomialmLERK23MultivariablePolynomial">
+<span id="_CPPv3N23MultivariablePolynomialmLERK23MultivariablePolynomial"></span><span id="_CPPv2N23MultivariablePolynomialmLERK23MultivariablePolynomial"></span><span id="MultivariablePolynomial::mul-assign-operator__MultivariablePolynomialCR"></span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">*=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N23MultivariablePolynomialmLERK23MultivariablePolynomial" title="Link to this definition"></a><br /></dt>
+<dd><p>In-place multiplication.</p>
+</dd></dl>
+
+</section>
+<section id="coefficient-access">
+<h3><a class="toc-backref" href="#id23" role="doc-backlink">Coefficient Access</a><a class="headerlink" href="#coefficient-access" title="Link to this heading"></a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N23MultivariablePolynomial14getCoefficientERKNSt6vectorIiEE">
+<span id="_CPPv3N23MultivariablePolynomial14getCoefficientERKNSt6vectorIiEE"></span><span id="_CPPv2N23MultivariablePolynomial14getCoefficientERKNSt6vectorIiEE"></span><span id="MultivariablePolynomial::getCoefficient__std::vector:i:CR"></span><span class="n"><span class="pre">bilvector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">getCoefficient</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">xExponents</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N23MultivariablePolynomial14getCoefficientERKNSt6vectorIiEE" title="Link to this definition"></a><br /></dt>
+<dd><p>Access coefficient bilvector for given x-variable exponents.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>xExponents</strong> – Vector of exponents for x₁, x₂, …, xₙ</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Reference to bilvector containing q-polynomial coefficients</p>
+</dd>
+<dt class="field-odd">Throws<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span><span class="cpp-expr sig sig-inline cpp"><span class="n">std</span><span class="p">::</span><span class="n">invalid_argument</span></span></span> – If exponent vector size doesn’t match numVariables</p>
+</dd>
+</dl>
+<p><strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="nf">poly</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+
+<span class="c1">// Set coefficient of q^2 * x₁^1 * x₂^0 * x₃^2</span>
+<span class="n">poly</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">})[</span><span class="mi">2</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span>
+
+<span class="c1">// Set coefficient of q^(-1) * x₁^0 * x₂^1 * x₃^0</span>
+<span class="n">poly</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">})[</span><span class="mi">-1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span>
+</pre></div>
+</div>
+<p><strong>Thread Safety</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">thread-unsafe</span></code> - requires external synchronization</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK23MultivariablePolynomial14getCoefficientERKNSt6vectorIiEE">
+<span id="_CPPv3NK23MultivariablePolynomial14getCoefficientERKNSt6vectorIiEE"></span><span id="_CPPv2NK23MultivariablePolynomial14getCoefficientERKNSt6vectorIiEE"></span><span id="MultivariablePolynomial::getCoefficient__std::vector:i:CRC"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">bilvector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">getCoefficient</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">xExponents</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK23MultivariablePolynomial14getCoefficientERKNSt6vectorIiEE" title="Link to this definition"></a><br /></dt>
+<dd><p>Const access to coefficient bilvector.</p>
+<p><strong>Thread Safety</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">thread-safe</span></code></p>
+</dd></dl>
+
+</section>
+<section id="backward-compatibility">
+<h3><a class="toc-backref" href="#id24" role="doc-backlink">Backward Compatibility</a><a class="headerlink" href="#backward-compatibility" title="Link to this heading"></a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK23MultivariablePolynomial15getCoefficientsEv">
+<span id="_CPPv3NK23MultivariablePolynomial15getCoefficientsEv"></span><span id="_CPPv2NK23MultivariablePolynomial15getCoefficientsEv"></span><span id="MultivariablePolynomial::getCoefficientsC"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">bilvector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">getCoefficients</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK23MultivariablePolynomial15getCoefficientsEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Convert to dense format for backward compatibility.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dense coefficient array indexed by [x₁][x₂]…[xₙ]</p>
+</dd>
+</dl>
+<p><strong>Performance Warning</strong>: This operation is expensive for sparse polynomials.
+Only use when interfacing with legacy code.</p>
+<p><strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">dense</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">poly</span><span class="p">.</span><span class="n">getCoefficients</span><span class="p">();</span>
+<span class="c1">// Access coefficient of x₁^i * x₂^j * ... * xₙ^k:</span>
+<span class="c1">// dense[i][j]...[k] gives bilvector for q-polynomial</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N23MultivariablePolynomial19syncFromDenseVectorERKNSt6vectorINSt6vectorI9bilvectorIiEEEEE">
+<span id="_CPPv3N23MultivariablePolynomial19syncFromDenseVectorERKNSt6vectorINSt6vectorI9bilvectorIiEEEEE"></span><span id="_CPPv2N23MultivariablePolynomial19syncFromDenseVectorERKNSt6vectorINSt6vectorI9bilvectorIiEEEEE"></span><span id="MultivariablePolynomial::syncFromDenseVector__std::vector:std::vector:bilvector:i:::CR"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">syncFromDenseVector</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">bilvector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">dense</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N23MultivariablePolynomial19syncFromDenseVectorERKNSt6vectorINSt6vectorI9bilvectorIiEEEEE" title="Link to this definition"></a><br /></dt>
+<dd><p>Load coefficients from dense format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dense</strong> – Dense coefficient array</p>
+</dd>
+<dt class="field-even">Throws<span class="colon">:</span></dt>
+<dd class="field-even"><p><span><span class="cpp-expr sig sig-inline cpp"><span class="n">std</span><span class="p">::</span><span class="n">invalid_argument</span></span></span> – If dimensions don’t match</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="utility-methods">
+<h3><a class="toc-backref" href="#id25" role="doc-backlink">Utility Methods</a><a class="headerlink" href="#utility-methods" title="Link to this heading"></a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK23MultivariablePolynomial7isEmptyEv">
+<span id="_CPPv3NK23MultivariablePolynomial7isEmptyEv"></span><span id="_CPPv2NK23MultivariablePolynomial7isEmptyEv"></span><span id="MultivariablePolynomial::isEmptyC"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">isEmpty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK23MultivariablePolynomial7isEmptyEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Check if polynomial has no non-zero terms.</p>
+<p><strong>Complexity</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">complexity-o</span></code> O(1)</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK23MultivariablePolynomial12getTermCountEv">
+<span id="_CPPv3NK23MultivariablePolynomial12getTermCountEv"></span><span id="_CPPv2NK23MultivariablePolynomial12getTermCountEv"></span><span id="MultivariablePolynomial::getTermCountC"></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">getTermCount</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK23MultivariablePolynomial12getTermCountEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Get number of non-zero terms.</p>
+<p><strong>Complexity</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">complexity-o</span></code> O(1)</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N23MultivariablePolynomial5clearEv">
+<span id="_CPPv3N23MultivariablePolynomial5clearEv"></span><span id="_CPPv2N23MultivariablePolynomial5clearEv"></span><span id="MultivariablePolynomial::clear"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">clear</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N23MultivariablePolynomial5clearEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Remove all terms, making polynomial zero.</p>
+<p><strong>Complexity</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">complexity-o</span></code> O(<a href="#id13"><span class="problematic" id="id14">|terms|</span></a>)</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N23MultivariablePolynomial10pruneZerosEv">
+<span id="_CPPv3N23MultivariablePolynomial10pruneZerosEv"></span><span id="_CPPv2N23MultivariablePolynomial10pruneZerosEv"></span><span id="MultivariablePolynomial::pruneZeros"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">pruneZeros</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N23MultivariablePolynomial10pruneZerosEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Remove terms with zero coefficients to save memory.</p>
+<p><strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// After many operations, some terms might become zero</span>
+<span class="n">poly</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">other_poly</span><span class="p">;</span>
+<span class="n">poly</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="n">other_poly</span><span class="p">;</span><span class="w">  </span><span class="c1">// May leave zero terms</span>
+
+<span class="n">poly</span><span class="p">.</span><span class="n">pruneZeros</span><span class="p">();</span><span class="w">   </span><span class="c1">// Clean up memory</span>
+</pre></div>
+</div>
+<p><strong>Complexity</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">complexity-o</span></code> O(<a href="#id15"><span class="problematic" id="id16">|terms|</span></a>)</p>
+</dd></dl>
+
+</section>
+<section id="export-functions">
+<h3><a class="toc-backref" href="#id26" role="doc-backlink">Export Functions</a><a class="headerlink" href="#export-functions" title="Link to this heading"></a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK23MultivariablePolynomial12exportToJsonERKNSt6stringE">
+<span id="_CPPv3NK23MultivariablePolynomial12exportToJsonERKNSt6stringE"></span><span id="_CPPv2NK23MultivariablePolynomial12exportToJsonERKNSt6stringE"></span><span id="MultivariablePolynomial::exportToJson__ssCRC"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv423MultivariablePolynomial" title="MultivariablePolynomial"><span class="n"><span class="pre">MultivariablePolynomial</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">exportToJson</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">filename</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK23MultivariablePolynomial12exportToJsonERKNSt6stringE" title="Link to this definition"></a><br /></dt>
+<dd><p>Export polynomial to JSON format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> – Output filename (without .json extension)</p>
+</dd>
+</dl>
+<p><strong>JSON Format</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;numVariables&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;maxDegrees&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">]</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;terms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;xExponents&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;qCoefficients&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;2&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;-1&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+</section>
+<section id="helper-classes">
+<h2><a class="toc-backref" href="#id27" role="doc-backlink">Helper Classes</a><a class="headerlink" href="#helper-classes" title="Link to this heading"></a></h2>
+<section id="vectorhash">
+<h3><a class="toc-backref" href="#id28" role="doc-backlink">VectorHash</a><a class="headerlink" href="#vectorhash" title="Link to this heading"></a></h3>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv410VectorHash">
+<span id="_CPPv310VectorHash"></span><span id="_CPPv210VectorHash"></span><span id="VectorHash"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">VectorHash</span></span></span><a class="headerlink" href="#_CPPv410VectorHash" title="Link to this definition"></a><br /></dt>
+<dd><p>Custom hash function for <code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">std::vector</span></code> keys in sparse storage.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK10VectorHash10VectorHashclERKNSt6vectorIiEE">
+<span id="_CPPv3NK10VectorHash10VectorHashclERKNSt6vectorIiEE"></span><span id="_CPPv2NK10VectorHash10VectorHashclERKNSt6vectorIiEE"></span><span id="VectorHash::VectorHash::call-operator__std::vector:i:CRC"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">VectorHash</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">()</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">v</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK10VectorHash10VectorHashclERKNSt6vectorIiEE" title="Link to this definition"></a><br /></dt>
+<dd><p>Compute hash of integer vector.</p>
+<p><strong>Hash Quality</strong>: Designed for mathematical vectors with small integers.
+Handles negative values correctly.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="usage-patterns">
+<h2><a class="toc-backref" href="#id29" role="doc-backlink">Usage Patterns</a><a class="headerlink" href="#usage-patterns" title="Link to this heading"></a></h2>
+<section id="pattern-1-building-polynomials-term-by-term">
+<h3><a class="toc-backref" href="#id30" role="doc-backlink">Pattern 1: Building Polynomials Term by Term</a><a class="headerlink" href="#pattern-1-building-polynomials-term-by-term" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="nf">buildPolynomial</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="n">poly</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Add terms: 2*q^1*x₁ + 3*q^(-1)*x₂ + q^0*x₃^2</span>
+<span class="w">    </span><span class="n">poly</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">})[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w">   </span><span class="c1">// 2*q*x₁</span>
+<span class="w">    </span><span class="n">poly</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">})[</span><span class="mi">-1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w">  </span><span class="c1">// 3*q⁻¹*x₂</span>
+<span class="w">    </span><span class="n">poly</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w">   </span><span class="c1">// x₃²</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">poly</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="pattern-2-polynomial-arithmetic-chains">
+<h3><a class="toc-backref" href="#id31" role="doc-backlink">Pattern 2: Polynomial Arithmetic Chains</a><a class="headerlink" href="#pattern-2-polynomial-arithmetic-chains" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">MultivariablePolynomial</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">polys</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="n">result</span><span class="p">(</span><span class="n">polys</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">getNumVariables</span><span class="p">());</span>
+
+<span class="w">    </span><span class="c1">// Efficient in-place operations</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">polys</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">result</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">p</span><span class="p">;</span><span class="w">  </span><span class="c1">// In-place addition</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">result</span><span class="p">.</span><span class="n">pruneZeros</span><span class="p">();</span><span class="w">  </span><span class="c1">// Clean up</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="pattern-3-thread-safe-reading">
+<h3><a class="toc-backref" href="#id32" role="doc-backlink">Pattern 3: Thread-Safe Reading</a><a class="headerlink" href="#pattern-3-thread-safe-reading" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PolynomialAnalyzer</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">MultivariablePolynomial</span><span class="o">&amp;</span><span class="w"> </span><span class="n">poly_</span><span class="p">;</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="n">PolynomialAnalyzer</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">MultivariablePolynomial</span><span class="o">&amp;</span><span class="w"> </span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">poly_</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+
+<span class="w">    </span><span class="c1">// Thread-safe operations</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">countTerms</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">poly_</span><span class="p">.</span><span class="n">getTermCount</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasTermAt</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">exp</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">!</span><span class="n">poly_</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">(</span><span class="n">exp</span><span class="p">).</span><span class="n">isEmpty</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="performance-considerations">
+<h2><a class="toc-backref" href="#id33" role="doc-backlink">Performance Considerations</a><a class="headerlink" href="#performance-considerations" title="Link to this heading"></a></h2>
+<p><strong>Memory Usage</strong></p>
+<ul class="simple">
+<li><p>Sparse storage uses ~8-24 bytes per non-zero term</p></li>
+<li><p>Dense storage would use <code class="docutils literal notranslate"><span class="pre">degree^numVariables</span> <span class="pre">*</span> <span class="pre">sizeof(bilvector&lt;int&gt;)</span></code></p></li>
+<li><p>For polynomials with &lt; 10% non-zero terms, sparse is more efficient</p></li>
+</ul>
+<p><strong>Operation Costs</strong></p>
+<p><strong>Best Practices</strong></p>
+<ol class="arabic simple">
+<li><p><strong>Use in-place operations</strong> (<code class="docutils literal notranslate"><span class="pre">+=</span></code>, <code class="docutils literal notranslate"><span class="pre">-=</span></code>, <code class="docutils literal notranslate"><span class="pre">*=</span></code>) when possible</p></li>
+<li><p><strong>Call pruneZeros()</strong> periodically after many operations</p></li>
+<li><p><strong>Pre-allocate expected capacity</strong> for predictable workloads</p></li>
+<li><p><strong>Use const references</strong> to enable thread-safe sharing</p></li>
+</ol>
+</section>
+<section id="thread-safety-details">
+<h2><a class="toc-backref" href="#id34" role="doc-backlink">Thread Safety Details</a><a class="headerlink" href="#thread-safety-details" title="Link to this heading"></a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">warning-box</span></span></dt>
+<dd><p><strong>Thread Safety Model</strong>: The polynomial class follows a multiple-reader/single-writer pattern.
+Multiple threads can safely call const methods simultaneously, but write operations
+require external synchronization.</p>
+</dd></dl>
+
+<p><strong>Safe Operations</strong> (multiple threads):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">getCoefficient()</span></code> const version</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">isEmpty()</span></code>, <code class="docutils literal notranslate"><span class="pre">getTermCount()</span></code></p></li>
+<li><p>Copy constructor, <code class="docutils literal notranslate"><span class="pre">operator+</span></code>, <code class="docutils literal notranslate"><span class="pre">operator*</span></code></p></li>
+</ul>
+<p><strong>Unsafe Operations</strong> (require synchronization):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">getCoefficient()</span></code> non-const version</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operator+=</span></code>, <code class="docutils literal notranslate"><span class="pre">operator-=</span></code>, <code class="docutils literal notranslate"><span class="pre">operator*=</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">clear()</span></code>, <code class="docutils literal notranslate"><span class="pre">pruneZeros()</span></code></p></li>
+</ul>
+<p><strong>Example Thread-Safe Usage</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ThreadSafePolynomialProcessor</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">mutable</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">shared_mutex</span><span class="w"> </span><span class="n">mutex_</span><span class="p">;</span>
+<span class="w">    </span><span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="n">poly_</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="c1">// Multiple readers can call this simultaneously</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">getTermCount</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">shared_lock</span><span class="w"> </span><span class="nf">lock</span><span class="p">(</span><span class="n">mutex_</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">poly_</span><span class="p">.</span><span class="n">getTermCount</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Only one writer at a time</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">addTerm</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">exp</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">qPower</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">coeff</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">unique_lock</span><span class="w"> </span><span class="nf">lock</span><span class="p">(</span><span class="n">mutex_</span><span class="p">);</span>
+<span class="w">        </span><span class="n">poly_</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">(</span><span class="n">exp</span><span class="p">)[</span><span class="n">qPower</span><span class="p">]</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">coeff</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+<section id="error-handling">
+<h2><a class="toc-backref" href="#id35" role="doc-backlink">Error Handling</a><a class="headerlink" href="#error-handling" title="Link to this heading"></a></h2>
+<p>The polynomial class uses exceptions for error reporting:</p>
+<p><strong>Example Error Handling</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">MultivariablePolynomial</span><span class="w"> </span><span class="nf">poly</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+<span class="w">    </span><span class="n">poly</span><span class="p">.</span><span class="n">getCoefficient</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span><span class="w">  </span><span class="c1">// Error: wrong dimensions</span>
+<span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">invalid_argument</span><span class="o">&amp;</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cerr</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Dimension error: &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">bad_alloc</span><span class="o">&amp;</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cerr</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Memory allocation failed: &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, FK Computation Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

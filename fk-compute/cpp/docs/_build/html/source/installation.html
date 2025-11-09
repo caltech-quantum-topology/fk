@@ -1,0 +1,346 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Installation Guide &mdash; FK Computation C++ Library 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            FK Computation C++ Library
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../build_instructions.html">Build Instructions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">FK Computation C++ Library</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Installation Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/installation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="installation-guide">
+<h1>Installation Guide<a class="headerlink" href="#installation-guide" title="Link to this heading"></a></h1>
+<p>This guide covers the installation and setup of the FK Computation C++ Library.</p>
+<section id="system-requirements">
+<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Operating Systems</strong></dt><dd><ul class="simple">
+<li><p>Linux (Ubuntu 18.04+, CentOS 7+, Arch Linux)</p></li>
+<li><p>macOS (10.14+)</p></li>
+<li><p>Windows (with WSL2 or MinGW-w64)</p></li>
+</ul>
+</dd>
+<dt><strong>Compiler Requirements</strong></dt><dd><ul class="simple">
+<li><p>GCC 7.0+ or Clang 5.0+ with C++17 support</p></li>
+<li><p>MSVC 2017+ for Windows native builds</p></li>
+</ul>
+</dd>
+<dt><strong>Dependencies</strong></dt><dd><ul class="simple">
+<li><p>Make build system</p></li>
+<li><p>pthread library (for parallel processing)</p></li>
+<li><p>Optional: clang-format for code formatting</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="quick-installation">
+<h2>Quick Installation<a class="headerlink" href="#quick-installation" title="Link to this heading"></a></h2>
+<p><strong>Ubuntu/Debian</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install build tools</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>update
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>build-essential<span class="w"> </span>cmake<span class="w"> </span>git
+
+<span class="c1"># Clone repository</span>
+git<span class="w"> </span>clone<span class="w"> </span>&lt;repository-url&gt;
+<span class="nb">cd</span><span class="w"> </span>fk-compute/cpp
+
+<span class="c1"># Build library</span>
+make<span class="w"> </span>all
+</pre></div>
+</div>
+<p><strong>CentOS/RHEL</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install build tools</span>
+sudo<span class="w"> </span>yum<span class="w"> </span>groupinstall<span class="w"> </span><span class="s2">&quot;Development Tools&quot;</span>
+sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>cmake<span class="w"> </span>git
+
+<span class="c1"># Clone and build</span>
+git<span class="w"> </span>clone<span class="w"> </span>&lt;repository-url&gt;
+<span class="nb">cd</span><span class="w"> </span>fk-compute/cpp
+make<span class="w"> </span>all
+</pre></div>
+</div>
+<p><strong>macOS</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install Xcode command line tools</span>
+xcode-select<span class="w"> </span>--install
+
+<span class="c1"># Or use Homebrew</span>
+brew<span class="w"> </span>install<span class="w"> </span>gcc<span class="w"> </span>cmake<span class="w"> </span>git
+
+<span class="c1"># Clone and build</span>
+git<span class="w"> </span>clone<span class="w"> </span>&lt;repository-url&gt;
+<span class="nb">cd</span><span class="w"> </span>fk-compute/cpp
+make<span class="w"> </span>all
+</pre></div>
+</div>
+</section>
+<section id="build-targets">
+<h2>Build Targets<a class="headerlink" href="#build-targets" title="Link to this heading"></a></h2>
+<p>The library provides several build targets for different use cases:</p>
+<p><strong>Core Targets</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>all<span class="w">                    </span><span class="c1"># Build main executable and examples</span>
+make<span class="w"> </span>fk_segments_links<span class="w">      </span><span class="c1"># Main FK computation executable</span>
+make<span class="w"> </span>polynomial_example<span class="w">     </span><span class="c1"># Polynomial operations demo</span>
+make<span class="w"> </span>parallel_demo<span class="w">          </span><span class="c1"># Parallel processing benchmark</span>
+</pre></div>
+</div>
+<p><strong>Testing Targets</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>run-test<span class="w">              </span><span class="c1"># Run comprehensive test suite</span>
+make<span class="w"> </span>run-arithmetic<span class="w">        </span><span class="c1"># Test polynomial arithmetic</span>
+make<span class="w"> </span>run-parallel-demo<span class="w">     </span><span class="c1"># Benchmark parallel performance</span>
+</pre></div>
+</div>
+<p><strong>Development Targets</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>debug<span class="w">                 </span><span class="c1"># Build with debug symbols</span>
+make<span class="w"> </span>check<span class="w">                 </span><span class="c1"># Verify compilation</span>
+make<span class="w"> </span>format<span class="w">                </span><span class="c1"># Format code (requires clang-format)</span>
+make<span class="w"> </span>clean<span class="w">                 </span><span class="c1"># Remove build artifacts</span>
+</pre></div>
+</div>
+</section>
+<section id="configuration-options">
+<h2>Configuration Options<a class="headerlink" href="#configuration-options" title="Link to this heading"></a></h2>
+<p><strong>Compiler Flags</strong></p>
+<p>The default build uses optimization flags suitable for production:</p>
+<div class="highlight-makefile notranslate"><div class="highlight"><pre><span></span><span class="nv">CXXFLAGS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>-std<span class="o">=</span>c++17<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span>-O2<span class="w"> </span>-Iinclude
+</pre></div>
+</div>
+<p>For debug builds:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>debug<span class="w">  </span><span class="c1"># Adds -g -DDEBUG flags</span>
+</pre></div>
+</div>
+<p><strong>Thread Configuration</strong></p>
+<p>The library automatically detects available CPU cores. To override:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Specify thread count explicitly</span>
+<span class="n">parallelPooling</span><span class="p">(</span><span class="n">inequalities</span><span class="p">,</span><span class="w"> </span><span class="n">supporting</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">);</span>
+
+<span class="c1">// Use all available cores (default)</span>
+<span class="n">parallelPooling</span><span class="p">(</span><span class="n">inequalities</span><span class="p">,</span><span class="w"> </span><span class="n">supporting</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Memory Configuration</strong></p>
+<p>For large problems, you may need to adjust system limits:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Increase virtual memory limit</span>
+<span class="nb">ulimit</span><span class="w"> </span>-v<span class="w"> </span>unlimited
+
+<span class="c1"># Increase stack size for deep recursion</span>
+<span class="nb">ulimit</span><span class="w"> </span>-s<span class="w"> </span><span class="m">16384</span>
+</pre></div>
+</div>
+</section>
+<section id="installation-verification">
+<h2>Installation Verification<a class="headerlink" href="#installation-verification" title="Link to this heading"></a></h2>
+<p>Verify your installation by running the test suite:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Quick verification</span>
+make<span class="w"> </span>run-test
+
+<span class="c1"># Performance verification</span>
+make<span class="w"> </span>run-parallel-demo<span class="w"> </span>--benchmark
+</pre></div>
+</div>
+<p>Expected output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>=== FK Computation Test Suite ===
+✓ Polynomial arithmetic tests passed
+✓ Solution pool algorithms passed
+✓ Parallel processing tests passed
+
+=== Parallel Performance Test ===
+Hardware threads detected: 24
+Problem size: medium
+Sequential: 1,329 solutions in 2ms
+Parallel (24 threads): 1,329 solutions in 3ms
+✓ Solution counts match!
+</pre></div>
+</div>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<p><strong>Common Build Issues</strong></p>
+<p><em>Compiler not found</em>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Specify compiler explicitly</span>
+make<span class="w"> </span><span class="nv">CXX</span><span class="o">=</span>g++-9<span class="w"> </span>all
+</pre></div>
+</div>
+<p><em>Missing C++17 support</em>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check compiler version</span>
+g++<span class="w"> </span>--version
+clang++<span class="w"> </span>--version
+
+<span class="c1"># Update if needed (Ubuntu)</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>gcc-9<span class="w"> </span>g++-9
+</pre></div>
+</div>
+<p><em>pthread linking errors</em>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure pthread is available</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>libc6-dev
+</pre></div>
+</div>
+<p><strong>Runtime Issues</strong></p>
+<p><em>Permission denied</em>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Make executables runnable</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>fk_segments_links<span class="w"> </span>parallel_demo
+</pre></div>
+</div>
+<p><em>Segmentation fault</em>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run with debug build</span>
+make<span class="w"> </span>debug
+gdb<span class="w"> </span>./fk_segments_links
+</pre></div>
+</div>
+<p><em>Memory allocation failures</em>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check available memory</span>
+free<span class="w"> </span>-h
+
+<span class="c1"># Monitor memory usage</span>
+valgrind<span class="w"> </span>--tool<span class="o">=</span>massif<span class="w"> </span>./parallel_demo
+</pre></div>
+</div>
+<p><strong>Performance Issues</strong></p>
+<p><em>Poor parallel performance</em>:</p>
+<ul class="simple">
+<li><p>Ensure problem size is large enough (&gt;1000 solutions)</p></li>
+<li><p>Check CPU core count: <code class="docutils literal notranslate"><span class="pre">nproc</span></code></p></li>
+<li><p>Monitor CPU usage: <code class="docutils literal notranslate"><span class="pre">htop</span></code></p></li>
+<li><p>Verify thread count in output</p></li>
+</ul>
+<p><em>High memory usage</em>:</p>
+<ul class="simple">
+<li><p>Use sparse polynomial representation (default)</p></li>
+<li><p>Monitor with: <code class="docutils literal notranslate"><span class="pre">ps</span> <span class="pre">aux</span> <span class="pre">|</span> <span class="pre">grep</span> <span class="pre">fk_segments_links</span></code></p></li>
+</ul>
+</section>
+<section id="development-installation">
+<h2>Development Installation<a class="headerlink" href="#development-installation" title="Link to this heading"></a></h2>
+<p>For development work, install additional tools:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Code formatting</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>clang-format
+
+<span class="c1"># Memory debugging</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>valgrind
+
+<span class="c1"># Performance profiling</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>linux-tools-generic
+
+<span class="c1"># Documentation building</span>
+pip<span class="w"> </span>install<span class="w"> </span>sphinx<span class="w"> </span>sphinx-rtd-theme
+</pre></div>
+</div>
+</section>
+<section id="environment-setup">
+<h2>Environment Setup<a class="headerlink" href="#environment-setup" title="Link to this heading"></a></h2>
+<p>Add these to your <code class="docutils literal notranslate"><span class="pre">.bashrc</span></code> or <code class="docutils literal notranslate"><span class="pre">.zshrc</span></code> for convenience:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># FK Computation aliases</span>
+<span class="nb">alias</span><span class="w"> </span>fk-build<span class="o">=</span><span class="s1">&#39;cd /path/to/fk-compute/cpp &amp;&amp; make all&#39;</span>
+<span class="nb">alias</span><span class="w"> </span>fk-test<span class="o">=</span><span class="s1">&#39;cd /path/to/fk-compute/cpp &amp;&amp; make run-test&#39;</span>
+<span class="nb">alias</span><span class="w"> </span>fk-bench<span class="o">=</span><span class="s1">&#39;cd /path/to/fk-compute/cpp &amp;&amp; make run-parallel-demo&#39;</span>
+
+<span class="c1"># Development environment</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">FK_COMPUTE_HOME</span><span class="o">=</span>/path/to/fk-compute/cpp
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$FK_COMPUTE_HOME</span>:<span class="nv">$PATH</span>
+</pre></div>
+</div>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<p>After installation, proceed to:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="quickstart.html"><span class="doc">Quick Start Guide</span></a> - Basic usage examples</p></li>
+<li><p><a class="reference internal" href="tutorials/index.html"><span class="doc">Tutorials</span></a> - Step-by-step tutorials</p></li>
+<li><p><a class="reference internal" href="api/polynomials.html"><span class="doc">Multivariable Polynomials API</span></a> - API documentation</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, FK Computation Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

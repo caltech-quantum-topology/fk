@@ -1,0 +1,721 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parallel Processing API &mdash; FK Computation C++ Library 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            FK Computation C++ Library
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../build_instructions.html">Build Instructions</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">FK Computation C++ Library</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Parallel Processing API</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/source/api/parallel.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="parallel-processing-api">
+<h1>Parallel Processing API<a class="headerlink" href="#parallel-processing-api" title="Link to this heading"></a></h1>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#overview" id="id1">Overview</a></p></li>
+<li><p><a class="reference internal" href="#high-level-functions" id="id2">High-Level Functions</a></p>
+<ul>
+<li><p><a class="reference internal" href="#parallelpooling" id="id3">parallelPooling</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#core-infrastructure-classes" id="id4">Core Infrastructure Classes</a></p>
+<ul>
+<li><p><a class="reference internal" href="#workqueue" id="id5">WorkQueue</a></p></li>
+<li><p><a class="reference internal" href="#threadsafesolutioncollector" id="id6">ThreadSafeSolutionCollector</a></p></li>
+<li><p><a class="reference internal" href="#threadpool" id="id7">ThreadPool</a></p></li>
+<li><p><a class="reference internal" href="#parallelworker" id="id8">ParallelWorker</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#work-distribution-strategies" id="id9">Work Distribution Strategies</a></p>
+<ul>
+<li><p><a class="reference internal" href="#automatic-load-balancing" id="id10">Automatic Load Balancing</a></p></li>
+<li><p><a class="reference internal" href="#performance-optimization" id="id11">Performance Optimization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#progress-monitoring" id="id12">Progress Monitoring</a></p>
+<ul>
+<li><p><a class="reference internal" href="#real-time-statistics" id="id13">Real-Time Statistics</a></p></li>
+<li><p><a class="reference internal" href="#performance-benchmarking" id="id14">Performance Benchmarking</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#thread-synchronization" id="id15">Thread Synchronization</a></p>
+<ul>
+<li><p><a class="reference internal" href="#lock-free-design" id="id16">Lock-Free Design</a></p></li>
+<li><p><a class="reference internal" href="#condition-variables" id="id17">Condition Variables</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#error-handling-in-parallel-context" id="id18">Error Handling in Parallel Context</a></p>
+<ul>
+<li><p><a class="reference internal" href="#exception-propagation" id="id19">Exception Propagation</a></p></li>
+<li><p><a class="reference internal" href="#graceful-shutdown" id="id20">Graceful Shutdown</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#usage-patterns" id="id21">Usage Patterns</a></p>
+<ul>
+<li><p><a class="reference internal" href="#pattern-1-simple-parallel-processing" id="id22">Pattern 1: Simple Parallel Processing</a></p></li>
+<li><p><a class="reference internal" href="#pattern-2-progress-monitoring" id="id23">Pattern 2: Progress Monitoring</a></p></li>
+<li><p><a class="reference internal" href="#pattern-3-resource-constrained-execution" id="id24">Pattern 3: Resource-Constrained Execution</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#best-practices" id="id25">Best Practices</a></p></li>
+</ul>
+</nav>
+<section id="overview">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Overview</a><a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The parallel processing framework provides high-performance multi-threaded computation
+with work stealing, automatic load balancing, and thread-safe data structures.</p>
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">feature-check</span></span></dt>
+<dd><p>Automatic CPU core detection and optimal thread allocation</p>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">feature-check</span></span></dt>
+<dd><p>Work-stealing queues for dynamic load balancing</p>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">feature-check</span></span></dt>
+<dd><p>Thread-safe solution collection with atomic operations</p>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">feature-check</span></span></dt>
+<dd><p>Progress monitoring and performance statistics</p>
+</dd></dl>
+
+</section>
+<section id="high-level-functions">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">High-Level Functions</a><a class="headerlink" href="#high-level-functions" title="Link to this heading"></a></h2>
+<section id="parallelpooling">
+<h3><a class="toc-backref" href="#id3" role="doc-backlink">parallelPooling</a><a class="headerlink" href="#parallelpooling" title="Link to this heading"></a></h3>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv415parallelPoolingNSt6vectorINSt6vectorIdEEEENSt6vectorINSt6vectorIdEEEERKNSt8functionIFvRKNSt6vectorIiEEEEEi">
+<span id="_CPPv315parallelPoolingNSt6vectorINSt6vectorIdEEEENSt6vectorINSt6vectorIdEEEERKNSt8functionIFvRKNSt6vectorIiEEEEEi"></span><span id="_CPPv215parallelPoolingNSt6vectorINSt6vectorIdEEEENSt6vectorINSt6vectorIdEEEERKNSt8functionIFvRKNSt6vectorIiEEEEEi"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">parallelPooling</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">main_inequalities</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">double</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">supporting_inequalities</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">callback</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">num_threads</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv415parallelPoolingNSt6vectorINSt6vectorIdEEEENSt6vectorINSt6vectorIdEEEERKNSt8functionIFvRKNSt6vectorIiEEEEEi" title="Link to this definition"></a><br /></dt>
+<dd><p>Execute solution pool enumeration using parallel processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>main_inequalities</strong> – Primary constraint matrix</p></li>
+<li><p><strong>supporting_inequalities</strong> – Additional constraint matrix</p></li>
+<li><p><strong>callback</strong> – Function called for each solution found</p></li>
+<li><p><strong>num_threads</strong> – Number of threads (0 = auto-detect)</p></li>
+</ul>
+</dd>
+</dl>
+<p><strong>Auto-Detection</strong>: When <code class="docutils literal notranslate"><span class="pre">num_threads</span> <span class="pre">=</span> <span class="pre">0</span></code>, uses <code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">std::thread::hardware_concurrency()</span></code></p>
+<p><strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">solution</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Solution: &quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">solution</span><span class="p">)</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot; &quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">main_ineq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">-5</span><span class="p">},</span><span class="w">  </span><span class="c1">// x + y ≤ 5</span>
+<span class="w">    </span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span><span class="w">   </span><span class="c1">// x ≥ 0</span>
+<span class="w">    </span><span class="p">{</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span><span class="w">    </span><span class="c1">// y ≥ 0</span>
+<span class="p">};</span>
+
+<span class="c1">// Use all available cores</span>
+<span class="n">parallelPooling</span><span class="p">(</span><span class="n">main_ineq</span><span class="p">,</span><span class="w"> </span><span class="p">{},</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span>
+
+<span class="c1">// Use specific thread count</span>
+<span class="n">parallelPooling</span><span class="p">(</span><span class="n">main_ineq</span><span class="p">,</span><span class="w"> </span><span class="p">{},</span><span class="w"> </span><span class="n">callback</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Thread Safety</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">thread-safe</span></code> - callback may be called concurrently</p>
+<p><strong>Performance</strong>: Linear speedup for problems with &gt;1000 solutions</p>
+</dd></dl>
+
+</section>
+</section>
+<section id="core-infrastructure-classes">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">Core Infrastructure Classes</a><a class="headerlink" href="#core-infrastructure-classes" title="Link to this heading"></a></h2>
+<section id="workqueue">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">WorkQueue</a><a class="headerlink" href="#workqueue" title="Link to this heading"></a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv49WorkQueue">
+<span id="_CPPv39WorkQueue"></span><span id="_CPPv29WorkQueue"></span><span id="WorkQueue"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">WorkQueue</span></span></span><a class="headerlink" href="#_CPPv49WorkQueue" title="Link to this definition"></a><br /></dt>
+<dd><p>Thread-safe work distribution system with work stealing capabilities.</p>
+<p><strong>Design</strong>: Lock-free queue using atomic operations for high performance.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9WorkQueue9WorkQueue7addWorkERK8WorkItem">
+<span id="_CPPv3N9WorkQueue9WorkQueue7addWorkERK8WorkItem"></span><span id="_CPPv2N9WorkQueue9WorkQueue7addWorkERK8WorkItem"></span><span id="WorkQueue::WorkQueue::addWork__WorkItemCR"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">WorkQueue</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">addWork</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">WorkItem</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">item</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9WorkQueue9WorkQueue7addWorkERK8WorkItem" title="Link to this definition"></a><br /></dt>
+<dd><p>Add work item to the queue.</p>
+<p><strong>Thread Safety</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">thread-safe</span></code></p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9WorkQueue9WorkQueue7getWorkER8WorkItem">
+<span id="_CPPv3N9WorkQueue9WorkQueue7getWorkER8WorkItem"></span><span id="_CPPv2N9WorkQueue9WorkQueue7getWorkER8WorkItem"></span><span id="WorkQueue::WorkQueue::getWork__WorkItemR"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">WorkQueue</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">getWork</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">WorkItem</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">item</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9WorkQueue9WorkQueue7getWorkER8WorkItem" title="Link to this definition"></a><br /></dt>
+<dd><p>Attempt to retrieve work item from queue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>true if work was available, false if queue is empty</p>
+</dd>
+</dl>
+<p><strong>Thread Safety</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">thread-safe</span></code></p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9WorkQueue9WorkQueue12markFinishedEv">
+<span id="_CPPv3N9WorkQueue9WorkQueue12markFinishedEv"></span><span id="_CPPv2N9WorkQueue9WorkQueue12markFinishedEv"></span><span id="WorkQueue::WorkQueue::markFinished"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">WorkQueue</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">markFinished</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9WorkQueue9WorkQueue12markFinishedEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Signal that no more work will be added.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9WorkQueue9WorkQueue10isFinishedEv">
+<span id="_CPPv3NK9WorkQueue9WorkQueue10isFinishedEv"></span><span id="_CPPv2NK9WorkQueue9WorkQueue10isFinishedEv"></span><span id="WorkQueue::WorkQueue::isFinishedC"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">WorkQueue</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">isFinished</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9WorkQueue9WorkQueue10isFinishedEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Check if queue is finished and empty.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK9WorkQueue9WorkQueue12getQueueSizeEv">
+<span id="_CPPv3NK9WorkQueue9WorkQueue12getQueueSizeEv"></span><span id="_CPPv2NK9WorkQueue9WorkQueue12getQueueSizeEv"></span><span id="WorkQueue::WorkQueue::getQueueSizeC"></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">WorkQueue</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">getQueueSize</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9WorkQueue9WorkQueue12getQueueSizeEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Get current number of queued items.</p>
+<p><strong>Performance</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">complexity-o</span></code> O(1) with atomic operations</p>
+</dd></dl>
+
+<p><strong>Example Usage</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">WorkQueue</span><span class="w"> </span><span class="n">queue</span><span class="p">;</span>
+
+<span class="c1">// Producer thread</span>
+<span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="w"> </span><span class="nf">producer</span><span class="p">([</span><span class="o">&amp;</span><span class="n">queue</span><span class="p">]()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">1000</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">WorkItem</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createWorkItem</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<span class="w">        </span><span class="n">queue</span><span class="p">.</span><span class="n">addWork</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">queue</span><span class="p">.</span><span class="n">markFinished</span><span class="p">();</span>
+<span class="p">});</span>
+
+<span class="c1">// Worker thread</span>
+<span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="w"> </span><span class="nf">worker</span><span class="p">([</span><span class="o">&amp;</span><span class="n">queue</span><span class="p">]()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">WorkItem</span><span class="w"> </span><span class="n">item</span><span class="p">;</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">queue</span><span class="p">.</span><span class="n">getWork</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">!</span><span class="n">queue</span><span class="p">.</span><span class="n">isFinished</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">processWorkItem</span><span class="p">(</span><span class="n">item</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="threadsafesolutioncollector">
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">ThreadSafeSolutionCollector</a><a class="headerlink" href="#threadsafesolutioncollector" title="Link to this heading"></a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv427ThreadSafeSolutionCollector">
+<span id="_CPPv327ThreadSafeSolutionCollector"></span><span id="_CPPv227ThreadSafeSolutionCollector"></span><span id="ThreadSafeSolutionCollector"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ThreadSafeSolutionCollector</span></span></span><a class="headerlink" href="#_CPPv427ThreadSafeSolutionCollector" title="Link to this definition"></a><br /></dt>
+<dd><p>Collects solutions from multiple threads with thread-safe operations.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector27ThreadSafeSolutionCollectorERKNSt8functionIFvRKNSt6vectorIiEEEEE">
+<span id="_CPPv3N27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector27ThreadSafeSolutionCollectorERKNSt8functionIFvRKNSt6vectorIiEEEEE"></span><span id="_CPPv2N27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector27ThreadSafeSolutionCollectorERKNSt8functionIFvRKNSt6vectorIiEEEEE"></span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv4N27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector27ThreadSafeSolutionCollectorERKNSt8functionIFvRKNSt6vectorIiEEEEE" title="ThreadSafeSolutionCollector::ThreadSafeSolutionCollector::ThreadSafeSolutionCollector"><span class="n"><span class="pre">ThreadSafeSolutionCollector</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">ThreadSafeSolutionCollector</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">func</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector27ThreadSafeSolutionCollectorERKNSt8functionIFvRKNSt6vectorIiEEEEE" title="Link to this definition"></a><br /></dt>
+<dd><p>Constructor with solution processing function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>func</strong> – Callback function for each solution</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector11addSolutionERKNSt6vectorIiEE">
+<span id="_CPPv3N27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector11addSolutionERKNSt6vectorIiEE"></span><span id="_CPPv2N27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector11addSolutionERKNSt6vectorIiEE"></span><span id="ThreadSafeSolutionCollector::ThreadSafeSolutionCollector::addSolution__std::vector:i:CR"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">ThreadSafeSolutionCollector</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">addSolution</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">solution</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector11addSolutionERKNSt6vectorIiEE" title="Link to this definition"></a><br /></dt>
+<dd><p>Add solution from worker thread.</p>
+<p><strong>Thread Safety</strong>: <code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">thread-safe</span></code> with internal synchronization</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector16getSolutionCountEv">
+<span id="_CPPv3NK27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector16getSolutionCountEv"></span><span id="_CPPv2NK27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector16getSolutionCountEv"></span><span id="ThreadSafeSolutionCollector::ThreadSafeSolutionCollector::getSolutionCountC"></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">ThreadSafeSolutionCollector</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">getSolutionCount</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK27ThreadSafeSolutionCollector27ThreadSafeSolutionCollector16getSolutionCountEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Get total number of solutions collected.</p>
+<p><strong>Atomicity</strong>: Uses atomic counter for lock-free access</p>
+</dd></dl>
+
+<p><strong>Example</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">processor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">sol</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Solution: &quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">sol</span><span class="p">)</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot; &quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">ThreadSafeSolutionCollector</span><span class="w"> </span><span class="nf">collector</span><span class="p">(</span><span class="n">processor</span><span class="p">);</span>
+
+<span class="c1">// Multiple worker threads can safely call:</span>
+<span class="n">collector</span><span class="p">.</span><span class="n">addSolution</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">});</span>
+<span class="n">collector</span><span class="p">.</span><span class="n">addSolution</span><span class="p">({</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">6</span><span class="p">});</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Total: &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">collector</span><span class="p">.</span><span class="n">getSolutionCount</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="threadpool">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">ThreadPool</a><a class="headerlink" href="#threadpool" title="Link to this heading"></a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv410ThreadPool">
+<span id="_CPPv310ThreadPool"></span><span id="_CPPv210ThreadPool"></span><span id="ThreadPool"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ThreadPool</span></span></span><a class="headerlink" href="#_CPPv410ThreadPool" title="Link to this definition"></a><br /></dt>
+<dd><p>Manages worker thread lifecycle and coordination.</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N10ThreadPool10ThreadPool10ThreadPoolEi">
+<span id="_CPPv3N10ThreadPool10ThreadPool10ThreadPoolEi"></span><span id="_CPPv2N10ThreadPool10ThreadPool10ThreadPoolEi"></span><span id="ThreadPool::ThreadPool::ThreadPool__i"></span><span class="sig-prename descclassname"><a class="reference internal" href="#_CPPv4N10ThreadPool10ThreadPool10ThreadPoolEi" title="ThreadPool::ThreadPool::ThreadPool"><span class="n"><span class="pre">ThreadPool</span></span></a><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">ThreadPool</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">num_threads</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N10ThreadPool10ThreadPool10ThreadPoolEi" title="Link to this definition"></a><br /></dt>
+<dd><p>Create thread pool with specified number of threads.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>num_threads</strong> – Number of worker threads to create</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N10ThreadPool10ThreadPoolD0Ev">
+<span id="_CPPv3N10ThreadPool10ThreadPoolD0Ev"></span><span id="_CPPv2N10ThreadPool10ThreadPoolD0Ev"></span><span id="ThreadPool::ThreadPool::~ThreadPool"></span><span class="sig-prename descclassname"><span class="n"><span class="pre">ThreadPool</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">~ThreadPool</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N10ThreadPool10ThreadPoolD0Ev" title="Link to this definition"></a><br /></dt>
+<dd><p>Destructor - automatically stops all threads and cleans up resources.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N10ThreadPool10ThreadPool5startEv">
+<span id="_CPPv3N10ThreadPool10ThreadPool5startEv"></span><span id="_CPPv2N10ThreadPool10ThreadPool5startEv"></span><span id="ThreadPool::ThreadPool::start"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">ThreadPool</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">start</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N10ThreadPool10ThreadPool5startEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Start all worker threads.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N10ThreadPool10ThreadPool4stopEv">
+<span id="_CPPv3N10ThreadPool10ThreadPool4stopEv"></span><span id="_CPPv2N10ThreadPool10ThreadPool4stopEv"></span><span id="ThreadPool::ThreadPool::stop"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">ThreadPool</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">stop</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N10ThreadPool10ThreadPool4stopEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Stop all worker threads gracefully.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK10ThreadPool10ThreadPool9isRunningEv">
+<span id="_CPPv3NK10ThreadPool10ThreadPool9isRunningEv"></span><span id="_CPPv2NK10ThreadPool10ThreadPool9isRunningEv"></span><span id="ThreadPool::ThreadPool::isRunningC"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">ThreadPool</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">isRunning</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK10ThreadPool10ThreadPool9isRunningEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Check if thread pool is currently running.</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK10ThreadPool10ThreadPool14getThreadCountEv">
+<span id="_CPPv3NK10ThreadPool10ThreadPool14getThreadCountEv"></span><span id="_CPPv2NK10ThreadPool10ThreadPool14getThreadCountEv"></span><span id="ThreadPool::ThreadPool::getThreadCountC"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">ThreadPool</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">getThreadCount</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK10ThreadPool10ThreadPool14getThreadCountEv" title="Link to this definition"></a><br /></dt>
+<dd><p>Get number of threads in pool.</p>
+</dd></dl>
+
+<p><strong>Resource Management</strong>: RAII-compliant with automatic cleanup</p>
+</dd></dl>
+
+</section>
+<section id="parallelworker">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">ParallelWorker</a><a class="headerlink" href="#parallelworker" title="Link to this heading"></a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv414ParallelWorker">
+<span id="_CPPv314ParallelWorker"></span><span id="_CPPv214ParallelWorker"></span><span id="ParallelWorker"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ParallelWorker</span></span></span><a class="headerlink" href="#_CPPv414ParallelWorker" title="Link to this definition"></a><br /></dt>
+<dd><p>Individual worker thread implementation.</p>
+<p><strong>Design</strong>: Each worker runs independently, stealing work when local queue is empty.</p>
+<p><strong>Work Stealing</strong>: Automatically balances load across threads for optimal performance.</p>
+</dd></dl>
+
+</section>
+</section>
+<section id="work-distribution-strategies">
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">Work Distribution Strategies</a><a class="headerlink" href="#work-distribution-strategies" title="Link to this heading"></a></h2>
+<section id="automatic-load-balancing">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Automatic Load Balancing</a><a class="headerlink" href="#automatic-load-balancing" title="Link to this heading"></a></h3>
+<p>The framework uses several strategies to ensure optimal work distribution:</p>
+<ol class="arabic simple">
+<li><p><strong>Initial Partitioning</strong>: Problem space divided roughly equally among threads</p></li>
+<li><p><strong>Work Stealing</strong>: Idle threads steal work from busy threads</p></li>
+<li><p><strong>Dynamic Subdivision</strong>: Large work items automatically subdivided</p></li>
+<li><p><strong>Queue Monitoring</strong>: Real-time adjustment based on queue sizes</p></li>
+</ol>
+<p><strong>Algorithm</strong>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>for each worker thread:
+    while computation not finished:
+        if local_queue not empty:
+            process local work
+        else if global_queue not empty:
+            steal work from global queue
+        else:
+            try to steal from other workers
+            if no work found:
+                brief sleep before retry
+</pre></div>
+</div>
+</section>
+<section id="performance-optimization">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">Performance Optimization</a><a class="headerlink" href="#performance-optimization" title="Link to this heading"></a></h3>
+<p><strong>Thread Count Selection</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span><span class="w"> </span><span class="nf">selectOptimalThreads</span><span class="p">(</span><span class="kt">size_t</span><span class="w"> </span><span class="n">expected_solutions</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">hw_threads</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="o">::</span><span class="n">hardware_concurrency</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">expected_solutions</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">100</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w">  </span><span class="c1">// Sequential for small problems</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">expected_solutions</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">10000</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="n">hw_threads</span><span class="p">);</span><span class="w">  </span><span class="c1">// Limited parallelism</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">hw_threads</span><span class="p">;</span><span class="w">  </span><span class="c1">// Full parallelism</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Memory Considerations</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Each thread needs stack space and local data</span>
+<span class="kt">size_t</span><span class="w"> </span><span class="n">memory_per_thread</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1024</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1024</span><span class="p">;</span><span class="w">  </span><span class="c1">// 8MB estimate</span>
+<span class="kt">size_t</span><span class="w"> </span><span class="n">available_memory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getAvailableMemory</span><span class="p">();</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">max_threads</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">available_memory</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">memory_per_thread</span><span class="p">;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="n">threads</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">max_threads</span><span class="p">,</span><span class="w"> </span><span class="n">hw_threads</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="progress-monitoring">
+<h2><a class="toc-backref" href="#id12" role="doc-backlink">Progress Monitoring</a><a class="headerlink" href="#progress-monitoring" title="Link to this heading"></a></h2>
+<section id="real-time-statistics">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">Real-Time Statistics</a><a class="headerlink" href="#real-time-statistics" title="Link to this heading"></a></h3>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv423ParallelProgressMonitor">
+<span id="_CPPv323ParallelProgressMonitor"></span><span id="_CPPv223ParallelProgressMonitor"></span><span id="ParallelProgressMonitor"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ParallelProgressMonitor</span></span></span><a class="headerlink" href="#_CPPv423ParallelProgressMonitor" title="Link to this definition"></a><br /></dt>
+<dd><p>Provides real-time progress information for parallel computations.</p>
+<p><strong>Metrics Tracked</strong>:
+- Solutions found per second
+- Work queue sizes
+- Thread utilization
+- Memory usage
+- Estimated completion time</p>
+<p><strong>Example Usage</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ProgressReporter</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">solutions_found</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">time_point</span><span class="w"> </span><span class="n">start_time</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">reportSolution</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">size_t</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">++</span><span class="n">solutions_found</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">1000</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">auto</span><span class="w"> </span><span class="n">elapsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">now</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start_time</span><span class="p">;</span>
+<span class="w">            </span><span class="k">auto</span><span class="w"> </span><span class="n">seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">duration</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">elapsed</span><span class="p">).</span><span class="n">count</span><span class="p">();</span>
+<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">rate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">seconds</span><span class="p">;</span>
+
+<span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Progress: &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">count</span>
+<span class="w">                     </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot; solutions (&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">rate</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;/sec)&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="performance-benchmarking">
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">Performance Benchmarking</a><a class="headerlink" href="#performance-benchmarking" title="Link to this heading"></a></h3>
+<p>Built-in benchmarking capabilities:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">BenchmarkResults</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">solutions_found</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="w"> </span><span class="n">sequential_time</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="w"> </span><span class="n">parallel_time</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">speedup_ratio</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">efficiency</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">thread_count</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">BenchmarkResults</span><span class="w"> </span><span class="nf">benchmark</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">ProblemDefinition</span><span class="o">&amp;</span><span class="w"> </span><span class="n">problem</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Run sequential version</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">seq_start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">seq_solutions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">runSequential</span><span class="p">(</span><span class="n">problem</span><span class="p">);</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">seq_time</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">now</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">seq_start</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Run parallel version</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">par_start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">par_solutions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">runParallel</span><span class="p">(</span><span class="n">problem</span><span class="p">);</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">par_time</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">now</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">par_start</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">par_solutions</span><span class="p">,</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">duration_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="o">&gt;</span><span class="p">(</span><span class="n">seq_time</span><span class="p">),</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">duration_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="o">&gt;</span><span class="p">(</span><span class="n">par_time</span><span class="p">),</span>
+<span class="w">        </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">seq_time</span><span class="p">.</span><span class="n">count</span><span class="p">())</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">par_time</span><span class="p">.</span><span class="n">count</span><span class="p">(),</span>
+<span class="w">        </span><span class="cm">/* efficiency calculation */</span><span class="p">,</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="o">::</span><span class="n">hardware_concurrency</span><span class="p">()</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="thread-synchronization">
+<h2><a class="toc-backref" href="#id15" role="doc-backlink">Thread Synchronization</a><a class="headerlink" href="#thread-synchronization" title="Link to this heading"></a></h2>
+<section id="lock-free-design">
+<h3><a class="toc-backref" href="#id16" role="doc-backlink">Lock-Free Design</a><a class="headerlink" href="#lock-free-design" title="Link to this heading"></a></h3>
+<p>The framework minimizes locks for maximum performance:</p>
+<p><strong>Atomic Operations</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">LockFreeCounter</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">count_</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">increment</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">count_</span><span class="p">.</span><span class="n">fetch_add</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">get</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">count_</span><span class="p">.</span><span class="n">load</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p><strong>Memory Ordering</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Relaxed ordering for counters (performance critical)</span>
+<span class="n">solutions_found</span><span class="p">.</span><span class="n">fetch_add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+
+<span class="c1">// Acquire-release for work queue synchronization</span>
+<span class="kt">bool</span><span class="w"> </span><span class="n">work_available</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">queue_empty</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_acquire</span><span class="p">);</span>
+<span class="n">queue_empty</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="nb">false</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_release</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="condition-variables">
+<h3><a class="toc-backref" href="#id17" role="doc-backlink">Condition Variables</a><a class="headerlink" href="#condition-variables" title="Link to this heading"></a></h3>
+<p>For coordination between threads:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">WorkNotifier</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">mutable</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="n">mutex_</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">condition_variable</span><span class="w"> </span><span class="n">cv_</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">work_available_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">notifyWork</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="n">mutex_</span><span class="p">);</span>
+<span class="w">        </span><span class="n">work_available_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<span class="w">        </span><span class="n">cv_</span><span class="p">.</span><span class="n">notify_all</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">waitForWork</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">unique_lock</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="n">mutex_</span><span class="p">);</span>
+<span class="w">        </span><span class="n">cv_</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="n">lock</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="k">this</span><span class="p">]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">work_available_</span><span class="p">;</span><span class="w"> </span><span class="p">});</span>
+<span class="w">        </span><span class="n">work_available_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="error-handling-in-parallel-context">
+<h2><a class="toc-backref" href="#id18" role="doc-backlink">Error Handling in Parallel Context</a><a class="headerlink" href="#error-handling-in-parallel-context" title="Link to this heading"></a></h2>
+<section id="exception-propagation">
+<h3><a class="toc-backref" href="#id19" role="doc-backlink">Exception Propagation</a><a class="headerlink" href="#exception-propagation" title="Link to this heading"></a></h3>
+<p>Exceptions in worker threads are captured and re-thrown in main thread:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ParallelExceptionHandler</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">exception_ptr</span><span class="w"> </span><span class="n">stored_exception_</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="n">exception_mutex_</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">captureException</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">exception_ptr</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="n">exception_mutex_</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">stored_exception_</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">stored_exception_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">rethrowIfException</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="n">exception_mutex_</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">stored_exception_</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="n">rethrow_exception</span><span class="p">(</span><span class="n">stored_exception_</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+<section id="graceful-shutdown">
+<h3><a class="toc-backref" href="#id20" role="doc-backlink">Graceful Shutdown</a><a class="headerlink" href="#graceful-shutdown" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">GracefulShutdown</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="w"> </span><span class="n">shutdown_requested_</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">requestShutdown</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">shutdown_requested_</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="nb">true</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">shouldContinue</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">!</span><span class="n">shutdown_requested_</span><span class="p">.</span><span class="n">load</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="usage-patterns">
+<h2><a class="toc-backref" href="#id21" role="doc-backlink">Usage Patterns</a><a class="headerlink" href="#usage-patterns" title="Link to this heading"></a></h2>
+<section id="pattern-1-simple-parallel-processing">
+<h3><a class="toc-backref" href="#id22" role="doc-backlink">Pattern 1: Simple Parallel Processing</a><a class="headerlink" href="#pattern-1-simple-parallel-processing" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="nf">simpleParallelSearch</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">solutions</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="n">solutions_mutex</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="o">&amp;</span><span class="p">](</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">sol</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="n">solutions_mutex</span><span class="p">);</span>
+<span class="w">        </span><span class="n">solutions</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">sol</span><span class="p">);</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="n">parallelPooling</span><span class="p">(</span><span class="n">main_inequalities</span><span class="p">,</span><span class="w"> </span><span class="n">supporting_inequalities</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Found &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">solutions</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot; solutions&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="pattern-2-progress-monitoring">
+<h3><a class="toc-backref" href="#id23" role="doc-backlink">Pattern 2: Progress Monitoring</a><a class="headerlink" href="#pattern-2-progress-monitoring" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="nf">monitoredParallelSearch</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">progress</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">start_time</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="o">&amp;</span><span class="p">](</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">sol</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">size_t</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">++</span><span class="n">progress</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">1000</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">auto</span><span class="w"> </span><span class="n">elapsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="o">::</span><span class="n">now</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start_time</span><span class="p">;</span>
+<span class="w">            </span><span class="k">auto</span><span class="w"> </span><span class="n">ms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">duration_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="o">&gt;</span><span class="p">(</span><span class="n">elapsed</span><span class="p">);</span>
+<span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Progress: &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot; solutions in &quot;</span>
+<span class="w">                     </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">ms</span><span class="p">.</span><span class="n">count</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;ms&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="n">parallelPooling</span><span class="p">(</span><span class="n">main_inequalities</span><span class="p">,</span><span class="w"> </span><span class="n">supporting_inequalities</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="pattern-3-resource-constrained-execution">
+<h3><a class="toc-backref" href="#id24" role="doc-backlink">Pattern 3: Resource-Constrained Execution</a><a class="headerlink" href="#pattern-3-resource-constrained-execution" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="nf">resourceConstrainedSearch</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Limit threads based on available memory</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">available_memory_gb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getAvailableMemoryGB</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">max_threads</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span>
+<span class="w">        </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">available_memory_gb</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">),</span><span class="w">  </span><span class="c1">// 2GB per thread</span>
+<span class="w">        </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="o">::</span><span class="n">hardware_concurrency</span><span class="p">())</span>
+<span class="w">    </span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">sol</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Lightweight processing only</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="n">parallelPooling</span><span class="p">(</span><span class="n">main_inequalities</span><span class="p">,</span><span class="w"> </span><span class="n">supporting_inequalities</span><span class="p">,</span>
+<span class="w">                   </span><span class="n">callback</span><span class="p">,</span><span class="w"> </span><span class="n">max_threads</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2><a class="toc-backref" href="#id25" role="doc-backlink">Best Practices</a><a class="headerlink" href="#best-practices" title="Link to this heading"></a></h2>
+<p><strong>Performance</strong></p>
+<ol class="arabic simple">
+<li><p><strong>Use appropriate thread counts</strong>: More threads ≠ faster for small problems</p></li>
+</ol>
+<p>2. <strong>Minimize callback overhead</strong>: Keep solution processing lightweight
+4. <strong>Monitor memory usage</strong>: Large problems can exhaust memory</p>
+<p><strong>Reliability</strong></p>
+<ol class="arabic simple">
+<li><p><strong>Handle interruptions gracefully</strong>: Use proper signal handlers</p></li>
+<li><p><strong>Validate results</strong>: Compare solution counts between runs</p></li>
+<li><p><strong>Test with different thread counts</strong>: Ensure correctness across configurations</p></li>
+<li><p><strong>Use timeouts</strong>: For computations with unknown bounds</p></li>
+</ol>
+<p><strong>Debugging</strong></p>
+<ol class="arabic simple">
+<li><p><strong>Start with single thread</strong>: Easier to debug algorithmic issues</p></li>
+<li><p><strong>Use thread-safe logging</strong>: Avoid interleaved output</p></li>
+<li><p><strong>Monitor queue sizes</strong>: Detect load balancing issues</p></li>
+<li><p><strong>Profile with tools</strong>: Use thread profilers for optimization</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, FK Computation Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
