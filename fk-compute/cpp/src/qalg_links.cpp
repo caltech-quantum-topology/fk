@@ -33,11 +33,13 @@ void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
   if (neg) {
     int componentSize = polynomialTerms[0].getComponentSize();
     if (componentSize <= 0) {
-      throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
+      throw std::runtime_error(
+          "polynomialTerms[0] has invalid componentSize: " +
+          std::to_string(componentSize));
     }
     QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                 polynomialTerms[0].getPositiveSize(),
-                                 componentSize, 0);
+                                  polynomialTerms[0].getPositiveSize(),
+                                  componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
          j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
       temporaryTerm[j] = polynomialTerms[0][j];
@@ -55,11 +57,13 @@ void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
   } else {
     int componentSize = polynomialTerms[0].getComponentSize();
     if (componentSize <= 0) {
-      throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
+      throw std::runtime_error(
+          "polynomialTerms[0] has invalid componentSize: " +
+          std::to_string(componentSize));
     }
     QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                 polynomialTerms[0].getPositiveSize(),
-                                 componentSize, 0);
+                                  polynomialTerms[0].getPositiveSize(),
+                                  componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
          j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
       temporaryTerm[j] = polynomialTerms[0][j];
@@ -76,7 +80,6 @@ void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
     }
   }
 }
-
 
 void computeNegativeQBinomialHelper(std::vector<int> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift,
@@ -125,11 +128,13 @@ void computeNegativeQBinomial(std::vector<QPolynomialType> &polynomialTerms,
   if (neg) {
     int componentSize = polynomialTerms[0].getComponentSize();
     if (componentSize <= 0) {
-      throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
+      throw std::runtime_error(
+          "polynomialTerms[0] has invalid componentSize: " +
+          std::to_string(componentSize));
     }
     QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                 polynomialTerms[0].getPositiveSize(),
-                                 componentSize, 0);
+                                  polynomialTerms[0].getPositiveSize(),
+                                  componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
          j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
       temporaryTerm[j] = polynomialTerms[0][j];
@@ -147,11 +152,13 @@ void computeNegativeQBinomial(std::vector<QPolynomialType> &polynomialTerms,
   } else {
     int componentSize = polynomialTerms[0].getComponentSize();
     if (componentSize <= 0) {
-      throw std::runtime_error("polynomialTerms[0] has invalid componentSize: " + std::to_string(componentSize));
+      throw std::runtime_error(
+          "polynomialTerms[0] has invalid componentSize: " +
+          std::to_string(componentSize));
     }
     QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                 polynomialTerms[0].getPositiveSize(),
-                                 componentSize, 0);
+                                  polynomialTerms[0].getPositiveSize(),
+                                  componentSize, 0);
     for (int j = polynomialTerms[0].getMaxNegativeIndex();
          j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
       temporaryTerm[j] = polynomialTerms[0][j];
@@ -203,19 +210,17 @@ void computeXQInversePochhammer(std::vector<QPolynomialType> &polynomialTerms,
   }
 }
 
-
-
 QPolynomialType QBinomialPositive(int upperLimit, int lowerLimit) {
   int n = upperLimit;
   int k = lowerLimit;
 
   // Zero polynomial if out of range
   if (k < 0 || n < 0 || k > n) {
-    return QPolynomialType(0, 1, 1, 0);  // all zero, only exponent 0 allocated
+    return QPolynomialType(0, 1, 1, 0); // all zero, only exponent 0 allocated
   }
 
   auto makeConstOne = []() {
-    QPolynomialType p(0, 1, 1, 0);  // exponent 0 only
+    QPolynomialType p(0, 1, 1, 0); // exponent 0 only
     p[0] = 1;
     return p;
   };
@@ -227,12 +232,12 @@ QPolynomialType QBinomialPositive(int upperLimit, int lowerLimit) {
   C[0][0] = makeConstOne();
 
   for (int i = 1; i <= n; ++i) {
-    C[i][0] = makeConstOne();  // [i choose 0]_q = 1
+    C[i][0] = makeConstOne(); // [i choose 0]_q = 1
 
     int jMax = std::min(i, k);
     for (int j = 1; j <= jMax; ++j) {
       if (j == i) {
-        C[i][j] = makeConstOne();  // [i choose i]_q = 1
+        C[i][j] = makeConstOne(); // [i choose i]_q = 1
       } else {
         // [i choose j]_q = [i-1 choose j]_q + q^(i-j) [i-1 choose j-1]_q
         QPolynomialType shifted = multiplyByQPower(C[i - 1][j - 1], i - j);
@@ -243,7 +248,6 @@ QPolynomialType QBinomialPositive(int upperLimit, int lowerLimit) {
 
   return C[n][k];
 }
-
 
 /*
 QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
@@ -327,63 +331,60 @@ QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
   return result;
 }
 
-
 // Compute (x q; q)_n as a MultivariablePolynomial in one x-variable
 // P(q, x) = ∏_{k=1}^n (1 - x q^{qpow + lsign*k})
 // Optimized using direct coefficient computation
 PolynomialType qpochhammer_xq_q(int n, int qpow, int lsign) {
-    const int numXVars = 1;
-    const int maxXDegree = n;
+  const int numXVars = 1;
+  const int maxXDegree = n;
 
-    // Coefficients map: coeffs[x_degree][q_power] = coefficient
-    std::map<int, std::map<int, int>> coeffs;
-    coeffs[0][0] = 1; // Initialize with 1
+  // Coefficients map: coeffs[x_degree][q_power] = coefficient
+  std::map<int, std::map<int, int>> coeffs;
+  coeffs[0][0] = 1; // Initialize with 1
 
-    // For each factor (1 - x q^{qpow + lsign*k})
-    for (int k = 1; k <= n; ++k) {
-        const int q_factor = qpow + lsign * k;
-        std::map<int, std::map<int, int>> new_coeffs;
+  // For each factor (1 - x q^{qpow + lsign*k})
+  for (int k = 1; k <= n; ++k) {
+    const int q_factor = qpow + lsign * k;
+    std::map<int, std::map<int, int>> new_coeffs;
 
-        // Multiply current polynomial by (1 - x q^q_factor)
-        for (const auto &[x_deg, q_map] : coeffs) {
-            for (const auto &[q_pow, coeff] : q_map) {
-                if (coeff != 0) {
-                    // Add the "1" term: same x_deg and q_pow
-                    new_coeffs[x_deg][q_pow] += coeff;
-
-                    // Add the "-x q^q_factor" term: x_deg+1 and q_pow+q_factor
-                    if (x_deg + 1 <= maxXDegree) {
-                        new_coeffs[x_deg + 1][q_pow + q_factor] -= coeff;
-                    }
-                }
-            }
-        }
-
-        coeffs = std::move(new_coeffs);
-    }
-
-    // Build result polynomial
-    PolynomialType result(numXVars, maxXDegree);
+    // Multiply current polynomial by (1 - x q^q_factor)
     for (const auto &[x_deg, q_map] : coeffs) {
-        if (x_deg <= maxXDegree) {
-            for (const auto &[q_pow, coeff] : q_map) {
-                if (coeff != 0) {
-                    result.addToCoefficient(q_pow, {x_deg}, coeff);
-                }
-            }
+      for (const auto &[q_pow, coeff] : q_map) {
+        if (coeff != 0) {
+          // Add the "1" term: same x_deg and q_pow
+          new_coeffs[x_deg][q_pow] += coeff;
+
+          // Add the "-x q^q_factor" term: x_deg+1 and q_pow+q_factor
+          if (x_deg + 1 <= maxXDegree) {
+            new_coeffs[x_deg + 1][q_pow + q_factor] -= coeff;
+          }
         }
+      }
     }
 
-    return result;
+    coeffs = std::move(new_coeffs);
+  }
+
+  // Build result polynomial
+  PolynomialType result(numXVars, maxXDegree);
+  for (const auto &[x_deg, q_map] : coeffs) {
+    if (x_deg <= maxXDegree) {
+      for (const auto &[q_pow, coeff] : q_map) {
+        if (coeff != 0) {
+          result.addToCoefficient(q_pow, {x_deg}, coeff);
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 // Compute 1/(x q^qpow; q)_n as a MultivariablePolynomial in one x-variable
 // P(q, x) = ∏_{l=0}^{n-1} ∑_{m=0}^{xMax+1} x^m q^{(lsign*l+qpow)*m}
 // Optimized using direct coefficient computation
-PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign) {
-  const int numXVars = 1;
-  const int maxTerms = std::min(n, xMax) + 1;
-
+std::map<int, std::map<int, int>> inv_qpoch_xq_q_(int n, int qpow, int xMax,
+                                                  int lsign) {
   // Coefficients map: coeffs[x_degree][q_power] = coefficient
   std::map<int, std::map<int, int>> coeffs;
   coeffs[0][0] = 1; // Initialize with 1
@@ -397,8 +398,9 @@ PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign) {
     for (const auto &[x_deg, q_map] : coeffs) {
       for (const auto &[q_pow, coeff] : q_map) {
         if (coeff != 0) {
-          // Add terms from geometric series: 1 + x*q^q_base + x^2*q^(2*q_base) + ...
-          for (int m = 0; m <= maxTerms && x_deg + m <= xMax; ++m) {
+          // Add terms from geometric series: 1 + x*q^q_base + x^2*q^(2*q_base)
+          // + ... for (int m = 0; (m <= maxTerms &&) x_deg + m <= xMax; ++m) {
+          for (int m = 0; x_deg + m <= xMax; ++m) {
             const int new_x_deg = x_deg + m;
             const int new_q_pow = q_pow + m * q_base;
             new_coeffs[new_x_deg][new_q_pow] += coeff;
@@ -408,6 +410,54 @@ PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign) {
     }
     coeffs = std::move(new_coeffs);
   }
+  return coeffs;
+}
+
+// Compute 1/(x^{-1} q^qpow; q)_n as a MultivariablePolynomial in x
+// Small-x expansion: P(q, x) = ∏_{l=0}^{n-1} [ -∑_{k>=1} x^k q^{-(lsign*l+qpow)*k} ]
+// Truncated to x-degree <= xMax
+std::map<int, std::map<int, int>> inv_qpoch_xinvq_q_(int n, int qpow, int xMax,
+                                                     int lsign) {
+  // Coefficients map: coeffs[x_degree][q_power] = coefficient
+  std::map<int, std::map<int, int>> coeffs;
+  coeffs[0][0] = 1; // Start from 1, then multiply by each factor
+
+  // For each factor
+  for (int l = 0; l < n; ++l) {
+    const int q_base = lsign * l + qpow;
+    std::map<int, std::map<int, int>> new_coeffs;
+
+    // Multiply current polynomial by the l-th factor
+    // factor_l(x) = - sum_{k>=1} x^k q^{-k*q_base}
+    for (const auto &[x_deg, q_map] : coeffs) {
+      for (const auto &[q_pow, coeff] : q_map) {
+        if (coeff == 0) continue;
+
+        // k is the increment in x-degree (must be >= 1)
+        for (int k = 1; x_deg + k <= xMax; ++k) {
+          const int new_x_deg = x_deg + k;
+          const int new_q_pow = q_pow - k * q_base;
+          new_coeffs[new_x_deg][new_q_pow] -= coeff; // multiply by -1
+        }
+      }
+    }
+
+    coeffs = std::move(new_coeffs);
+  }
+
+  return coeffs;
+}
+
+
+PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign,
+                                        bool xInverse) {
+  const int numXVars = 1;
+  // const int maxTerms = std::min(n, xMax) + 1;
+
+  // Coefficients map: coeffs[x_degree][q_power] = coefficient
+  std::map<int, std::map<int, int>> coeffs =
+      (xInverse) ? inv_qpoch_xinvq_q_(n, qpow, xMax, lsign)
+                 : inv_qpoch_xq_q_(n, qpow, xMax, lsign);
 
   // Build result polynomial
   PolynomialType result(numXVars, 0);
@@ -420,6 +470,7 @@ PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign) {
       }
     }
   }
-
-  return result.truncate({xMax});
+  result = result.truncate({xMax});
+  result.print(100);
+  return result;
 }

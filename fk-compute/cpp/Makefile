@@ -71,7 +71,8 @@ BILVECTOR_OPERATIONS = bilvector_operations
 NEW_QBINOM = new_qbinomials
 XQ_EXMPL = xq_poch_example
 RANDOM_FMPOLY_TARGET = random_fmpoly
-BMPOLY_TEST_TARGET = bmpoly_test 
+BMPOLY_TEST_TARGET = bmpoly_test
+INVERSE_QPOCHHAMMER_TEST_TARGET = inverse_qpochhammer_test 
 
 
 # Default target - now builds main.cpp
@@ -219,6 +220,10 @@ $(RANDOM_FMPOLY_TARGET): $(BUILD_DIR)/random_fmpoly.o $(BUILD_DIR)/fmpoly.o $(BU
 $(BMPOLY_TEST_TARGET): $(BUILD_DIR)/bmpoly_test.o $(BUILD_DIR)/bmpoly.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
+# Inverse Q-Pochhammer test
+$(INVERSE_QPOCHHAMMER_TEST_TARGET): $(BUILD_DIR)/inverse_qpochhammer_test.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/linalg.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
 # Rule for root directory files (like main.cpp)
 $(BUILD_DIR)/%.o: %.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -257,10 +262,11 @@ $(BUILD_DIR)/checkpoint_demo.o: checkpoint_demo.cpp $(INCLUDE_DIR)/fk/fk_computa
 $(BUILD_DIR)/checkpoint_resume_demo.o: checkpoint_resume_demo.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/random_fmpoly.o: $(EXAMPLE_DIR)/random_fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
 $(BUILD_DIR)/bmpoly_test.o: $(TEST_DIR)/bmpoly_test.cpp $(INCLUDE_DIR)/fk/bmpoly.hpp
+$(BUILD_DIR)/inverse_qpochhammer_test.o: $(TEST_DIR)/inverse_qpochhammer_test.cpp $(INCLUDE_DIR)/fk/qalg_links.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 
 # Utility targets
 clean:
-	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL) $(PERFORMANCE_COMPARISON_TARGET) $(FMPOLY_COMPATIBILITY_TARGET) $(FMPOLY_EXAMPLE_TARGET) $(POLYNOMIAL_EXAMPLE_TARGET) $(RANDOM_FMPOLY_TARGET) $(BMPOLY_TEST_TARGET)
+	rm -rf $(BUILD_DIR) $(MAIN_TARGET) $(EXAMPLE_TARGET) $(ARITHMETIC_TEST_TARGET) $(INEQUALITY_EXAMPLE_TARGET) $(FK_COMPUTATION_TARGET) $(FK_TEST_TARGET) $(TREFOIL_EXAMPLE_TARGET) $(TREFOIL_SIMPLE_TARGET) $(TREFOIL_DEMO_TARGET) $(TREFOIL_COMPLETE_TARGET) $(PARSER_TEST_TARGET) $(TEST_TARGET) $(FK_MAIN_TARAGET) $(BILVECTOR_OPERATIONS) $(NEW_QBINOM) $(XQ_EXMPL) $(PERFORMANCE_COMPARISON_TARGET) $(FMPOLY_COMPATIBILITY_TARGET) $(FMPOLY_EXAMPLE_TARGET) $(POLYNOMIAL_EXAMPLE_TARGET) $(RANDOM_FMPOLY_TARGET) $(BMPOLY_TEST_TARGET) $(INVERSE_QPOCHHAMMER_TEST_TARGET)
 
 # Clean only object files
 clean-obj:
@@ -286,6 +292,9 @@ run-random-fmpoly: $(RANDOM_FMPOLY_TARGET)
 
 run-bmpoly-test: $(BMPOLY_TEST_TARGET)
 	./$(BMPOLY_TEST_TARGET)
+
+run-inverse-qpochhammer-test: $(INVERSE_QPOCHHAMMER_TEST_TARGET)
+	./$(INVERSE_QPOCHHAMMER_TEST_TARGET)
 
 # Installation (optional)
 install: $(MAIN_TARGET)
@@ -335,6 +344,7 @@ help:
 	@echo "  run-arithmetic - Build and run arithmetic test"
 	@echo "  run-test     - Build and run testing executable"
 	@echo "  run-bmpoly-test - Build and run BMPoly unit tests"
+	@echo "  run-inverse-qpochhammer-test - Build and run inverse Q-Pochhammer tests"
 	@echo "  check        - Check that all files compile"
 	@echo "  format       - Format code with clang-format (if available)"
 	@echo "  structure    - Show project directory structure"

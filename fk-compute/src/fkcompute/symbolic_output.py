@@ -64,9 +64,8 @@ def matrix_to_polynomial(fk_result: Dict) -> sp.Expr:
 
     Args:
         fk_result: FK computation result dictionary containing:
-                   - 'components': Number of braid components/strands
-                   - 'degree': Maximum degree for the computation
-                   - 'fk': FK coefficient matrix as nested [power, coefficient] pairs
+                   - 'metadata': Dictionary with 'num_x_variables' and 'max_x_degrees'
+                   - 'terms': List of terms with 'x' powers and 'q_terms' coefficients
 
     Returns:
         SymPy expression: Complete FK polynomial in topological variables and q
@@ -82,9 +81,8 @@ def matrix_to_polynomial(fk_result: Dict) -> sp.Expr:
     """
     check_sympy_available()
 
-    n_vars = fk_result['components']
-    max_degree = fk_result['degree']
-    fk_matrix = fk_result['fk']
+    n_vars = fk_result['metadata']['num_x_variables']
+    terms_data = fk_result["terms"]
 
     # Create variable symbols based on the number of dimensions
     # 1D: x, 2D: x,y, 3D: a,b,c, etc. (skipping q which is reserved)
@@ -108,12 +106,19 @@ def matrix_to_polynomial(fk_result: Dict) -> sp.Expr:
         variables = [variables]  # Make it a list for consistency
 
     fk_polynomial = 0
-    for var_powers,q_poly_data in zip(itertools.product(range(max_degree),repeat = n_vars),fk_matrix):
+    for term in terms_data:
+        # Convert q_terms from new format to old format for list_to_q_polynomial
+        q_poly_data = [[q_term['q'], q_term['c']] for q_term in term['q_terms']]
         new_term = list_to_q_polynomial(q_poly_data)
-        for i,pow in enumerate(var_powers):
-            new_term *= variables[i]**pow
-        fk_polynomial += new_term 
-        
+
+        # Apply x variable powers
+        x_powers = term['x']
+        for i, pow in enumerate(x_powers):
+            if i < len(variables):
+                new_term *= variables[i]**pow
+
+        fk_polynomial += new_term
+
     return fk_polynomial
 
 

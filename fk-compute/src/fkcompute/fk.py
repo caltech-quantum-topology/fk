@@ -9,8 +9,10 @@ import pathlib
 from typing import Optional, Dict, Any, List, Union
 import argparse
 from importlib import resources
+
 try:
     import yaml
+
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
@@ -19,7 +21,7 @@ except ImportError:
 from .symbolic_output import (
     format_symbolic_output,
     print_symbolic_result,
-    SYMPY_AVAILABLE
+    SYMPY_AVAILABLE,
 )
 
 # Import BraidStates for extracting component information
@@ -32,6 +34,7 @@ from .fklinks import FK as fk_ilp
 # Logger setup
 # -------------------------------------------------------------------------
 logger = logging.getLogger("fk_logger")
+
 
 def configure_logging(verbose: bool) -> None:
     """Set logging level based on verbose flag."""
@@ -67,6 +70,7 @@ def _binary_path(name: str) -> str:
             f"Could not find required helper binary '{exe}' in PATH or package."
         ) from e
 
+
 def _safe_unlink(path: str):
     """Safely remove a file, ignoring errors."""
     try:
@@ -90,7 +94,9 @@ def _load_inversion_file(inversion_file: str) -> Dict[str, Any]:
     """Load inversion data from a JSON file and ensure integer keys."""
     with open(inversion_file, "r") as f:
         inversion = json.load(f)
-    inversion["inversion_data"] = {int(k): v for k, v in inversion["inversion_data"].items()}
+    inversion["inversion_data"] = {
+        int(k): v for k, v in inversion["inversion_data"].items()
+    }
     return inversion
 
 
@@ -130,13 +136,16 @@ def _load_config_file(config_path: str) -> Dict[str, Any]:
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
-    with open(config_path, 'r') as f:
-        if config_path.endswith(('.yml', '.yaml')):
+    with open(config_path, "r") as f:
+        if config_path.endswith((".yml", ".yaml")):
             if not HAS_YAML:
-                raise ImportError("PyYAML is required for YAML config files. Install with: pip install PyYAML")
+                raise ImportError(
+                    "PyYAML is required for YAML config files. Install with: pip install PyYAML"
+                )
             return yaml.safe_load(f)
         else:
             return json.load(f)
+
 
 def _parse_bool(default_true: bool):
     """Return a function that adds --foo / --no-foo toggle flags for a bool."""
@@ -145,16 +154,34 @@ def _parse_bool(default_true: bool):
         dest = name.replace("-", "_")
         group = parser.add_mutually_exclusive_group()
         if default_true:
-            group.add_argument(f"--{name}", dest=dest, action="store_true", help=f"{help_text} (default)")
-            group.add_argument(f"--no-{name}", dest=dest, action="store_false", help=f"Disable {help_text}")
+            group.add_argument(
+                f"--{name}",
+                dest=dest,
+                action="store_true",
+                help=f"{help_text} (default)",
+            )
+            group.add_argument(
+                f"--no-{name}",
+                dest=dest,
+                action="store_false",
+                help=f"Disable {help_text}",
+            )
             parser.set_defaults(**{dest: True})
         else:
-            group.add_argument(f"--{name}", dest=dest, action="store_true", help=f"Enable {help_text}")
-            group.add_argument(f"--no-{name}", dest=dest, action="store_false", help=f"{help_text} (default)")
+            group.add_argument(
+                f"--{name}", dest=dest, action="store_true", help=f"Enable {help_text}"
+            )
+            group.add_argument(
+                f"--no-{name}",
+                dest=dest,
+                action="store_false",
+                help=f"{help_text} (default)",
+            )
             parser.set_defaults(**{dest: False})
         return group
 
     return add
+
 
 # -------------------------------------------------------------------------
 # Preset configurations
@@ -164,7 +191,7 @@ PRESETS = {
         "max_workers": 1,
         "chunk_size": 1 << 12,  # Smaller chunks for faster start
         "include_flip": False,  # Disable flip symmetry
-        "max_shifts": None,     # Don't limit shifts
+        "max_shifts": None,  # Don't limit shifts
         "verbose": False,
         "save_data": False,
     },
@@ -172,18 +199,18 @@ PRESETS = {
         "max_workers": 4,
         "chunk_size": 1 << 16,  # Larger chunks for thoroughness
         "include_flip": False,  # Disable flip symmetry
-        "max_shifts": None,     # No limit on shifts
+        "max_shifts": None,  # No limit on shifts
         "verbose": True,
         "save_data": True,
     },
     "parallel": {
-        "max_workers": 8,       # High parallelism
+        "max_workers": 8,  # High parallelism
         "chunk_size": 1 << 14,  # Balanced chunk size
         "include_flip": False,
         "max_shifts": None,
         "verbose": True,
         "save_data": False,
-    }
+    },
 }
 
 # -------------------------------------------------------------------------
@@ -297,47 +324,93 @@ def fk(
     # 4. Simple mode detection (only braid + degree provided)
     call_locals = locals()
     provided_advanced_params = [
-        k for k in ['ilp', 'ilp_file', 'inversion', 'inversion_file',
-                   'partial_signs', 'max_shifts', 'link_name']
+        k
+        for k in [
+            "ilp",
+            "ilp_file",
+            "inversion",
+            "inversion_file",
+            "partial_signs",
+            "max_shifts",
+            "link_name",
+        ]
         if call_locals[k] is not None
     ]
     provided_settings = [
-        k for k in ['max_workers', 'chunk_size', 'include_flip', 'verbose',
-                   'save_data', 'save_dir', 'symbolic']
+        k
+        for k in [
+            "max_workers",
+            "chunk_size",
+            "include_flip",
+            "verbose",
+            "save_data",
+            "save_dir",
+            "symbolic",
+        ]
         if call_locals[k] != _get_default_value(k)
     ]
 
     if not provided_advanced_params and not provided_settings:
         # Simple mode - just braid and degree with defaults
         configure_logging(False)  # Quiet by default for simple mode
-        return _fk_compute(braid, degree, verbose=False, max_workers=1,
-                          chunk_size=1<<14, include_flip=False, max_shifts=None,
-                          save_data=False, save_dir="data", link_name=None,
-                          symbolic=symbolic, ilp=None, ilp_file=None, inversion=None,
-                          inversion_file=None, partial_signs=None)
+        return _fk_compute(
+            braid,
+            degree,
+            verbose=False,
+            max_workers=1,
+            chunk_size=1 << 14,
+            include_flip=False,
+            max_shifts=None,
+            save_data=False,
+            save_dir="data",
+            link_name=None,
+            symbolic=symbolic,
+            ilp=None,
+            ilp_file=None,
+            inversion=None,
+            inversion_file=None,
+            partial_signs=None,
+        )
 
     # 5. Advanced mode - use all provided parameters
     configure_logging(verbose)
-    return _fk_compute(braid, degree, verbose, max_workers, chunk_size,
-                      include_flip, max_shifts, save_data, save_dir, link_name,
-                      symbolic, ilp, ilp_file, inversion, inversion_file, partial_signs)
+    return _fk_compute(
+        braid,
+        degree,
+        verbose,
+        max_workers,
+        chunk_size,
+        include_flip,
+        max_shifts,
+        save_data,
+        save_dir,
+        link_name,
+        symbolic,
+        ilp,
+        ilp_file,
+        inversion,
+        inversion_file,
+        partial_signs,
+    )
 
 
 def _get_default_value(param_name: str):
     """Get default values for parameter detection."""
     defaults = {
-        'max_workers': 1,
-        'chunk_size': 1 << 14,
-        'include_flip': False,
-        'verbose': False,
-        'save_data': False,
-        'save_dir': "data",
-        'symbolic': False
+        "max_workers": 1,
+        "chunk_size": 1 << 14,
+        "include_flip": False,
+        "verbose": False,
+        "save_data": False,
+        "save_dir": "data",
+        "symbolic": False,
     }
     return defaults.get(param_name)
 
 
-def _fk_from_config(config_path: str) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+def _fk_from_config(
+    config_path: str,
+) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
     """
     Handle FK computation from JSON/YAML configuration files.
 
@@ -389,37 +462,43 @@ def _fk_from_config(config_path: str) -> Union[Dict[str, Any], Dict[str, Dict[st
     config_data = _load_config_file(config_path)
 
     # Check if this is a batch configuration (multiple braids)
-    if 'computations' in config_data:
+    if "computations" in config_data:
         return _fk_batch_from_config(config_data, config_path)
 
     # Single computation mode (existing behavior)
-    braid = config_data.get('braid')
+    braid = config_data.get("braid")
     if not braid:
         raise ValueError("'braid' is required in config file")
 
-    degree = config_data.get('degree')
+    degree = config_data.get("degree")
     if degree is None:
         raise ValueError("'degree' is required in config file")
 
     # Check if using preset in config
-    preset = config_data.get('preset')
+    preset = config_data.get("preset")
     if preset:
-        filtered_config = {k: v for k, v in config_data.items()
-                         if k not in ['braid', 'degree', 'preset']}
+        filtered_config = {
+            k: v
+            for k, v in config_data.items()
+            if k not in ["braid", "degree", "preset"]
+        }
         preset_config = PRESETS.get(preset, {}).copy()
         preset_config.update(filtered_config)
         verbose = preset_config.get("verbose", False)
         configure_logging(verbose)
         return _fk_compute(braid, degree, **preset_config)
     else:
-        filtered_config = {k: v for k, v in config_data.items()
-                         if k not in ['braid', 'degree']}
+        filtered_config = {
+            k: v for k, v in config_data.items() if k not in ["braid", "degree"]
+        }
         verbose = filtered_config.get("verbose", False)
         configure_logging(verbose)
         return _fk_compute(braid, degree, **filtered_config)
 
 
-def _fk_batch_from_config(config_data: Dict[str, Any], config_path: str) -> Dict[str, Dict[str, Any]]:
+def _fk_batch_from_config(
+    config_data: Dict[str, Any], config_path: str
+) -> Dict[str, Dict[str, Any]]:
     """
     Execute batch FK computations from configuration data with progress tracking.
 
@@ -446,44 +525,51 @@ def _fk_batch_from_config(config_data: Dict[str, Any], config_path: str) -> Dict
         - Failed computations are logged but don't halt the batch
         - All computations use the same global logging configuration
     """
-    computations = config_data.get('computations', [])
+    computations = config_data.get("computations", [])
     if not computations:
         raise ValueError("'computations' array is empty in config file")
 
     # Global defaults from the config file
-    global_defaults = {k: v for k, v in config_data.items()
-                      if k not in ['computations']}
+    global_defaults = {
+        k: v for k, v in config_data.items() if k not in ["computations"]
+    }
 
     results = {}
     total = len(computations)
 
     for i, computation in enumerate(computations, 1):
         # Get computation name (for results key)
-        comp_name = computation.get('name', f"computation_{i}")
+        comp_name = computation.get("name", f"computation_{i}")
 
         # Required fields for each computation
-        braid = computation.get('braid')
+        braid = computation.get("braid")
         if not braid:
             raise ValueError(f"'braid' is required for computation '{comp_name}'")
 
-        degree = computation.get('degree')
+        degree = computation.get("degree")
         if degree is None:
             raise ValueError(f"'degree' is required for computation '{comp_name}'")
 
         # Merge global defaults with computation-specific parameters
         comp_config = global_defaults.copy()
-        comp_config.update({k: v for k, v in computation.items()
-                           if k not in ['name', 'braid', 'degree']})
+        comp_config.update(
+            {
+                k: v
+                for k, v in computation.items()
+                if k not in ["name", "braid", "degree"]
+            }
+        )
 
         # Handle preset if specified
-        preset = comp_config.get('preset')
+        preset = comp_config.get("preset")
         if preset:
             if preset not in PRESETS:
-                raise ValueError(f"Unknown preset '{preset}' for computation '{comp_name}'. Available: {list(PRESETS.keys())}")
+                raise ValueError(
+                    f"Unknown preset '{preset}' for computation '{comp_name}'. Available: {list(PRESETS.keys())}"
+                )
 
             # Start with preset, then apply overrides
-            filtered_config = {k: v for k, v in comp_config.items()
-                             if k != 'preset'}
+            filtered_config = {k: v for k, v in comp_config.items() if k != "preset"}
             preset_config = PRESETS[preset].copy()
             preset_config.update(filtered_config)
             comp_config = preset_config
@@ -503,12 +589,17 @@ def _fk_batch_from_config(config_data: Dict[str, Any], config_path: str) -> Dict
         I need to figure out how to do this without messing up redirecting to file
         elif total > 1:
             print(f"Computing {comp_name} ({i}/{total})")
-        """ 
+        """
 
         try:
             # Run the computation
-            result = _fk_compute(braid, degree, **{k: v for k, v in comp_config.items()
-                                                  if k not in ['braid', 'degree']})
+            result = _fk_compute(
+                braid,
+                degree,
+                **{
+                    k: v for k, v in comp_config.items() if k not in ["braid", "degree"]
+                },
+            )
             results[comp_name] = result
 
         except Exception as e:
@@ -520,19 +611,35 @@ def _fk_batch_from_config(config_data: Dict[str, Any], config_path: str) -> Dict
     return results
 
 
-def _fk_with_preset(braid: List[int], degree: int, preset: str,
-                   call_locals: Dict[str, Any]) -> Dict[str, Any]:
+def _fk_with_preset(
+    braid: List[int], degree: int, preset: str, call_locals: Dict[str, Any]
+) -> Dict[str, Any]:
     """Handle preset mode with parameter overrides."""
     if preset not in PRESETS:
-        raise ValueError(f"Unknown preset '{preset}'. Available: {list(PRESETS.keys())}")
+        raise ValueError(
+            f"Unknown preset '{preset}'. Available: {list(PRESETS.keys())}"
+        )
 
     preset_config = PRESETS[preset].copy()
 
     # Override preset with any explicitly provided parameters
     override_params = {}
-    param_names = ['ilp', 'ilp_file', 'inversion', 'inversion_file', 'partial_signs',
-                   'max_workers', 'chunk_size', 'include_flip', 'max_shifts',
-                   'verbose', 'save_data', 'save_dir', 'link_name', 'symbolic']
+    param_names = [
+        "ilp",
+        "ilp_file",
+        "inversion",
+        "inversion_file",
+        "partial_signs",
+        "max_workers",
+        "chunk_size",
+        "include_flip",
+        "max_shifts",
+        "verbose",
+        "save_data",
+        "save_dir",
+        "link_name",
+        "symbolic",
+    ]
 
     for param in param_names:
         if param in call_locals and call_locals[param] != _get_default_value(param):
@@ -614,9 +721,6 @@ def _fk_compute(
         - The components count reflects braid topology, not just maximum absolute value
         - Symbolic output requires SymPy: pip install sympy
     """
-    # Store original braid for output
-    original_braid = braid.copy()
-
     # --- Handle naming and save directories ---
     if save_data:
         if not os.path.isdir(save_dir):
@@ -636,7 +740,9 @@ def _fk_compute(
         logger.debug("No ilp data provided, I need to calculate it")
 
         if inversion is not None and inversion_file is not None:
-            logger.error("Both inversion data and inversion file are passed through. Pass one or the other")
+            logger.error(
+                "Both inversion data and inversion file are passed through. Pass one or the other"
+            )
 
         if inversion_file is not None and inversion is None:
             logger.debug("Loading inversion from file")
@@ -644,7 +750,7 @@ def _fk_compute(
 
         if inversion is None and inversion_file is None:
             logger.debug("Calculating inversion data")
-            inversion = get_sign_assignment_parallel(
+            inversion= get_sign_assignment_parallel(
                 braid,
                 partial_signs=partial_signs,
                 degree=degree,
@@ -664,7 +770,9 @@ def _fk_compute(
 
     # --- Step 2: ILP data ---
     if ilp is not None and ilp_file is not None:
-        logger.error("Both ilp data and ilp file are passed through. Pass one or the other")
+        logger.error(
+            "Both ilp data and ilp file are passed through. Pass one or the other"
+        )
 
     if ilp is None and ilp_file is not None:
         logger.debug("Loading ILP from file")
@@ -685,12 +793,17 @@ def _fk_compute(
     if verbose:
         subprocess.run([bin_path, f"{link_name}_ilp", f"{link_name}"], check=True)
     else:
-        subprocess.run([bin_path, f"{link_name}_ilp", f"{link_name}"], check=True,
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            [bin_path, f"{link_name}_ilp", f"{link_name}"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     with open(link_name + ".json", "r") as f:
         fk_result = json.load(f)
-
+    
+    """
     # Handle both old and new JSON formats
     if "coefficient_q_powers" in fk_result:
         # Old format
@@ -701,7 +814,7 @@ def _fk_compute(
         max_x_degrees = metadata.get("max_x_degrees", [])
 
         if max_x_degrees:
-            max_degree = max_x_degrees[0] + 1
+            max_degree = max_x_degrees[0]
         else:
             # Find max x degree from terms
             max_degree = max(term["x"][0] for term in fk_result["terms"]) + 1
@@ -718,7 +831,10 @@ def _fk_compute(
         for q_poly in fk_coefficients:
             q_poly.sort(key=lambda x: x[0])
     else:
-        raise ValueError("FK result missing both 'terms' (new format) and 'coefficient_q_powers' (old format)")
+        raise ValueError(
+            "FK result missing both 'terms' (new format) and 'coefficient_q_powers' (old format)"
+        )
+    """
 
     # Clean up intermediate files unless explicitly saving
     if not save_data:
@@ -727,32 +843,29 @@ def _fk_compute(
 
     # Get the braid that was actually used (may be modified during inversion computation)
     # If inversion was computed, the braid might have been canonicalized
-    computed_braid = original_braid  # For now, assume no modification
-    # TODO: If sign assignment modifies the braid, we should capture that here
+    computed_braid = inversion["braid"]
 
     # Extract number of components (strands) from the braid
     braid_states = BraidStates(computed_braid)
     components = braid_states.n_components
 
     # Prepare result dictionary
-    result = {
-        "braid": computed_braid,
-        "inversion_data": inversion["inversion_data"] if inversion else None,
-        "degree": degree,
-        "components": components,
-        "fk": fk_coefficients,
-    }
+    fk_result["metadata"]["braid"] = computed_braid
+    fk_result["metadata"]["inversion"] = inversion["inversion_data"] if inversion else None
+    fk_result["metadata"]["components"] = components
 
     # Add symbolic representation if requested and SymPy is available
     if symbolic and SYMPY_AVAILABLE:
         try:
-            symbolic_repr = format_symbolic_output(result, "pretty")
-            result["symbolic"] = symbolic_repr
+            symbolic_repr = format_symbolic_output(fk_result, "pretty")
+            fk_result["symbolic"] = symbolic_repr
         except Exception as e:
             if verbose:
                 print(f"Warning: Could not generate symbolic representation: {e}")
     elif symbolic and not SYMPY_AVAILABLE:
         if verbose:
-            print("Warning: SymPy not available for symbolic output. Install with: pip install sympy")
+            print(
+                "Warning: SymPy not available for symbolic output. Install with: pip install sympy"
+            )
 
-    return result
+    return fk_result 

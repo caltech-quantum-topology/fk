@@ -315,23 +315,37 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
 
   bool firstTerm = true;
   for (const auto &[xPowers, bilvec] : coeffs_) {
+    // Collect all non-zero q-terms for this x-power combination
+    std::vector<std::pair<int, int>> qTerms; // (q_power, coefficient)
     for (int j = bilvec.getMaxNegativeIndex();
          j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
       if (coeff != 0) {
-        if (!firstTerm) {
-          outputFile << ",\n";
-        }
-        firstTerm = false;
-
-        outputFile << "\t\t{\"x\": [";
-        for (size_t k = 0; k < xPowers.size(); k++) {
-          outputFile << xPowers[k];
-          if (k < xPowers.size() - 1)
-            outputFile << ",";
-        }
-        outputFile << "], \"q\": " << j << ", \"c\": " << coeff << "}";
+        qTerms.emplace_back(j, coeff);
       }
+    }
+
+    // Only output if there are non-zero terms
+    if (!qTerms.empty()) {
+      if (!firstTerm) {
+        outputFile << ",\n";
+      }
+      firstTerm = false;
+
+      outputFile << "\t\t{\"x\": [";
+      for (size_t k = 0; k < xPowers.size(); k++) {
+        outputFile << xPowers[k];
+        if (k < xPowers.size() - 1)
+          outputFile << ",";
+      }
+      outputFile << "], \"q_terms\": [";
+
+      for (size_t i = 0; i < qTerms.size(); i++) {
+        outputFile << "{\"q\": " << qTerms[i].first << ", \"c\": " << qTerms[i].second << "}";
+        if (i < qTerms.size() - 1)
+          outputFile << ", ";
+      }
+      outputFile << "]}";
     }
   }
 

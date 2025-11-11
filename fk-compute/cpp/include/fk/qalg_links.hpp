@@ -1,6 +1,6 @@
 #pragma once
 
-#include <functional>
+#include <map>
 #include <vector>
 
 #include "fk/polynomial_config.hpp"
@@ -43,4 +43,9 @@ QPolynomialType QBinomialPositive(int upperLimit, int lowerLimit);
 QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit);
 
 PolynomialType qpochhammer_xq_q(int n, int qpow, int lsign);
-PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign);
+PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign,
+                                        bool xInverse);
+std::map<int, std::map<int, int>> inv_qpoch_xq_q_(int n, int qpow, int xMax,
+                                                  int lsign);
+std::map<int, std::map<int, int>> inv_qpoch_xinvq_q_(int n, int qpow, int xMax,
+                                                     int lsign);
