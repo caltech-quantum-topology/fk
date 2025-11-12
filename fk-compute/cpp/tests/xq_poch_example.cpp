@@ -26,7 +26,7 @@ int main() {
   poly.print();
   print_pterms(polynomial_terms);
 
-  auto xqpoch = qpochhammer_xq_q(5,1);
+  auto xqpoch = qpochhammer_xq_q(1,-1,1);
   xqpoch.print(100);
   MultivariablePolynomial test(xqpoch, 3,0);
   test.print(100);
@@ -38,7 +38,7 @@ int main() {
   auto newPoly = test.invertVariable(2);
   newPoly.print(100);
 
-  MultivariablePolynomial test_inverse_qpochhammer = inverse_qpochhammer_xq_q(7,2,6);
+  MultivariablePolynomial test_inverse_qpochhammer = inverse_qpochhammer_xq_q(7,2,6,1,false);
   std::cout<<"======"<<std::endl;
   test_inverse_qpochhammer.print(200);
 

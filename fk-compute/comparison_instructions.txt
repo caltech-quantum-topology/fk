@@ -1,0 +1,102 @@
+
+You are to write a **Python script** that compares **two sets of FK polynomials** computed using different programs.
+
+---
+
+### 🎯 **Goal**
+
+Create a Python program that compares FK polynomials stored in two data sources:
+
+1. The **source of truth** is in a file called `fibered_table.json`.
+2. The **computed results** are JSON files inside a directory `results/`.
+
+The comparison should verify whether the FK polynomials from both sources **match** under the following conditions:
+
+* FK polynomials are in **two variables**, ( x ) and ( q ).
+* Powers of ( x ) are always **non-negative integers**.
+* Powers of ( q ) can be **negative** (so ( q ) terms form a Laurent polynomial).
+* Two FK polynomials **match** if they are identical up to the **minimum (x)-degree** present in both, possibly differing by an overall factor of **–1**.
+
+---
+
+### 📁 **Data Format**
+
+#### In `fibered_table.json`
+
+Each entry has a `"name"` (e.g., `"knot_6_1"`) that matches the filename in the `results/` directory.
+
+Each entry includes a field:
+
+```json
+"fk_x_coeffs": "{0,0,q,7*q,7 + 28*q - q^2,48 + q^(-2) + 22/q + 89*q - 7*q^2 - 6*q^3}"
+```
+
+Interpretation rules:
+
+* The curly braces `{...}` represent a **list of coefficients** ordered by their (x)-degree.
+* The element at index *i* is the coefficient of (x^i).
+* Each coefficient is itself a **Laurent polynomial in (q)**.
+
+So the above example corresponds to:
+[
+\text{FK}(x,q) = qx^2 + 7qx^3 + (7 + 28q - q^2)x^4 + (48 + q^{-2} + 22/q + 89q - 7q^2 - 6q^3)x^5
+]
+
+---
+
+#### In `results/`
+
+Each file (e.g. `results/knot_6_1.json`) explicitly encodes the FK polynomial as:
+
+```json
+{
+  "terms": [
+    {
+      "x": [degree],
+      "q_terms": [
+        {"q": q_power, "c": coefficient},
+        ...
+      ]
+    },
+    ...
+  ]
+}
+```
+
+That is, the polynomial is a sum over (x^{degree}), with each term having a list of ((q^{power}, coefficient)) pairs.
+
+---
+
+### 🧮 **Required Functionality**
+
+The program must:
+
+1. Load `fibered_table.json` and all `results/*.json`.
+2. Parse the FK polynomial from each source into a comparable canonical form.
+3. Compare both polynomials:
+
+   * They match if one equals the other or its negative, up to the **minimum x-degree** between them.
+4. Print a detailed comparison report:
+
+   * Which knots match fully.
+   * Which differ (and by what factor if it’s –1).
+   * Optionally print the mismatched coefficients.
+
+The script should be modular, with clear helper functions like:
+
+* `parse_fk_from_fibered_table(entry)`
+* `parse_fk_from_result(result_data)`
+* `compare_polynomials(poly1, poly2)`
+
+and should use dictionaries to represent polynomials, e.g. `{(x_degree, q_power): coefficient}`.
+
+---
+
+### ✅ **Deliverable**
+
+Provide:
+
+* A single, well-documented Python script implementing this comparison.
+* Clear comments explaining the data parsing, normalization, and comparison logic.
+* Console output showing which knots matched and which didn’t.
+

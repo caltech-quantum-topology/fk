@@ -313,8 +313,18 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
   outputFile.open(fileName + ".json");
   outputFile << "{\n\t\"terms\":[\n";
 
-  bool firstTerm = true;
+  // Collect and sort x-power keys for deterministic output
+  std::vector<std::vector<int>> sortedXPowers;
+  sortedXPowers.reserve(coeffs_.size());
   for (const auto &[xPowers, bilvec] : coeffs_) {
+    sortedXPowers.push_back(xPowers);
+  }
+  std::sort(sortedXPowers.begin(), sortedXPowers.end());
+
+  bool firstTerm = true;
+  for (const auto &xPowers : sortedXPowers) {
+    const auto &bilvec = coeffs_.at(xPowers);
+
     // Collect all non-zero q-terms for this x-power combination
     std::vector<std::pair<int, int>> qTerms; // (q_power, coefficient)
     for (int j = bilvec.getMaxNegativeIndex();

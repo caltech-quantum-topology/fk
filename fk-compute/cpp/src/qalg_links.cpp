@@ -332,9 +332,9 @@ QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
 }
 
 // Compute (x q; q)_n as a MultivariablePolynomial in one x-variable
-// P(q, x) = ∏_{k=1}^n (1 - x q^{qpow + lsign*k})
+// P(q, x) = ∏_{k=1}^n (1 - x q^{qpow + k})
 // Optimized using direct coefficient computation
-PolynomialType qpochhammer_xq_q(int n, int qpow, int lsign) {
+PolynomialType qpochhammer_xq_q(int n, int qpow) {
   const int numXVars = 1;
   const int maxXDegree = n;
 
@@ -342,26 +342,25 @@ PolynomialType qpochhammer_xq_q(int n, int qpow, int lsign) {
   std::map<int, std::map<int, int>> coeffs;
   coeffs[0][0] = 1; // Initialize with 1
 
-  // For each factor (1 - x q^{qpow + lsign*k})
-  for (int k = 1; k <= n; ++k) {
-    const int q_factor = qpow + lsign * k;
+  // For each factor (1 - x q^{qpow + k})
+  for (int k = 0; k < n; ++k) {
+    const int q_factor = qpow + k;
     std::map<int, std::map<int, int>> new_coeffs;
 
     // Multiply current polynomial by (1 - x q^q_factor)
     for (const auto &[x_deg, q_map] : coeffs) {
       for (const auto &[q_pow, coeff] : q_map) {
         if (coeff != 0) {
-          // Add the "1" term: same x_deg and q_pow
+          // "1" term
           new_coeffs[x_deg][q_pow] += coeff;
 
-          // Add the "-x q^q_factor" term: x_deg+1 and q_pow+q_factor
+          // "-x q^q_factor" term
           if (x_deg + 1 <= maxXDegree) {
             new_coeffs[x_deg + 1][q_pow + q_factor] -= coeff;
           }
         }
       }
     }
-
     coeffs = std::move(new_coeffs);
   }
 
@@ -381,25 +380,27 @@ PolynomialType qpochhammer_xq_q(int n, int qpow, int lsign) {
 }
 
 // Compute 1/(x q^qpow; q)_n as a MultivariablePolynomial in one x-variable
-// P(q, x) = ∏_{l=0}^{n-1} ∑_{m=0}^{xMax+1} x^m q^{(lsign*l+qpow)*m}
+// P(q, x) = ∏_{l=0}^{n-1} ∑_{m=0}^{xMax+1} x^m q^{(l+qpow)*m}
 // Optimized using direct coefficient computation
-std::map<int, std::map<int, int>> inv_qpoch_xq_q_(int n, int qpow, int xMax,
-                                                  int lsign) {
+
+
+PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
+  const int numXVars = 1;
+
   // Coefficients map: coeffs[x_degree][q_power] = coefficient
   std::map<int, std::map<int, int>> coeffs;
   coeffs[0][0] = 1; // Initialize with 1
 
   // For each factor (geometric series)
   for (int l = 0; l < n; ++l) {
-    const int q_base = lsign * l + qpow;
+    const int q_base = l + qpow;
     std::map<int, std::map<int, int>> new_coeffs;
 
     // Multiply current polynomial by the l-th geometric series
     for (const auto &[x_deg, q_map] : coeffs) {
       for (const auto &[q_pow, coeff] : q_map) {
         if (coeff != 0) {
-          // Add terms from geometric series: 1 + x*q^q_base + x^2*q^(2*q_base)
-          // + ... for (int m = 0; (m <= maxTerms &&) x_deg + m <= xMax; ++m) {
+          // Add terms from geometric series: 1 + x*q^q_base + x^2*q^(2*q_base) + ...
           for (int m = 0; x_deg + m <= xMax; ++m) {
             const int new_x_deg = x_deg + m;
             const int new_q_pow = q_pow + m * q_base;
@@ -410,54 +411,6 @@ std::map<int, std::map<int, int>> inv_qpoch_xq_q_(int n, int qpow, int xMax,
     }
     coeffs = std::move(new_coeffs);
   }
-  return coeffs;
-}
-
-// Compute 1/(x^{-1} q^qpow; q)_n as a MultivariablePolynomial in x
-// Small-x expansion: P(q, x) = ∏_{l=0}^{n-1} [ -∑_{k>=1} x^k q^{-(lsign*l+qpow)*k} ]
-// Truncated to x-degree <= xMax
-std::map<int, std::map<int, int>> inv_qpoch_xinvq_q_(int n, int qpow, int xMax,
-                                                     int lsign) {
-  // Coefficients map: coeffs[x_degree][q_power] = coefficient
-  std::map<int, std::map<int, int>> coeffs;
-  coeffs[0][0] = 1; // Start from 1, then multiply by each factor
-
-  // For each factor
-  for (int l = 0; l < n; ++l) {
-    const int q_base = lsign * l + qpow;
-    std::map<int, std::map<int, int>> new_coeffs;
-
-    // Multiply current polynomial by the l-th factor
-    // factor_l(x) = - sum_{k>=1} x^k q^{-k*q_base}
-    for (const auto &[x_deg, q_map] : coeffs) {
-      for (const auto &[q_pow, coeff] : q_map) {
-        if (coeff == 0) continue;
-
-        // k is the increment in x-degree (must be >= 1)
-        for (int k = 1; x_deg + k <= xMax; ++k) {
-          const int new_x_deg = x_deg + k;
-          const int new_q_pow = q_pow - k * q_base;
-          new_coeffs[new_x_deg][new_q_pow] -= coeff; // multiply by -1
-        }
-      }
-    }
-
-    coeffs = std::move(new_coeffs);
-  }
-
-  return coeffs;
-}
-
-
-PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign,
-                                        bool xInverse) {
-  const int numXVars = 1;
-  // const int maxTerms = std::min(n, xMax) + 1;
-
-  // Coefficients map: coeffs[x_degree][q_power] = coefficient
-  std::map<int, std::map<int, int>> coeffs =
-      (xInverse) ? inv_qpoch_xinvq_q_(n, qpow, xMax, lsign)
-                 : inv_qpoch_xq_q_(n, qpow, xMax, lsign);
 
   // Build result polynomial
   PolynomialType result(numXVars, 0);
@@ -470,7 +423,5 @@ PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax, int lsign,
       }
     }
   }
-  result = result.truncate({xMax});
-  result.print(100);
   return result;
 }

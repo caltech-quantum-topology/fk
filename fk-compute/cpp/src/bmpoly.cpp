@@ -6,6 +6,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <cmath>
+#include <climits>
+#include <cstdint>
 
 // BMPoly implementation
 
@@ -145,6 +147,12 @@ void BMPoly::expandStorageIfNeeded(const std::vector<int> &xPowers) {
     for (int i = 0; i < numXVariables; ++i) {
       int requiredRange = xPowers[i] - groundXDegrees[i];
       if (requiredRange > maxXDegrees[i]) {
+        // Add bounds check to prevent excessive memory usage
+        if (requiredRange > 50000) { // Reasonable upper bound
+          throw std::length_error("Polynomial degree range too large: " +
+                                std::to_string(requiredRange) + " for variable " +
+                                std::to_string(i));
+        }
         maxXDegrees[i] = requiredRange;
       }
     }
@@ -157,10 +165,17 @@ void BMPoly::expandStorageIfNeeded(const std::vector<int> &xPowers) {
 void BMPoly::updateGroundDegrees(const std::vector<int> &xPowers) {
   std::vector<bilvector<int>> oldCoeffs = std::move(coeffs_);
   std::vector<int> oldGroundDegrees = groundXDegrees;
+  std::vector<int> oldMaxXDegrees = maxXDegrees;
 
   // Update ground degrees
   for (int i = 0; i < numXVariables; ++i) {
-    groundXDegrees[i] = std::min(groundXDegrees[i], xPowers[i]);
+    int newGroundDegree = std::min(groundXDegrees[i], xPowers[i]);
+
+    // Adjust maxXDegrees to maintain the same upper bound
+    int oldUpperBound = groundXDegrees[i] + maxXDegrees[i];
+    maxXDegrees[i] = oldUpperBound - newGroundDegree;
+
+    groundXDegrees[i] = newGroundDegree;
   }
 
   // Recalculate block sizes and resize storage
@@ -201,9 +216,21 @@ void BMPoly::recalculateBlockSizes() {
 }
 
 void BMPoly::resizeStorage() {
-  int totalSize = 1;
+  size_t totalSize = 1;
   for (int i = 0; i < numXVariables; ++i) {
-    totalSize *= (maxXDegrees[i] + 1);
+    size_t dimensionSize = maxXDegrees[i] + 1;
+
+    // Check for overflow before multiplication
+    if (dimensionSize > 0 && totalSize > SIZE_MAX / dimensionSize) {
+      throw std::length_error("BMPoly storage size would exceed maximum vector size");
+    }
+
+    totalSize *= dimensionSize;
+
+    // Additional safety check for reasonable bounds
+    if (totalSize > 1000000000) { // 1B elements limit
+      throw std::length_error("BMPoly storage size exceeds reasonable bounds");
+    }
   }
 
   // Resize vector, preserving existing data
@@ -441,25 +468,35 @@ void BMPoly::exportToJson(const std::string &fileName) const {
     if (!coeffs_[i].isZero()) {
       std::vector<int> xPowers = linearToMultiIndex(i);
 
-      int minQ = coeffs_[i].getMaxNegativeIndex();
-      int maxQ = coeffs_[i].getMaxPositiveIndex();
-
-      for (int j = minQ; j <= maxQ; j++) {
+      // Collect all non-zero q-terms for this x-power combination
+      std::vector<std::pair<int, int>> qTerms; // (q_power, coefficient)
+      for (int j = coeffs_[i].getMaxNegativeIndex();
+           j <= coeffs_[i].getMaxPositiveIndex(); j++) {
         int coeff = coeffs_[i][j];
         if (coeff != 0) {
-          if (!firstTerm) {
-            outputFile << ",\n";
-          }
-          firstTerm = false;
-
-          outputFile << "\t\t{\"x\": [";
-          for (size_t k = 0; k < xPowers.size(); k++) {
-            outputFile << xPowers[k];
-            if (k < xPowers.size() - 1)
-              outputFile << ",";
-          }
-          outputFile << "], \"q\": " << j << ", \"c\": " << coeff << "}";
+          qTerms.emplace_back(j, coeff);
         }
+      }
+
+      // Only output if there are non-zero terms
+      if (!qTerms.empty()) {
+        if (!firstTerm) {
+          outputFile << ",\n";
+        }
+        firstTerm = false;
+        outputFile << "\t\t{\"x\": [";
+        for (size_t k = 0; k < xPowers.size(); k++) {
+          outputFile << xPowers[k];
+          if (k < xPowers.size() - 1)
+            outputFile << ",";
+        }
+        outputFile << "], \"q_terms\": [";
+        for (size_t k = 0; k < qTerms.size(); k++) {
+          outputFile << "{\"q\": " << qTerms[k].first << ", \"c\": " << qTerms[k].second << "}";
+          if (k < qTerms.size() - 1)
+            outputFile << ", ";
+        }
+        outputFile << "]}";
       }
     }
   }
