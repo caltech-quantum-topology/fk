@@ -1,379 +1,379 @@
 #!/usr/bin/env python3
-"""
-FK Polynomial Comparison Tool
-
-Compares FK polynomials stored in two different data sources:
-1. fibered_table.json - source of truth with fk_x_coeffs format
-2. results/*.json - computed results in explicit term format
-
-Polynomials are compared up to the minimum x-degree and can differ by a factor of -1.
-"""
-
 import json
-import re
+import argparse
 import os
-from collections import defaultdict
-from typing import Dict, Tuple, List, Optional
+import sympy as sp
 
 
-def parse_laurent_polynomial(expr: str) -> Dict[int, float]:
+def load_json_poly(json_path):
+    """Load polynomial from the JSON file and return a dict: x_deg -> sympy expr in q."""
+    q, x = sp.symbols('q x')
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+
+    poly = {}
+    for term in data["terms"]:
+        x_deg = term["x"][0]
+        coeff_expr = 0
+        for qt in term["q_terms"]:
+            q_deg = qt["q"]
+            c = qt["c"]
+            coeff_expr += c * q**q_deg
+        poly[x_deg] = sp.simplify(coeff_expr)
+
+    return poly, q, x
+
+
+def parse_string_poly(poly_str, q, x):
+    """Parse polynomial string into sympy expression."""
+    poly_str = poly_str.replace('^', '**')
+    expr = sp.sympify(poly_str, locals={'x': x, 'q': q})
+    return sp.expand(expr)
+
+
+def extract_global_sign_q_power(ratio, q):
+    """Determine whether ratio = ± q**n for some integer n."""
+    ratio = sp.simplify(ratio)
+
+    if ratio == 1:
+        return True, 1, 0
+    if ratio == -1:
+        return True, -1, 0
+
+    try:
+        r_at_1 = sp.simplify(ratio.subs(q, 1))
+    except Exception:
+        return False, None, None
+
+    if not r_at_1.is_number or r_at_1 not in (1, -1):
+        return False, None, None
+
+    sign = int(r_at_1)
+    t = sp.simplify(ratio / sign)
+
+    if t == 1:
+        return True, sign, 0
+    if t == q:
+        return True, sign, 1
+    if isinstance(t, sp.Pow) and t.base == q and t.exp.is_integer:
+        return True, sign, int(t.exp)
+
+    return False, None, None
+
+
+def compare_polynomials(json_poly, expr, q, x):
     """
-    Parse a Laurent polynomial in q from string format into dictionary.
-
-    Args:
-        expr: String like "7 + 28*q - q^2" or "q^(-2) + 22/q"
-
-    Returns:
-        Dictionary mapping q-power to coefficient: {q_power: coefficient}
+    Check whether JSON polynomial P satisfies:
+      P = ± q**n * fk_terms
+    up to the minimum x-degree of the two polynomials.
     """
-    import re
+    max_x_json = max(json_poly.keys()) if json_poly else -sp.oo
+    poly_in_x = sp.Poly(expr, x)
+    max_x_expr = poly_in_x.degree()
 
-    # Handle zero polynomial
-    if expr.strip() == "0":
-        return {}
+    max_compare = min(max_x_json, max_x_expr)
 
-    # Dictionary to store coefficients for each power of q
-    coeffs = defaultdict(float)
+    ratio = None
 
-    # Remove spaces and normalize the expression
-    expr = expr.replace(' ', '')
+    for k in range(0, max_compare + 1):
+        c_json = sp.simplify(json_poly.get(k, 0))
+        c_expr = sp.simplify(expr.coeff(x, k))
 
-    # Define regex patterns for different term types
-    patterns = [
-        # Coefficient * q^power patterns (including negative powers)
-        (r'([+-]?\d*\.?\d*)\*q\^\((-?\d+)\)', lambda m: (float(m.group(1) or '1'), int(m.group(2)))),
-        (r'([+-]?\d*\.?\d*)\*q\^(-?\d+)', lambda m: (float(m.group(1) or '1'), int(m.group(2)))),
-
-        # q^power patterns
-        (r'([+-]?)q\^\((-?\d+)\)', lambda m: (1.0 if m.group(1) != '-' else -1.0, int(m.group(2)))),
-        (r'([+-]?)q\^(-?\d+)', lambda m: (1.0 if m.group(1) != '-' else -1.0, int(m.group(2)))),
-
-        # Coefficient * q patterns
-        (r'([+-]?\d*\.?\d*)\*q(?![0-9^])', lambda m: (float(m.group(1) or '1'), 1)),
-
-        # Just q patterns
-        (r'([+-]?)q(?![0-9^])', lambda m: (1.0 if m.group(1) != '-' else -1.0, 1)),
-
-        # Fraction patterns: coeff/q^power
-        (r'([+-]?\d*\.?\d*)/q\^(-?\d+)', lambda m: (float(m.group(1) or '1'), -int(m.group(2)))),
-
-        # Fraction patterns: coeff/q
-        (r'([+-]?\d*\.?\d*)/q(?![0-9^])', lambda m: (float(m.group(1) or '1'), -1)),
-
-        # Constant terms (no q)
-        (r'([+-]?\d+\.?\d*)(?![*/])', lambda m: (float(m.group(1)), 0)),
-    ]
-
-    # Make a copy of the expression to work with
-    remaining = expr
-
-    # Remove leading '+' if present
-    if remaining.startswith('+'):
-        remaining = remaining[1:]
-
-    # Split into terms while preserving signs
-    terms = re.findall(r'[+-]?[^+-]+', remaining)
-
-    for term in terms:
-        term = term.strip()
-        if not term:
+        if c_json == 0 and c_expr == 0:
             continue
 
-        # Try each pattern
-        matched = False
-        for pattern, extractor in patterns:
-            match = re.fullmatch(pattern, term)
-            if match:
-                try:
-                    coeff, power = extractor(match)
-                    # Handle empty coefficient strings
-                    if isinstance(coeff, str) and coeff in ['', '+', '-']:
-                        coeff = 1.0 if coeff != '-' else -1.0
-                    coeffs[power] += coeff
-                    matched = True
-                    break
-                except (ValueError, IndexError):
-                    continue
+        if c_json == 0 or c_expr == 0:
+            return False, None, None
 
-        if not matched:
-            # Try to handle special cases manually
-            if 'q^(' in term and ')' in term:
-                # Handle q^(-n) format
-                try:
-                    if term.startswith('-'):
-                        sign = -1
-                        term = term[1:]
-                    elif term.startswith('+'):
-                        sign = 1
-                        term = term[1:]
-                    else:
-                        sign = 1
+        r = sp.simplify(c_json / c_expr)
 
-                    if term.startswith('q^(') and term.endswith(')'):
-                        power_str = term[3:-1]
-                        power = int(power_str)
-                        coeffs[power] += sign * 1
-                        matched = True
-                except (ValueError, IndexError):
-                    pass
+        if ratio is None:
+            ratio = r
+        else:
+            if sp.simplify(r - ratio) != 0:
+                return False, None, None
 
-    # Remove zero coefficients and return
-    return {k: v for k, v in coeffs.items() if abs(v) > 1e-10}
+    if ratio is None:
+        # Everything zero → trivial match
+        return True, 1, 0
 
+    ok, sign, n = extract_global_sign_q_power(ratio, q)
+    if not ok:
+        return False, None, None
 
-def parse_fk_from_fibered_table(entry: Dict) -> Dict[Tuple[int, int], float]:
-    """
-    Parse FK polynomial from fibered_table.json entry.
-
-    Args:
-        entry: Dictionary containing 'fk_x_coeffs' field
-
-    Returns:
-        Dictionary mapping (x_degree, q_power) to coefficient
-    """
-    fk_coeffs_str = entry['fk_x_coeffs']
-
-    # Remove curly braces and split by commas
-    coeffs_str = fk_coeffs_str.strip('{}')
-    coeffs_list = [c.strip() for c in coeffs_str.split(',')]
-
-    polynomial = {}
-
-    for x_degree, coeff_expr in enumerate(coeffs_list):
-        if coeff_expr.strip() == '0':
-            continue
-
-        # Parse the Laurent polynomial for this x-degree
-        q_coeffs = parse_laurent_polynomial(coeff_expr)
-
-        for q_power, coeff in q_coeffs.items():
-            polynomial[(x_degree, q_power)] = coeff
-
-    return polynomial
-
-
-def parse_fk_from_result(result_data: Dict) -> Dict[Tuple[int, int], float]:
-    """
-    Parse FK polynomial from results/*.json format.
-
-    Args:
-        result_data: Dictionary containing 'terms' field
-
-    Returns:
-        Dictionary mapping (x_degree, q_power) to coefficient
-    """
-    polynomial = {}
-
-    for term in result_data['terms']:
-        x_degree = term['x'][0]  # x-degree
-
-        for q_term in term['q_terms']:
-            q_power = q_term['q']
-            coeff = q_term['c']
-            polynomial[(x_degree, q_power)] = coeff
-
-    return polynomial
-
-
-def get_min_x_degree(poly1: Dict[Tuple[int, int], float],
-                    poly2: Dict[Tuple[int, int], float]) -> int:
-    """Get the minimum x-degree present in both polynomials."""
-    x_degrees1 = {x for x, q in poly1.keys()}
-    x_degrees2 = {x for x, q in poly2.keys()}
-
-    if not x_degrees1 or not x_degrees2:
-        return 0
-
-    return min(max(x_degrees1), max(x_degrees2))
-
-
-def truncate_to_min_x_degree(polynomial: Dict[Tuple[int, int], float],
-                           min_x_degree: int) -> Dict[Tuple[int, int], float]:
-    """Truncate polynomial to only include terms up to min_x_degree."""
-    return {(x, q): c for (x, q), c in polynomial.items() if x <= min_x_degree}
-
-
-def compare_polynomials(poly1: Dict[Tuple[int, int], float],
-                       poly2: Dict[Tuple[int, int], float]) -> Tuple[bool, str, Optional[int]]:
-    """
-    Compare two FK polynomials up to minimum x-degree.
-
-    Returns:
-        (matches, status_message, sign_factor)
-        - matches: True if polynomials match (possibly with sign flip)
-        - status_message: Description of the comparison result
-        - sign_factor: 1 or -1 if they match with sign flip, None otherwise
-    """
-    # Get minimum x-degree
-    min_x_deg = get_min_x_degree(poly1, poly2)
-
-    # Truncate both polynomials
-    trunc_poly1 = truncate_to_min_x_degree(poly1, min_x_deg)
-    trunc_poly2 = truncate_to_min_x_degree(poly2, min_x_deg)
-
-    # Get all keys from both polynomials
-    all_keys = set(trunc_poly1.keys()) | set(trunc_poly2.keys())
-
-    if not all_keys:
-        return True, "Both polynomials are zero", 1
-
-    # Check for exact match
-    exact_match = True
-    for key in all_keys:
-        coeff1 = trunc_poly1.get(key, 0)
-        coeff2 = trunc_poly2.get(key, 0)
-        if abs(coeff1 - coeff2) > 1e-10:
-            exact_match = False
-            break
-
-    if exact_match:
-        return True, "Exact match", 1
-
-    # Check for match with sign flip
-    sign_match = True
-    for key in all_keys:
-        coeff1 = trunc_poly1.get(key, 0)
-        coeff2 = trunc_poly2.get(key, 0)
-        if abs(coeff1 + coeff2) > 1e-10:
-            sign_match = False
-            break
-
-    if sign_match:
-        return True, "Match with sign flip (-1 factor)", -1
-
-    # Calculate differences for reporting
-    max_diff = 0
-    for key in all_keys:
-        coeff1 = trunc_poly1.get(key, 0)
-        coeff2 = trunc_poly2.get(key, 0)
-        max_diff = max(max_diff, abs(coeff1 - coeff2))
-
-    return False, f"No match (max difference: {max_diff:.6f})", None
+    return True, sign, n
 
 
 def main():
-    """Main comparison function."""
-    print("FK Polynomial Comparison Tool")
-    print("=" * 50)
+    parser = argparse.ArgumentParser(
+        description="Compare all JSON polynomials in data/ to fk_terms in fibered_table.json."
+    )
+    parser.add_argument("--data-dir", default="results",
+                        help="Directory containing <knot>.json files (default: results)")
+    parser.add_argument("--table-path", default="fibered_table.json",
+                        help="Path to fibered_table.json")
+    args = parser.parse_args()
 
-    # Load fibered_table.json
-    print("Loading fibered_table.json...")
-    try:
-        with open('fibered_table.json', 'r') as f:
-            fibered_data = json.load(f)
-    except FileNotFoundError:
-        print("Error: fibered_table.json not found!")
-        return
+    # Load the entire table
+    with open(args.table_path, 'r') as f:
+        table = json.load(f)
 
-    # Get list of result files
-    results_dir = 'results'
-    if not os.path.exists(results_dir):
-        print(f"Error: {results_dir} directory not found!")
-        return
+    results = []  # for summary output
 
-    result_files = [f for f in os.listdir(results_dir) if f.endswith('.json')]
-    print(f"Found {len(result_files)} result files")
+    for entry in table:
+        name = entry["name"]
+        fk_terms = entry["fk_terms"]
 
-    # Create lookup for fibered data by name
-    fibered_lookup = {entry['name']: entry for entry in fibered_data}
-
-    # Track results
-    total_comparisons = 0
-    exact_matches = 0
-    sign_matches = 0
-    mismatches = 0
-    missing_in_fibered = 0
-    missing_in_results = 0
-
-    print("\nComparison Results:")
-    print("-" * 70)
-
-    for result_file in sorted(result_files):
-        knot_name = result_file.replace('.json', '')
-
-        # Load result data
-        try:
-            with open(os.path.join(results_dir, result_file), 'r') as f:
-                result_data = json.load(f)
-        except Exception as e:
-            print(f"❌ {knot_name:<12} Error loading result file: {e}")
+        json_path = os.path.join(args.data_dir, f"{name}.json")
+        if not os.path.exists(json_path):
+            results.append((name, "MISSING_JSON", None, None))
             continue
 
-        # Check if knot exists in fibered data
-        if knot_name not in fibered_lookup:
-            print(f"❓ {knot_name:<12} Not found in fibered_table.json")
-            missing_in_fibered += 1
-            continue
-
-        total_comparisons += 1
-
         try:
-            # Parse polynomials
-            fibered_poly = parse_fk_from_fibered_table(fibered_lookup[knot_name])
-            result_poly = parse_fk_from_result(result_data)
+            json_poly, q, x = load_json_poly(json_path)
+            expr = parse_string_poly(fk_terms, q, x)
+            match, sign, n = compare_polynomials(json_poly, expr, q, x)
 
-            # Compare polynomials
-            matches, status, sign_factor = compare_polynomials(fibered_poly, result_poly)
-
-            if matches:
-                if sign_factor == 1:
-                    print(f"✅ {knot_name:<12} {status}")
-                    exact_matches += 1
-                else:
-                    print(f"🔄 {knot_name:<12} {status}")
-                    sign_matches += 1
+            if match:
+                results.append((name, "MATCH", sign, n))
             else:
-                print(f"❌ {knot_name:<12} {status}")
-                mismatches += 1
-
-                # Print details for specific knots to debug
-                if knot_name in ['10_105', '10_125', '10_141']:
-                    min_x_deg = get_min_x_degree(fibered_poly, result_poly)
-                    trunc_fibered = truncate_to_min_x_degree(fibered_poly, min_x_deg)
-                    trunc_result = truncate_to_min_x_degree(result_poly, min_x_deg)
-
-                    print(f"   Debugging {knot_name} (up to x^{min_x_deg}):")
-
-                    # Show fibered polynomial structure
-                    print(f"   Fibered: {fibered_lookup[knot_name]['fk_x_coeffs']}")
-
-                    all_keys = set(trunc_fibered.keys()) | set(trunc_result.keys())
-                    print(f"   Comparison of terms:")
-                    count = 0
-                    for key in sorted(all_keys):
-                        if count >= 6:  # Limit output
-                            break
-                        coeff_f = trunc_fibered.get(key, 0)
-                        coeff_r = trunc_result.get(key, 0)
-                        if abs(coeff_f - coeff_r) > 1e-10:
-                            print(f"     x^{key[0]}*q^{key[1]}: fibered={coeff_f}, result={coeff_r}")
-                            count += 1
-
+                results.append((name, "NO_MATCH", None, None))
         except Exception as e:
-            print(f"❌ {knot_name:<12} Error during comparison: {e}")
-            mismatches += 1
+            results.append((name, f"ERROR: {e}", None, None))
 
-    # Check for knots in fibered_table but not in results
-    result_names = {f.replace('.json', '') for f in result_files}
-    for entry in fibered_data:
-        if entry['name'] not in result_names:
-            missing_in_results += 1
+    # Print summary
+    print("\n=== SUMMARY OF ALL KNOTS ===")
+    for name, status, sign, n in results:
+        if status == "MATCH":
+            print(f"{name}: MATCH  (P_json = ({sign}) * q^{n} * P_table)")
+        elif status == "NO_MATCH":
+            print(f"{name}: NO MATCH")
+        elif status == "MISSING_JSON":
+            print(f"{name}: JSON FILE NOT FOUND")
+        else:
+            print(f"{name}: {status}")
 
-    # Summary
-    print("\n" + "=" * 70)
-    print("SUMMARY")
-    print("=" * 70)
-    print(f"Total comparisons performed: {total_comparisons}")
-    print(f"✅ Exact matches: {exact_matches}")
-    print(f"🔄 Sign-flipped matches: {sign_matches}")
-    print(f"❌ Mismatches: {mismatches}")
-    print(f"❓ Missing in fibered_table: {missing_in_fibered}")
-    print(f"❓ Missing in results: {missing_in_results}")
-
-    if total_comparisons > 0:
-        success_rate = (exact_matches + sign_matches) / total_comparisons * 100
-        print(f"Overall success rate: {success_rate:.1f}%")
+    print("\nDone.")
 
 
 if __name__ == "__main__":
     main()
+'''
+#!/usr/bin/env python3
+import json
+import argparse
+import os
+import sympy as sp
+
+
+def load_json_poly(json_path):
+    """Load polynomial from the JSON file and return a dict: x_deg -> sympy expr in q."""
+    q, x = sp.symbols('q x')
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+
+    poly = {}
+    for term in data["terms"]:
+        x_deg = term["x"][0]
+        coeff_expr = 0
+        for qt in term["q_terms"]:
+            q_deg = qt["q"]
+            c = qt["c"]
+            coeff_expr += c * q**q_deg
+        poly[x_deg] = sp.simplify(coeff_expr)
+
+    return poly, q, x
+
+
+def load_fk_terms_from_table(table_path, knot_name):
+    """Load fk_terms (string polynomial in x,q) for a given knot name."""
+    with open(table_path, 'r') as f:
+        table = json.load(f)
+
+    for entry in table:
+        if entry.get("name") == knot_name:
+            return entry["fk_terms"]
+
+    raise ValueError(f"Knot name {knot_name!r} not found in {table_path}")
+
+
+def parse_string_poly(poly_str, q, x):
+    """Parse polynomial string into sympy expression."""
+    poly_str = poly_str.replace('^', '**')
+    expr = sp.sympify(poly_str, locals={'x': x, 'q': q})
+    return sp.expand(expr)
+
+
+def extract_global_sign_q_power(ratio, q):
+    """
+    Given a sympy expression `ratio`, try to write it as ± q**n
+    with integer n. If possible, return (True, sign, n); else (False, None, None).
+    """
+    ratio = sp.simplify(ratio)
+
+    # Trivial case
+    if ratio == 1:
+        return True, 1, 0
+    if ratio == -1:
+        return True, -1, 0
+
+    # Evaluate at q = 1 to get numerical ±1 factor
+    try:
+        r_at_1 = sp.simplify(ratio.subs(q, 1))
+    except Exception:
+        return False, None, None
+
+    if not r_at_1.is_number:
+        return False, None, None
+
+    if r_at_1 not in (1, -1):
+        return False, None, None
+
+    sign = int(r_at_1)
+    t = sp.simplify(ratio / sign)  # should be q**n
+
+    if t == 1:
+        return True, sign, 0
+    if t == q:
+        return True, sign, 1
+
+    if isinstance(t, sp.Pow) and t.base == q and t.exp.is_integer:
+        return True, sign, int(t.exp)
+
+    # Not a pure monomial in q
+    return False, None, None
+
+
+def compare_up_to_min_degree(json_poly, expr, q, x):
+    """
+    Compare JSON polynomial and expression up to min(max_x_json, max_x_expr).
+
+    We accept success if there exists a single factor R = ± q**n such that
+    for every k in [0, max_compare]:
+        coeff_json(k) = R * coeff_expr(k)
+
+    Returns:
+        exact_match (bool),
+        sign_match (bool),          # overall factor -1 only
+        sign_q_match (bool),        # overall factor ± q**n
+        sign (int or None),
+        n (int or None),
+        max_compare (int),
+        diffs (list of (k, c_json, c_expr)),
+        max_x_json (int),
+        max_x_expr (int)
+    """
+    max_x_json = max(json_poly.keys()) if json_poly else -sp.oo
+    poly_in_x = sp.Poly(expr, x)
+    max_x_expr = poly_in_x.degree()
+
+    max_compare = min(max_x_json, max_x_expr)
+
+    diffs = []
+    ratio = None  # global ratio c_json / c_expr
+    all_equal = True
+
+    for k in range(0, max_compare + 1):
+        c_json = sp.simplify(json_poly.get(k, 0))
+        c_expr = sp.simplify(expr.coeff(x, k))
+
+        if sp.simplify(c_json - c_expr) != 0:
+            all_equal = False
+            diffs.append((k, c_json, c_expr))
+
+        # Determine global ratio using nonzero coefficients
+        if c_json == 0 and c_expr == 0:
+            # no information from this term
+            continue
+
+        if c_expr == 0 or c_json == 0:
+            # can't have a single global factor if one side is zero and the other is not
+            return False, False, False, None, None, max_compare, diffs, max_x_json, max_x_expr
+
+        r = sp.simplify(c_json / c_expr)
+
+        if ratio is None:
+            ratio = r
+        else:
+            if sp.simplify(r - ratio) != 0:
+                # ratios differ for different k → no single global factor
+                return False, False, False, None, None, max_compare, diffs, max_x_json, max_x_expr
+
+    # If everything was zero up to max_compare, treat as equal with trivial ratio 1
+    if ratio is None:
+        ratio = sp.Integer(1)
+
+    # Check if ratio is ± q**n
+    ok, sign, n = extract_global_sign_q_power(ratio, q)
+    if not ok:
+        # ratio exists but is not ± q**n
+        return all_equal, False, False, None, None, max_compare, diffs, max_x_json, max_x_expr
+
+    # At this point, we know JSON = (± q**n) * fk_terms up to max_compare
+    sign_q_match = True
+    sign_only = (n == 0)  # special case: just ±1
+
+    return all_equal, sign_only, sign_q_match, sign, n, max_compare, diffs, max_x_json, max_x_expr
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Given a knot name (e.g. 10_105), load its JSON polynomial from "
+            "data/<name>.json and its fk_terms from fibered_table.json, and check "
+            "if they match up to the maximum x-degree of the lower-degree polynomial. "
+            "Match is accepted if P_json = ± q**n * P_table for some single integer n."
+        )
+    )
+    parser.add_argument("knot_name", help="Knot name, e.g. '10_105'")
+    parser.add_argument("--data-dir", default="results",
+                        help="Directory containing <knot_name>.json (default: results)")
+    parser.add_argument("--table-path", default="fibered_table.json",
+                        help="Path to fibered_table.json (default: fibered_table.json)")
+    args = parser.parse_args()
+
+    json_path = os.path.join(args.data_dir, f"{args.knot_name}.json")
+    if not os.path.exists(json_path):
+        raise FileNotFoundError(f"JSON polynomial file not found: {json_path}")
+
+    # Load data
+    json_poly, q, x = load_json_poly(json_path)
+    fk_terms_str = load_fk_terms_from_table(args.table_path, args.knot_name)
+    expr = parse_string_poly(fk_terms_str, q, x)
+
+    # Compare
+    (exact_match,
+     sign_only_match,
+     sign_q_match,
+     sign,
+     n,
+     max_compare,
+     diffs,
+     max_x_json,
+     max_x_expr) = compare_up_to_min_degree(json_poly, expr, q, x)
+
+    print(f"Knot: {args.knot_name}")
+    print(f"JSON polynomial degree in x: {max_x_json}")
+    print(f"fk_terms degree in x:        {max_x_expr}")
+    print(f"Comparing up to x-degree:    {max_compare}")
+    print()
+
+    if exact_match:
+        print("✅ Exact match up to that degree.")
+    elif sign_only_match:
+        print(f"✅ Match up to overall sign: JSON = ({sign}) * fk_terms (n = 0).")
+    elif sign_q_match:
+        print(f"✅ Match up to overall factor ± q**n: JSON = ({sign}) * q**{n} * fk_terms.")
+    else:
+        print("❌ No match of the form JSON = ± q**n * fk_terms up to that degree.")
+        if diffs:
+            print("Differences in raw coefficients (without rescaling):")
+            for k, c_json, c_expr in diffs:
+                print(f"  x^{k}:")
+                print(f"    JSON:    {c_json}")
+                print(f"    fk_terms:{c_expr}")
+
+
+if __name__ == "__main__":
+    main()
+'''
