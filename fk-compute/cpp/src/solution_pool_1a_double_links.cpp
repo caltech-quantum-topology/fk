@@ -473,7 +473,7 @@ void pooling(std::vector<std::vector<double>> main_inequalities,
 
   // Assign variables to get list of variable assignments
   auto criteria_copy = valid_criteria.criteria;
-  auto assignments = assignVariables(criteria_copy, valid_criteria.degrees, criteria_copy,
+  auto assignments = assignVariables(criteria_copy, valid_criteria.degrees, main_inequalities,
                                     valid_criteria.first_bounds, valid_criteria.additional_bounds,
                                     supporting_inequalities, valid_criteria.initial_point);
 
