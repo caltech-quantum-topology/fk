@@ -301,11 +301,13 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     int bottom_component = config_.bottom_crossing_components[crossing_index];
     int relation_type = config_.crossing_relation_types[crossing_index];
 
+    /*
     std::cout << "Relation type: " << relation_type << std::endl;
     std::cout << "i: " << param_i << std::endl;
     std::cout << "j: " << param_j << std::endl;
     std::cout << "ip: " << param_ip << std::endl;
     std::cout << "jp: " << param_jp << std::endl;
+    */
 
     /*
     if (relation_type == 1 || relation_type == 2) {
@@ -362,8 +364,8 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
           (param_j - param_ip) * (param_j - param_ip + 1) / 2.0;
     }
   }
-  std::cout << "Initial Coefficient: " << initial_coefficient << std::endl;
   /*
+  std::cout << "Initial Coefficient: " << initial_coefficient << std::endl;
   std::cout << "x_power_accumulator: " << x_power_accumulator_double[0]
             << std::endl;
   std::cout << "q_power_accumulator: " << q_power_accumulator_double
@@ -401,8 +403,10 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   PolynomialType offset(config_.components, 0);
   offset.setCoefficient(q_power_accumulator, x_power_accumulator, 1);
   poly *= offset;
+  /*
   std::cout << "Angle Contribution: ";
   poly.print();
+  */
   // performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator,
   // 1);
 
@@ -539,9 +543,9 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     result *= factor;
   }
   result = result.truncate(max_x_degrees);
+  /*
   std::cout << "Angle crossing contribution: ";
   result.print(100);
-  /*
   PolynomialType x_pow(1,0);
   x_pow.setCoefficient(0, {config_.degree - max_x_degrees[0]}, 1);
   std::cout << "Angle result: ";
@@ -648,9 +652,11 @@ void FKComputation::compute(const FKConfiguration &config,
   if (!valid_criteria.is_valid) {
     throw std::runtime_error("No valid criteria found");
   }
+  // Debug print of valid criteria here
 
   // Assign variables to get list of variable assignments
   std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
+  std::cout<<assignments.size()<<" assignments found"<<std::endl;
 
   // Collect all points from each variable assignment
   std::vector<std::vector<int>> all_points;
@@ -789,7 +795,7 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
           assignment.supporting_inequalities[next_inequality][0]);
       for (size_t i = 0; i < next_frame.point.size(); i++) {
         if (static_cast<int>(i) != next_index) {
-          next_upper =
+          next_upper +=
               static_cast<int>(
                   assignment.supporting_inequalities[next_inequality][1 + i]) *
               next_frame.point[i];
