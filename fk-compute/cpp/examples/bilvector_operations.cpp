@@ -10,7 +10,7 @@ int main() {
   poly.setCoefficient(3, {2, 0}, 7);  // 7*q^3*x1^2*x2^0
   poly.print(); 
 
-  auto qb = QBinomialPositive(5,3);
+  auto qb = QBinomial(5,3);
   auto poly2 = poly * qb;
   poly2.print(50);
   auto poly3 = poly + qb;

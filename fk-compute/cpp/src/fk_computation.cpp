@@ -254,6 +254,19 @@ PolynomialType
 FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   numerical_assignments_ = computeNumericalAssignments(angles);
 
+  /*
+  if (angles != std::vector<int>{0, 0, 0, 0, 0, 0, 1, 0, 0}){
+    return result_;
+  }
+  */
+
+  std::cout << "Angle: ";
+  for (auto it : angles) {
+    std::cout << it << " ";
+  }
+  std::cout << std::endl;
+
+
   // Calculate power accumulators
   double q_power_accumulator_double =
       (config_.writhe - config_.prefactors) / 2.0;
@@ -266,7 +279,10 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     x_power_accumulator_double[config_.closed_strand_components[i]] -= 0.5;
   }
   x_power_accumulator_double[0] -= 0.5;
-
+  /*
+  std::cout << "Closing prefactors: " << q_power_accumulator_double << " "
+            << x_power_accumulator_double[0] << std::endl;
+  */
   // Apply crossing adjustments
   for (int crossing_index = 0; crossing_index < config_.crossings;
        crossing_index++) {
@@ -285,9 +301,16 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     int bottom_component = config_.bottom_crossing_components[crossing_index];
     int relation_type = config_.crossing_relation_types[crossing_index];
 
+    std::cout << "Relation type: " << relation_type << std::endl;
+    std::cout << "i: " << param_i << std::endl;
+    std::cout << "j: " << param_j << std::endl;
+    std::cout << "ip: " << param_ip << std::endl;
+    std::cout << "jp: " << param_jp << std::endl;
+
+    /*
     if (relation_type == 1 || relation_type == 2) {
       q_power_accumulator_double +=
-          (param_j + param_jp) / 2.0 + param_j * param_jp;
+          (param_j + param_jp +  0.5) / 2.0 + param_j * param_jp;
       x_power_accumulator_double[top_component] +=
           ((param_j + param_ip + 1) / 4.0);
       x_power_accumulator_double[bottom_component] +=
@@ -308,7 +331,44 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
         initial_coefficient *= -1;
       }
     }
+    */
+    if (relation_type == 1 || relation_type == 2) {
+      q_power_accumulator_double +=
+          (param_j + param_jp + 0.5) / 2.0 + param_j * param_jp;
+      x_power_accumulator_double[top_component] +=
+          ((param_j + param_ip + 1) / 4.0);
+      x_power_accumulator_double[bottom_component] +=
+          ((3 * param_jp - param_i + 1) / 4.0);
+    } else if (relation_type == 3 || relation_type == 4) {
+      // Canonical contribution from R-matrix
+      q_power_accumulator_double +=
+          -(param_i + param_ip + 0.5) / 2.0 - param_i * param_ip;
+      x_power_accumulator_double[top_component] +=
+          -((3 * param_ip - param_j + 1) / 4.0);
+      x_power_accumulator_double[bottom_component] +=
+          -((param_jp + param_i + 1) / 4.0);
+
+      // Contribution from q binomial reversal
+      q_power_accumulator_double += -param_ip * (param_j - param_ip);
+
+      // Contribution from q-pochhammer x-variable reversal
+      if (((param_j - param_ip) % 2 == 0 && relation_type == 3) ||
+          ((param_j - param_ip) % 2 == 1 && relation_type == 4)) {
+        initial_coefficient *= -1;
+      }
+      x_power_accumulator_double[top_component] += -(param_j - param_ip);
+      q_power_accumulator_double +=
+          -param_i * (param_j - param_ip) -
+          (param_j - param_ip) * (param_j - param_ip + 1) / 2.0;
+    }
   }
+  std::cout << "Initial Coefficient: " << initial_coefficient << std::endl;
+  /*
+  std::cout << "x_power_accumulator: " << x_power_accumulator_double[0]
+            << std::endl;
+  std::cout << "q_power_accumulator: " << q_power_accumulator_double
+            << std::endl;
+  */
 
   // Convert to integer power accumulators
   int q_power_accumulator =
@@ -319,7 +379,8 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
 
   block_sizes[0] = 1;
   for (int n = 0; n < config_.components; n++) {
-    x_power_accumulator[n] = static_cast<int>(std::floor(x_power_accumulator_double[n]));
+    x_power_accumulator[n] =
+        static_cast<int>(std::floor(x_power_accumulator_double[n]));
     max_x_degrees[n] = config_.degree - x_power_accumulator[n];
     if (n != 0) {
       block_sizes[n] = (max_x_degrees[n - 1] + 1) * block_sizes[n - 1];
@@ -329,29 +390,24 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   PolynomialType poly(config_.components, 0, max_x_degrees);
   poly.setCoefficient(0, std::vector<int>(config_.components, 0),
                       initial_coefficient);
+  /*
+  poly.setCoefficient(0, std::vector<int>(config_.components, 0), 1);
+  */
 
   // Perform crossing computations
-
-  std::cout << "Angle: ";
-
-  for (const auto &a : angles) {
-    if (&a != &angles.back())
-      std::cout << a << ", ";
-    else
-      std::cout << a << std::endl;
-  }
   poly *= crossingFactor(max_x_degrees);
 
   // Accumulate result
-  PolynomialType offset(config_.components,0);
+  PolynomialType offset(config_.components, 0);
   offset.setCoefficient(q_power_accumulator, x_power_accumulator, 1);
   poly *= offset;
-  std::cout<<"Angle Contribution: ";
+  std::cout << "Angle Contribution: ";
   poly.print();
-  //performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator, 1);
+  // performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator,
+  // 1);
 
   std::cout << "==========================\n";
-  std::cout << "\n\n\n\n\n";
+  std::cout << "\n\n";
 
   result_ += poly;
   return result_;
@@ -395,103 +451,95 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     const int top_comp = config_.top_crossing_components[crossing_index];
     const int bottom_comp = config_.bottom_crossing_components[crossing_index];
     // Apply binomial and Pochhammer operations based on relation type
+    /*
     std::cout << "Relation type: " << relation_type << std::endl;
     std::cout << "i: " << param_i << std::endl;
     std::cout << "j: " << param_j << std::endl;
     std::cout << "ip: " << param_ip << std::endl;
     std::cout << "jp: " << param_jp << std::endl;
-    PolynomialType factor(config_.components,0);
+    */
+    PolynomialType factor(config_.components, 0);
     switch (relation_type) {
     case 1: {
       // Binomial part
-      const QPolynomialType binomial =
-          (param_i > 0) ? QBinomialPositive(param_i, param_i - param_jp)
-                        : QBinomialNegative(param_i, param_i - param_jp);
+      const QPolynomialType binomial = QBinomial(param_i, param_i - param_jp);
 
       // Pochhammer part
       const PolynomialType poch(
           qpochhammer_xq_q(param_i - param_jp, param_j + 1), config_.components,
           bottom_comp);
-      factor = binomial*poch;
+      factor = binomial * poch;
       break;
     }
     case 2: {
       // Binomial part
-      auto binomial = QBinomialNegative(param_i, param_jp);
+      auto binomial = QBinomial(param_i, param_jp);
 
       // Pochhammer part
+      /*
       const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_j - param_ip, param_ip + 1,
                                    max_x_degrees[bottom_comp]),
           config_.components, bottom_comp);
-      /* 
-      std::cout << "i: " << param_i << std::endl;
-      std::cout << "j: " << param_j << std::endl;
-      std::cout << "ip: " << param_ip << std::endl;
-      std::cout << "jp: " << param_jp << std::endl;
-      std::cout << "Pochhammer: ";
-      poch.print();
-      std::cout << "Binomial: ";
-      binomial.print();
       */
-      factor = binomial*poch;
+      const PolynomialType poch(
+          inverse_qpochhammer_xq_q(param_jp - param_i,
+                                   param_j - param_jp + param_i + 1,
+                                   max_x_degrees[bottom_comp]),
+          config_.components, bottom_comp);
+      factor = binomial * poch;
       break;
     }
     case 3: {
       // Binomial part
-      auto binomial = QBinomialNegative(param_j, param_ip).invertExponents();
+      /*
+      auto binomial = QBinomial(param_j, param_ip).invertExponents();
+      */
+      auto binomial = QBinomial(param_j, param_ip);
 
       // Pochhammer part
+      /*
       const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_ip - param_j,
                                    param_i - param_ip + param_j + 1,
                                    max_x_degrees[top_comp]),
           config_.components, top_comp);
-      /*
-      std::cout << "i: " << param_i << std::endl;
-      std::cout << "j: " << param_j << std::endl;
-      std::cout << "ip: " << param_ip << std::endl;
-      std::cout << "jp: " << param_jp << std::endl;
-      std::cout << "Pochhammer: ";
-      poch.print();
-      std::cout << "Binomial: ";
-      binomial.print();
       */
-      factor = binomial*poch;
+      const PolynomialType poch(
+          inverse_qpochhammer_xq_q(param_ip - param_j,
+                                   param_i - param_ip + param_j + 1,
+                                   max_x_degrees[top_comp]),
+          config_.components, top_comp);
+      factor = binomial * poch;
       break;
     }
     case 4: {
       // Binomial part
+      /*
       const QPolynomialType binomial =
           (param_j > 0)
-              ? QBinomialPositive(param_j, param_j - param_ip).invertExponents()
-              : QBinomialNegative(param_j, param_j - param_ip)
+              ? QBinomial(param_j, param_j - param_ip).invertExponents()
+              : QBinomial(param_j, param_j - param_ip)
                     .invertExponents();
+      */
+      const QPolynomialType binomial = QBinomial(param_j, param_j - param_ip);
 
       // Pochhammer part
       const PolynomialType poch(
           qpochhammer_xq_q(param_j - param_ip, param_i + 1), config_.components,
           top_comp);
-      /*
-      std::cout << "i: " << param_i << std::endl;
-      std::cout << "j: " << param_j << std::endl;
-      std::cout << "ip: " << param_ip << std::endl;
-      std::cout << "jp: " << param_jp << std::endl;
-      std::cout << "Pochhammer: ";
-      poch.print();
-      std::cout << "Binomial: ";
-      binomial.print();
-      */
-      factor = binomial*poch;
+      factor = binomial * poch;
       break;
     }
     }
-    std::cout<<"Crossing Factor: ";
+    /*
+    std::cout << "Crossing Factor: ";
     (factor.truncate(max_x_degrees)).print(100);
+    */
     result *= factor;
   }
   result = result.truncate(max_x_degrees);
-  std::cout << "Angle result: ";
+  std::cout << "Angle crossing contribution: ";
   result.print(100);
   /*
   PolynomialType x_pow(1,0);

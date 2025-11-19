@@ -44,7 +44,7 @@ int main() {
   poly.print();
   
   poly.getQPolynomial({0}).print();
-  poly.getQPolynomial({0}) *= QBinomialPositive(5,3);
+  poly.getQPolynomial({0}) *= QBinomial(5,3);
   poly.getQPolynomial({0}).print();
   poly.print();
 
@@ -55,7 +55,7 @@ int main() {
   poly.print();
   
   poly.getQPolynomial({0}).print();
-  poly.getQPolynomial({0}) *= QBinomialPositive(5,3).invertExponents();
+  poly.getQPolynomial({0}) *= QBinomial(5,3).invertExponents();
   poly.getQPolynomial({0}).print();
   poly.print();
 
@@ -102,7 +102,7 @@ int main() {
   poly.setCoefficient(2,{1},1);
   poly.setCoefficient(-1,{2},2);
   
-  poly.getQPolynomial({0}) *= QBinomialNegative(n,k);
+  poly.getQPolynomial({0}) *= QBinomial(n,k);
   poly.print(50);
 
   poly = MultivariablePolynomial(1,0);
@@ -110,7 +110,7 @@ int main() {
   poly.setCoefficient(2,{1},1);
   poly.setCoefficient(-1,{2},2);
   
-  poly.getQPolynomial({0}) *= QBinomialNegative(n,k).invertExponents();
+  poly.getQPolynomial({0}) *= QBinomial(n,k).invertExponents();
   poly.print();
 
 
@@ -156,7 +156,7 @@ int main() {
   poly.setCoefficient(2,{1},1);
   poly.setCoefficient(-1,{2},2);
   
-  poly.getQPolynomial({0}) *= QBinomialNegative(-5,3);
+  poly.getQPolynomial({0}) *= QBinomial(-5,3);
   poly.print(50);
 
   poly = MultivariablePolynomial(1,0);
@@ -164,7 +164,7 @@ int main() {
   poly.setCoefficient(2,{1},1);
   poly.setCoefficient(-1,{2},2);
   
-  poly.getQPolynomial({0}) *= QBinomialNegative(-5,3).invertExponents();
+  poly.getQPolynomial({0}) *= QBinomial(-5,3).invertExponents();
   poly.print(50);
 
 

@@ -5,7 +5,9 @@
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
+#include <list>
 #include <queue>
 #include <set>
 #include <stack>
@@ -717,11 +719,19 @@ private:
       }
     }
 
-    auto& resultCoeffs = result.getCoefficients();
-    performOffsetAddition(resultCoeffs, polynomialTerms,
-                          xPowerAccumulator, qPowerAccumulator, components,
-                          maxXDegrees, 1, accumulatorBlockSizes, blockSizes);
-    result.syncFromDenseVector(resultCoeffs);
+    auto resultCoeffs = result.getCoefficients();
+    // Convert polynomialTerms to the expected format
+    std::vector<std::pair<std::vector<int>, bilvector<int>>> polynomialTermsConverted;
+    for (size_t i = 0; i < polynomialTerms.size(); ++i) {
+        std::vector<int> xPowers(components, 0);
+        // Convert linear index back to x-powers (simplified - assumes single variable for now)
+        xPowers[0] = static_cast<int>(i);
+        polynomialTermsConverted.push_back({xPowers, polynomialTerms[i]});
+    }
+    performOffsetAddition(resultCoeffs, polynomialTermsConverted,
+                          xPowerAccumulator, qPowerAccumulator, 1, components,
+                          maxXDegrees);
+    result.syncFromSparseVector(resultCoeffs);
   }
   void writeResultsToJson(std::string fileName) {
     result.exportToJson(fileName);
@@ -897,12 +907,12 @@ public:
     // std::cout << accumulatorBlockSizes.size() << " " <<
     // increment_offset.size() << " " << components << " " << maxima.size() <<
     // "\n";
-    auto& resultCoeffs1 = result.getCoefficients();
-    auto& resultCoeffs2 = result.getCoefficients();
+    auto resultCoeffs1 = result.getCoefficients();
+    auto resultCoeffs2 = result.getCoefficients();
     performOffsetAddition(resultCoeffs1, resultCoeffs2,
-                          increment_offset, 0, components, maxima, -1,
-                          accumulatorBlockSizes, accumulatorBlockSizes);
-    result.syncFromDenseVector(resultCoeffs1);
+                          increment_offset, 0, -1, components,
+                          maxima);
+    result.syncFromSparseVector(resultCoeffs1);
     writeResultsToJson(outfile_);
 
     // for (int w = 0; w < degree + 1; w++) {

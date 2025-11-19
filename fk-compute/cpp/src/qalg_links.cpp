@@ -331,6 +331,11 @@ QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
   return result;
 }
 
+QPolynomialType QBinomial(int upperLimit, int lowerLimit) {
+  return (upperLimit > 0) ? QBinomialPositive(upperLimit, lowerLimit)
+                          : QBinomialNegative(upperLimit, lowerLimit);
+}
+
 // Compute (x q; q)_n as a MultivariablePolynomial in one x-variable
 // P(q, x) = ∏_{k=1}^n (1 - x q^{qpow + k})
 // Optimized using direct coefficient computation
