@@ -259,13 +259,13 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   if (angles != std::vector<int>{0, 0, 0, 0, 0, 0, 1, 0, 0}){
     return result_;
   }
-  */
 
   std::cout << "Angle: ";
   for (auto it : angles) {
     std::cout << it << " ";
   }
   std::cout << std::endl;
+  */
 
   // Calculate power accumulators
   // Writhe is the writhe of the link.
@@ -395,6 +395,7 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   PolynomialType offset(config_.components, 0);
   offset.setCoefficient(q_power_accumulator, x_power_accumulator, 1);
   poly *= offset;
+  /*
   std::cout << "Angle contribution: ";
   offset.clear();
   std::vector<int> xPowers(config_.components,0);
@@ -407,6 +408,7 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
 
   std::cout << "==========================\n";
   std::cout << "\n\n";
+  */
 
   result_ += poly;
   return result_;
