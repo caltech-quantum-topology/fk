@@ -139,6 +139,7 @@ FKConfiguration FKInputParser::parseFromFile(const std::string &filename) {
       config.closed_strand_components.push_back(parseInteger(part));
     }
   }
+
   config.prefactors = config.closed_strand_components.size();
 
   // Parse crossing components
@@ -266,10 +267,17 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   }
   std::cout << std::endl;
 
-
   // Calculate power accumulators
+  // Writhe is the writhe of the link.
+  // Prefactors is sum_{closed_strands} sign(strand_closure)*1/2
   double q_power_accumulator_double =
-      (config_.writhe - config_.prefactors) / 2.0;
+      (config_.writhe / 2. - config_.prefactors) / 2.0;
+  /*
+  std::cout << "Writhe: " << config_.writhe << std::endl;
+  std::cout << "Prefactors: " << config_.prefactors << std::endl;
+  std::cout << "Overall: " << q_power_accumulator_double << std::endl;
+  */
+
   std::vector<double> x_power_accumulator_double(config_.components, 0);
   int initial_coefficient = 1;
 
@@ -278,6 +286,7 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     q_power_accumulator_double -= numerical_assignments_[0][i + 1];
     x_power_accumulator_double[config_.closed_strand_components[i]] -= 0.5;
   }
+  // q_power_accumulator_double -= config_.writhe/4.0;
   x_power_accumulator_double[0] -= 0.5;
   /*
   std::cout << "Closing prefactors: " << q_power_accumulator_double << " "
@@ -308,32 +317,8 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     std::cout << "ip: " << param_ip << std::endl;
     std::cout << "jp: " << param_jp << std::endl;
     */
-
-    /*
-    if (relation_type == 1 || relation_type == 2) {
-      q_power_accumulator_double +=
-          (param_j + param_jp +  0.5) / 2.0 + param_j * param_jp;
-      x_power_accumulator_double[top_component] +=
-          ((param_j + param_ip + 1) / 4.0);
-      x_power_accumulator_double[bottom_component] +=
-          ((3 * param_jp - param_i + 1) / 4.0);
-    } else if (relation_type == 3 || relation_type == 4) {
-      q_power_accumulator_double -=
-          (param_i + param_ip + param_jp * (param_jp + 1) -
-           param_i * (param_i + 1)) /
-              2.0 +
-          param_i * param_ip;
-      x_power_accumulator_double[top_component] -=
-          ((3 * param_j - param_ip + 1) / 4.0);
-      x_power_accumulator_double[bottom_component] -=
-          ((param_i + param_jp + 1) / 4.0);
-
-      if ((relation_type == 4 && (param_j - param_ip) % 2 == 0) ||
-          (relation_type == 3 && (param_ip - param_j) % 2 == 1)) {
-        initial_coefficient *= -1;
-      }
-    }
-    */
+    double q_acc_old = q_power_accumulator_double;
+    std::vector<double> x_acc_old = x_power_accumulator_double;
     if (relation_type == 1 || relation_type == 2) {
       q_power_accumulator_double +=
           (param_j + param_jp + 0.5) / 2.0 + param_j * param_jp;
@@ -363,11 +348,18 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
           -param_i * (param_j - param_ip) -
           (param_j - param_ip) * (param_j - param_ip + 1) / 2.0;
     }
+    /*
+    std::cout << "Q power contr" << q_power_accumulator_double - q_acc_old
+              << std::endl;
+    std::cout << "X power contr" << x_power_accumulator_double[0] - x_acc_old[0]
+              << " " << x_power_accumulator_double[1] - x_acc_old[1]
+              << std::endl;
+    */
   }
   /*
   std::cout << "Initial Coefficient: " << initial_coefficient << std::endl;
-  std::cout << "x_power_accumulator: " << x_power_accumulator_double[0]
-            << std::endl;
+  std::cout << "x_power_accumulator: " << x_power_accumulator_double[0] << " "
+            << x_power_accumulator_double[1] << std::endl;
   std::cout << "q_power_accumulator: " << q_power_accumulator_double
             << std::endl;
   */
@@ -403,10 +395,13 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   PolynomialType offset(config_.components, 0);
   offset.setCoefficient(q_power_accumulator, x_power_accumulator, 1);
   poly *= offset;
-  /*
-  std::cout << "Angle Contribution: ";
-  poly.print();
-  */
+  std::cout << "Angle contribution: ";
+  offset.clear();
+  std::vector<int> xPowers(config_.components,0);
+  offset.setCoefficient(0, xPowers, -1);
+  xPowers[0] += 1;
+  offset.setCoefficient(0, xPowers, 1);
+  (offset*poly).print();
   // performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator,
   // 1);
 
@@ -457,6 +452,8 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     // Apply binomial and Pochhammer operations based on relation type
     /*
     std::cout << "Relation type: " << relation_type << std::endl;
+    std::cout << "Top component: " << top_comp << std::endl;
+    std::cout << "Bottom component: " << bottom_comp << std::endl;
     std::cout << "i: " << param_i << std::endl;
     std::cout << "j: " << param_j << std::endl;
     std::cout << "ip: " << param_ip << std::endl;
@@ -636,6 +633,7 @@ void FKComputation::compute(const std::string &input_filename,
 void FKComputation::compute(const FKConfiguration &config,
                             const std::string &output_filename,
                             int num_threads) {
+
   if (!config.isValid()) {
     throw std::runtime_error("Invalid configuration provided");
   }
@@ -645,6 +643,7 @@ void FKComputation::compute(const FKConfiguration &config,
   }
 
   config_ = config;
+  std::cout<<"Computing to degree: "<<config_.degree<<std::endl;
   initializeEngine(num_threads);
 
   // Find valid criteria
@@ -656,7 +655,7 @@ void FKComputation::compute(const FKConfiguration &config,
 
   // Assign variables to get list of variable assignments
   std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
-  std::cout<<assignments.size()<<" assignments found"<<std::endl;
+  std::cout << assignments.size() << " assignments found" << std::endl;
 
   // Collect all points from each variable assignment
   std::vector<std::vector<int>> all_points;
@@ -669,10 +668,20 @@ void FKComputation::compute(const FKConfiguration &config,
   setupWorkStealingComputation(all_points);
 
   // Combine results and perform final computations
-  combineEngineResults();
-  performFinalOffsetComputation();
+  PolynomialType result(config_.components, 0);
+  int num_engines = engines_.size();
+  for (int engine_idx = 0; engine_idx < num_engines; ++engine_idx) {
+    result += engines_[engine_idx]->getResult();
+  }
 
-  writer_.writeToJson(engines_[0]->getResult(), output_filename);
+  PolynomialType offset(config_.components, 0);
+  std::vector<int> xPowers(config_.components, 0);
+  offset.setCoefficient(0, xPowers, -1);
+  xPowers[0] += 1;
+  offset.setCoefficient(0, xPowers, 1);
+  result *= offset;
+  result = result.truncate(config_.degree-1);
+  writer_.writeToJson(result, output_filename);
 }
 
 const PolynomialType &FKComputation::getLastResult() const {
@@ -1161,19 +1170,7 @@ void FKComputation::combineEngineResults() {
             << std::endl;
 
   for (int engine_idx = 1; engine_idx < num_engines; ++engine_idx) {
-    auto engine_coeffs = engines_[engine_idx]->getResult().getCoefficients();
-
-    // Add this engine's results to the first engine's results
-    for (const auto &[x_powers, q_poly] : engine_coeffs) {
-      for (int q_power = q_poly.getMaxNegativeIndex();
-           q_power <= q_poly.getMaxPositiveIndex(); ++q_power) {
-        int coeff = q_poly[q_power];
-        if (coeff != 0) {
-          const_cast<PolynomialType &>(engines_[0]->getResult())
-              .addToCoefficient(q_power, x_powers, coeff);
-        }
-      }
-    }
+    engines_[0]->getResult() += engines_[engine_idx]->getResult();
   }
 }
 

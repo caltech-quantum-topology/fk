@@ -81,6 +81,7 @@ public:
    * Get the current accumulated result
    */
   const PolynomialType &getResult() const { return result_; }
+  PolynomialType &getResult() { return result_; }
 
   /**
    * Reset computation state

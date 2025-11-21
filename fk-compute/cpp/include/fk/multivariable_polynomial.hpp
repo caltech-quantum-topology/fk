@@ -114,6 +114,12 @@ public:
    */
   MultivariablePolynomial truncate(const std::vector<int> & maxXdegrees);
 
+  /**
+   * Truncate multivariable polynomial to the same degree for all x variables
+   * @param maxDegree Maximum degree to keep for all x variables
+   */
+  MultivariablePolynomial truncate(int maxDegree);
+
 
   /**
    * Get read-only access to coefficient map (replaces getCoefficients)

@@ -122,8 +122,17 @@ void MultivariablePolynomial::pruneZeros() {
 int MultivariablePolynomial::getCoefficient(
     int qPower, const std::vector<int> &xPowers) const {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
-    throw std::invalid_argument(
-        "X powers vector size must match number of variables");
+    std::string error_string = "X powers vector size must match number of "
+                               "variables\nX powers vector: ";
+    for (auto xPow : xPowers) {
+      error_string += static_cast<char>(xPow);
+      error_string += " ";
+    }
+    error_string += "\n";
+    error_string += "Expected no. x powers: ";
+    error_string += static_cast<char>(numXVariables);
+    error_string += "\n";
+    throw std::invalid_argument(error_string);
   }
 
   auto it = coeffs_.find(xPowers);
@@ -247,7 +256,7 @@ MultivariablePolynomial::getCoefficientMap() const {
 }
 
 using Term = std::pair<std::vector<int>, bilvector<int>>;
-const std::vector<std::pair<std::vector<int>, bilvector<int>>> 
+const std::vector<std::pair<std::vector<int>, bilvector<int>>>
 MultivariablePolynomial::getCoefficients() const {
   std::vector<std::pair<std::vector<int>, bilvector<int>>> result;
   result.reserve(coeffs_.size());
@@ -258,7 +267,6 @@ MultivariablePolynomial::getCoefficients() const {
   }
   return result;
 }
-
 
 MultivariablePolynomial
 MultivariablePolynomial::invertVariable(const int target_index) {
@@ -276,6 +284,7 @@ MultivariablePolynomial::invertVariable(const int target_index) {
 
 MultivariablePolynomial
 MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) {
+
   MultivariablePolynomial newPoly(this->numXVariables, 0);
   for (const auto &item : this->getCoefficientMap()) {
     const std::vector<int> &xPowers = item.first;
@@ -287,11 +296,29 @@ MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) {
         break;
       }
     }
+
     if (in_range) {
       newPoly.getQPolynomial(xPowers) = qPoly;
     }
   }
+
   return newPoly;
+}
+
+MultivariablePolynomial MultivariablePolynomial::truncate(int maxDegree) {
+  std::cout << "[DEBUG TRUNCATE] Single degree truncate called with maxDegree: "
+            << maxDegree << std::endl;
+  std::cout << "[DEBUG TRUNCATE] numXVariables: " << this->numXVariables
+            << std::endl;
+
+  std::vector<int> maxXdegrees(this->numXVariables, maxDegree);
+  std::cout << "[DEBUG TRUNCATE] Created maxXdegrees vector with "
+            << maxXdegrees.size() << " elements, all set to " << maxDegree
+            << std::endl;
+
+  std::cout << "[DEBUG TRUNCATE] Calling vector-based truncate method"
+            << std::endl;
+  return this->truncate(maxXdegrees);
 }
 
 int MultivariablePolynomial::getNumXVariables() const { return numXVariables; }
@@ -351,7 +378,8 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
       outputFile << "], \"q_terms\": [";
 
       for (size_t i = 0; i < qTerms.size(); i++) {
-        outputFile << "{\"q\": " << qTerms[i].first << ", \"c\": " << qTerms[i].second << "}";
+        outputFile << "{\"q\": " << qTerms[i].first
+                   << ", \"c\": " << qTerms[i].second << "}";
         if (i < qTerms.size() - 1)
           outputFile << ", ";
       }
@@ -425,7 +453,6 @@ void MultivariablePolynomial::print(int maxTerms) const {
   }
   std::cout << std::endl;
 }
-
 
 void MultivariablePolynomial::checkCompatibility(
     const MultivariablePolynomial &other) const {
@@ -738,12 +765,13 @@ MultivariablePolynomial operator*(const bilvector<int> &lhs,
 }
 
 void MultivariablePolynomial::syncFromSparseVector(
-    const std::vector<std::pair<std::vector<int>, bilvector<int>>> &sparseVector) {
+    const std::vector<std::pair<std::vector<int>, bilvector<int>>>
+        &sparseVector) {
   coeffs_.clear();
 
   for (const auto &term : sparseVector) {
     const auto &xPowers = term.first;
-    const auto &bilvec  = term.second;
+    const auto &bilvec = term.second;
 
     bool hasNonZero = false;
     for (int j = bilvec.getMaxNegativeIndex();
@@ -760,9 +788,7 @@ void MultivariablePolynomial::syncFromSparseVector(
   }
 }
 
-
-int 
-MultivariablePolynomial::nTerms() const {
+int MultivariablePolynomial::nTerms() const {
   int n_nonzero_terms(0);
 
   for (const auto &[xPowers, bilvec] : coeffs_) {
@@ -771,4 +797,3 @@ MultivariablePolynomial::nTerms() const {
 
   return n_nonzero_terms;
 }
-
