@@ -439,8 +439,10 @@ def _fk_from_config(
         {
             "braid": [1, -2, 3],
             "degree": 2,
+            "name": "my_knot",
             "preset": "accurate",
             "max_workers": 8,
+            "save_data": true,
             "inversion": {
                 "0": [1, -1, 1],
                 "1": [-1, 1]
@@ -451,6 +453,7 @@ def _fk_from_config(
         {
             "preset": "fast",
             "max_workers": 4,
+            "save_data": true,
             "computations": [
                 {
                     "name": "trefoil",
@@ -472,6 +475,7 @@ def _fk_from_config(
         - All presets disable flip symmetry by default
         - Batch mode provides progress tracking for multiple computations
         - Inversion data: just provide the component->signs dictionary; keys are auto-converted to integers
+        - The 'name' parameter is used for file naming when 'save_data' is true
     """
     config_data = _load_config_file(config_path)
 
@@ -501,13 +505,18 @@ def _fk_from_config(
             "degree": degree,
         }
 
+    # Use 'name' parameter as 'link_name' if provided
+    name = config_data.get("name")
+    if name and "link_name" not in config_data:
+        config_data["link_name"] = name
+
     # Check if using preset in config
     preset = config_data.get("preset")
     if preset:
         filtered_config = {
             k: v
             for k, v in config_data.items()
-            if k not in ["braid", "degree", "preset"]
+            if k not in ["braid", "degree", "preset", "name"]
         }
         preset_config = PRESETS.get(preset, {}).copy()
         preset_config.update(filtered_config)
@@ -516,7 +525,7 @@ def _fk_from_config(
         return _fk_compute(braid, degree, **preset_config)
     else:
         filtered_config = {
-            k: v for k, v in config_data.items() if k not in ["braid", "degree"]
+            k: v for k, v in config_data.items() if k not in ["braid", "degree", "name"]
         }
         verbose = filtered_config.get("verbose", False)
         configure_logging(verbose)
@@ -586,6 +595,11 @@ def _fk_batch_from_config(
                 if k not in ["name", "braid", "degree"]
             }
         )
+
+        # Use computation name as link_name if not explicitly set
+        comp_name_from_config = computation.get("name")
+        if comp_name_from_config and "link_name" not in comp_config:
+            comp_config["link_name"] = comp_name_from_config
 
         # Handle preset if specified
         preset = comp_config.get("preset")

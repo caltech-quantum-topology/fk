@@ -1601,6 +1601,7 @@ def ilp(degree, relations, braid_states, write_to=None, verbose=False):
     inequality_sizes = [multiple.var.size for multiple in multiples]
     segment_sizes = [segment.var.size for segment in assignment.values() if not isinstance(segment, int)]
     for_fill = max(criteria_sizes + inequality_sizes + segment_sizes)
+
     criteria_tableau = []
     for index in range(n_criteria):
         if criteria[index].is_constant():
@@ -1608,6 +1609,7 @@ def ilp(degree, relations, braid_states, write_to=None, verbose=False):
                 raise Exception(f"Impossible Inequality 0 <= {criteria[index].constant()}")
         else:
             criteria_tableau.append(np.concat((criteria[index].var, np.zeros(for_fill - criteria_sizes[index]))))
+
     inequality_tableau = []
     for index in range(n_multiples):
         if multiples[index].is_constant():

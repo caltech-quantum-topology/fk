@@ -61,13 +61,14 @@ EXAMPLES:
   fk preset "[1,-2,3]" 2 --preset accurate
 
   # Config - single computation
-  echo '{"braid": [1,-2,3], "degree": 2, "preset": "fast"}' > single.json
+  echo '{"braid": [1,-2,3], "degree": 2, "name": "my_knot", "preset": "fast", "save_data": true}' > single.json
   fk config single.json
 
   # Config - batch processing
   cat > batch.yaml << 'EOF'
   preset: fast
   max_workers: 4
+  save_data: true
   computations:
     - name: trefoil
       braid: [1, 1, 1]
@@ -158,14 +159,17 @@ SINGLE COMPUTATION:
   {
     "braid": [1, -2, 3],
     "degree": 2,
+    "name": "my_knot",
     "preset": "accurate",
-    "max_workers": 8
+    "max_workers": 8,
+    "save_data": true
   }
 
 BATCH PROCESSING:
   {
     "preset": "fast",
     "max_workers": 4,
+    "save_data": true,
     "computations": [
       {
         "name": "trefoil",
@@ -186,6 +190,7 @@ Batch mode supports:
 • Individual computation overrides
 • Named computations for organized results
 • Progress tracking and error handling
+• File naming based on computation 'name' when 'save_data' is enabled
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="Examples: fk config single.yaml | fk config batch.json"
