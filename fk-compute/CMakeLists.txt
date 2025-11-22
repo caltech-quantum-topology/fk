@@ -31,9 +31,10 @@ target_include_directories(fk_main PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/cpp/include
 )
 
-# ---- Linking (Threads etc.) ----------------------------------------------------
+# ---- Linking (Threads, OpenMP, etc.) -------------------------------------------
 find_package(Threads REQUIRED)
-target_link_libraries(fk_main PRIVATE Threads::Threads)
+find_package(OpenMP REQUIRED)
+target_link_libraries(fk_main PRIVATE Threads::Threads OpenMP::OpenMP_CXX)
 
 # ---- Installation into the Python wheel ---------------------------------------
 include(GNUInstallDirs)
