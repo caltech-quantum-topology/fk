@@ -194,6 +194,7 @@ PRESETS = {
         "max_shifts": None,  # Don't limit shifts
         "verbose": False,
         "save_data": False,
+        "threads": 1,
     },
     "accurate": {
         "max_workers": 4,
@@ -202,6 +203,7 @@ PRESETS = {
         "max_shifts": None,  # No limit on shifts
         "verbose": True,
         "save_data": True,
+        "threads": 1,
     },
     "parallel": {
         "max_workers": 8,  # High parallelism
@@ -210,6 +212,7 @@ PRESETS = {
         "max_shifts": None,
         "verbose": True,
         "save_data": False,
+        "threads": 4,  # Use multiple threads for parallel preset
     },
 }
 
@@ -241,6 +244,7 @@ def fk(
     save_dir: str = "data",
     link_name: Optional[str] = None,
     symbolic: bool = False,
+    threads: int = 1,
 ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
     """
     Unified FK invariant computation with intelligent interface detection.
@@ -272,6 +276,7 @@ def fk(
         save_dir: Directory to store saved data (default: "data")
         link_name: Base name for output files (default: auto-generated)
         symbolic: Generate symbolic polynomial representation using SymPy (default: False)
+        threads: Number of threads for C++ FK computation (default: 1)
 
     Returns:
         Dictionary containing comprehensive computation results:
@@ -346,6 +351,7 @@ def fk(
             "save_data",
             "save_dir",
             "symbolic",
+            "threads",
         ]
         if call_locals[k] != _get_default_value(k)
     ]
@@ -365,6 +371,7 @@ def fk(
             save_dir="data",
             link_name=None,
             symbolic=symbolic,
+            threads=threads,
             ilp=None,
             ilp_file=None,
             inversion=None,
@@ -386,6 +393,7 @@ def fk(
         save_dir,
         link_name,
         symbolic,
+        threads,
         ilp,
         ilp_file,
         inversion,
@@ -404,6 +412,7 @@ def _get_default_value(param_name: str):
         "save_data": False,
         "save_dir": "data",
         "symbolic": False,
+        "threads": 1,
     }
     return defaults.get(param_name)
 
@@ -431,7 +440,11 @@ def _fk_from_config(
             "braid": [1, -2, 3],
             "degree": 2,
             "preset": "accurate",
-            "max_workers": 8
+            "max_workers": 8,
+            "inversion": {
+                "0": [1, -1, 1],
+                "1": [-1, 1]
+            }
         }
 
         Batch processing:
@@ -458,6 +471,7 @@ def _fk_from_config(
         - Individual computations can override global settings
         - All presets disable flip symmetry by default
         - Batch mode provides progress tracking for multiple computations
+        - Inversion data: just provide the component->signs dictionary; keys are auto-converted to integers
     """
     config_data = _load_config_file(config_path)
 
@@ -473,6 +487,19 @@ def _fk_from_config(
     degree = config_data.get("degree")
     if degree is None:
         raise ValueError("'degree' is required in config file")
+
+    # Process inversion data if present - convert to proper internal structure
+    if "inversion" in config_data and config_data["inversion"] is not None:
+        inversion_dict = config_data["inversion"]
+        # Convert string keys to integers and wrap in proper structure
+        inversion_data = {
+            int(k): v for k, v in inversion_dict.items()
+        }
+        config_data["inversion"] = {
+            "inversion_data": inversion_data,
+            "braid": braid,
+            "degree": degree,
+        }
 
     # Check if using preset in config
     preset = config_data.get("preset")
@@ -582,6 +609,19 @@ def _fk_batch_from_config(
 
         configure_logging(verbose)
 
+        # Process inversion data if present - convert to proper internal structure
+        if "inversion" in comp_config and comp_config["inversion"] is not None:
+            inversion_dict = comp_config["inversion"]
+            # Convert string keys to integers and wrap in proper structure
+            inversion_data = {
+                int(k): v for k, v in inversion_dict.items()
+            }
+            comp_config["inversion"] = {
+                "inversion_data": inversion_data,
+                "braid": braid,
+                "degree": degree,
+            }
+
         # Print progress for batch jobs
         if total > 1 and verbose:
             logger.info(f"Computing {comp_name} ({i}/{total})")
@@ -639,6 +679,7 @@ def _fk_with_preset(
         "save_dir",
         "link_name",
         "symbolic",
+        "threads",
     ]
 
     for param in param_names:
@@ -667,6 +708,7 @@ def _fk_compute(
     save_dir: str = "data",
     link_name: Optional[str] = None,
     symbolic: bool = False,
+    threads: int = 1,
     ilp: Optional[str] = None,
     ilp_file: Optional[str] = None,
     inversion: Optional[Dict[str, Any]] = None,
@@ -695,6 +737,7 @@ def _fk_compute(
         save_dir: Directory path for saving intermediate files (default: "data")
         link_name: Base name for saved files, auto-generated if None (default: None)
         symbolic: Add symbolic polynomial representation using SymPy (default: False)
+        threads: Number of threads for C++ FK computation (default: 1)
         ilp: Pre-computed ILP data string to skip ILP calculation (default: None)
         ilp_file: Path to file containing pre-computed ILP data (default: None)
         inversion: Pre-computed inversion data dictionary (default: None)
@@ -790,11 +833,12 @@ def _fk_compute(
 
     # --- Step 3: FK invariant computation ---
     bin_path = _binary_path("fk_main")
+    cmd = [bin_path, f"{link_name}_ilp", f"{link_name}", "--threads", str(threads)]
     if verbose:
-        subprocess.run([bin_path, f"{link_name}_ilp", f"{link_name}"], check=True)
+        subprocess.run(cmd, check=True)
     else:
         subprocess.run(
-            [bin_path, f"{link_name}_ilp", f"{link_name}"],
+            cmd,
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
