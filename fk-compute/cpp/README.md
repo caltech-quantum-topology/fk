@@ -1,4 +1,4 @@
-# fkcompute
+#kcompute
 
 Compute the **FK invariant** for braids using inversion, ILP reduction, and a compiled helper binary.
 
