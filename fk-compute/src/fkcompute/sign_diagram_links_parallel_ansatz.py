@@ -520,7 +520,7 @@ def parallel_try_sign_assignments(
         braid_state, partial_signs, include_flip=include_flip, max_shifts=max_shifts
     ):
         if verbose:
-            print(f"Trying cyclic shift by {meta['shift']} on {"flipped" if meta["flipped"] else "original"}")
+            print(f"Trying cyclic shift by {meta['shift']} on {'flipped' if meta['flipped'] else 'original'}")
             print(variant_braid_state.braid)
             print(variant_partial_signs)
 
