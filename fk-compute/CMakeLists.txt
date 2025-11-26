@@ -33,8 +33,14 @@ target_include_directories(fk_main PRIVATE
 
 # ---- Linking (Threads, OpenMP, etc.) -------------------------------------------
 find_package(Threads REQUIRED)
-find_package(OpenMP REQUIRED)
-target_link_libraries(fk_main PRIVATE Threads::Threads OpenMP::OpenMP_CXX)
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(fk_main PRIVATE Threads::Threads OpenMP::OpenMP_CXX)
+    message(STATUS "OpenMP found - parallel processing enabled")
+else()
+    target_link_libraries(fk_main PRIVATE Threads::Threads)
+    message(WARNING "OpenMP not found - parallel processing disabled")
+endif()
 
 # ---- Installation into the Python wheel ---------------------------------------
 include(GNUInstallDirs)
