@@ -6,9 +6,18 @@ requires = [
 ]
 build-backend = "scikit_build_core.build"
 
+# System requirements (must be installed separately):
+# - FLINT library for arbitrary precision arithmetic
+# - OpenMP for parallel processing
+#
+# Installation:
+#   macOS:   brew install flint libomp
+#   Ubuntu:  sudo apt-get install libflint-dev libgomp1-dev
+#   RHEL:    sudo yum install flint-devel gcc-openmp
+
 [project]
 name = "fkcompute"
-version = "0.2.9"
+version = "0.2.10"
 description = "Compute the FK invariant for braids (inversion + ILP + compiled helper binary)."
 readme = "README.md"
 requires-python = ">=3.9"

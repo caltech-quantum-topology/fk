@@ -1,11 +1,33 @@
 # Makefile for FK Computation Project
+# Detect operating system
+UNAME_S := $(shell uname -s)
+
 # Compiler and flags
-CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -fopenmp -Iinclude $(shell pkg-config --cflags flint)
+ifeq ($(UNAME_S),Darwin)
+    # macOS: Use clang++ with libomp (if available via Homebrew)
+    CXX = clang++
+    # Check if OpenMP is available via Homebrew
+    HOMEBREW_OPENMP := $(shell brew --prefix libomp 2>/dev/null)
+    ifneq ($(HOMEBREW_OPENMP),)
+        OPENMP_FLAGS = -Xpreprocessor -fopenmp -I$(HOMEBREW_OPENMP)/include -D_OPENMP
+        OPENMP_LIBS = -L$(HOMEBREW_OPENMP)/lib -lomp
+    else
+        # No OpenMP available, compile without it
+        OPENMP_FLAGS = -DNO_OPENMP
+        OPENMP_LIBS =
+        $(warning OpenMP not found on macOS. Install with: brew install libomp)
+    endif
+else
+    # Linux and other Unix-like systems: Use g++ with built-in OpenMP
+    CXX = g++
+    OPENMP_FLAGS = -fopenmp -D_OPENMP
+    OPENMP_LIBS = -fopenmp
+endif
+
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 $(OPENMP_FLAGS) -Iinclude $(shell pkg-config --cflags flint)
 DEBUG_FLAGS = -g -DDEBUG
 PROFILE_FLAGS = -g -pg -fno-omit-frame-pointer -O2 -DNDEBUG
 FLINT_LIBS = $(shell pkg-config --libs flint)
-OPENMP_LIBS = -fopenmp
 
 # Directories
 SRC_DIR = src
@@ -350,6 +372,11 @@ help:
 	@echo "  structure    - Show project directory structure"
 	@echo "  install      - Install main executable to /usr/local/bin"
 	@echo "  help         - Show this help message"
+	@echo ""
+	@echo "macOS Users:"
+	@echo "  For OpenMP support on macOS, install libomp via Homebrew:"
+	@echo "    brew install libomp"
+	@echo "  Without OpenMP, the code will compile and run sequentially."
 
 # Phony targets
 .PHONY: all main debug debug-example profile profile-example clean clean-obj run run-example run-test run-arithmetic run-bmpoly-test install format check structure help bilvector_operations
