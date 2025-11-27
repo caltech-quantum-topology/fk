@@ -848,7 +848,11 @@ def _fk_compute(
 
     # --- Step 3: FK invariant computation ---
     bin_path = _binary_path("fk_main")
-    cmd = [bin_path, f"{link_name}_ilp", f"{link_name}", "--threads", str(threads)]
+    if ilp_file is None:
+        ilp_file = f"{link_name}_ilp"
+    else:
+        ilp_file = ilp_file[:ilp_file.index(".")]
+    cmd = [bin_path, ilp_file, f"{link_name}", "--threads", str(threads)]
     if verbose:
         subprocess.run(cmd, check=True)
     else:
@@ -902,7 +906,8 @@ def _fk_compute(
 
     # Get the braid that was actually used (may be modified during inversion computation)
     # If inversion was computed, the braid might have been canonicalized
-    computed_braid = inversion["braid"]
+    # If no inversion was computed (e.g., when ILP file provided), use original braid
+    computed_braid = inversion["braid"] if inversion else braid
 
     # Extract number of components (strands) from the braid
     braid_states = BraidStates(computed_braid)
