@@ -162,7 +162,8 @@ SINGLE COMPUTATION:
     "name": "my_knot",
     "preset": "accurate",
     "max_workers": 8,
-    "save_data": true
+    "save_data": true,
+    "ilp_file": "path/to/precomputed.ilp"
   }
 
 BATCH PROCESSING:

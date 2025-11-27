@@ -443,6 +443,7 @@ def _fk_from_config(
             "preset": "accurate",
             "max_workers": 8,
             "save_data": true,
+            "ilp_file": "path/to/precomputed.ilp",
             "inversion": {
                 "0": [1, -1, 1],
                 "1": [-1, 1]
