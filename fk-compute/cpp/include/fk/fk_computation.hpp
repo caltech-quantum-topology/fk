@@ -7,6 +7,7 @@
 #include <memory>
 #include <queue>
 #include <set>
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -263,6 +264,64 @@ private:
   void pooling(std::vector<std::vector<double>> main_inequalities,
                std::vector<std::vector<double>> supporting_inequalities,
                const std::function<void(const std::vector<int> &)> &function);
+
+  // Helper functions for assignVariables refactoring
+  AssignmentResult createSingleAssignment(const ValidatedCriteria &valid_criteria);
+
+  std::vector<std::array<int, 2>> convertBoundsToVector(const std::list<std::array<int, 2>> &bounds);
+
+  std::stack<VariableAssignmentState> initializeAssignmentStack(const ValidatedCriteria &valid_criteria,
+                                                               const std::vector<std::array<int, 2>> &bounds_vector);
+
+  int calculateMaxValue(const std::vector<std::vector<double>> &criteria,
+                       const std::vector<double> &degrees,
+                       const std::array<int, 2> &bound);
+
+  bool isStateExhausted(const VariableAssignmentState &state);
+
+  void processCurrentVariable(VariableAssignmentState &state,
+                             const std::vector<std::array<int, 2>> &bounds_vector);
+
+  std::vector<double> calculateUpdatedDegrees(const VariableAssignmentState &state,
+                                            const std::vector<std::array<int, 2>> &bounds_vector);
+
+  bool isLastVariable(const VariableAssignmentState &state,
+                     const std::vector<std::array<int, 2>> &bounds_vector);
+
+  AssignmentResult createAssignmentResult(const VariableAssignmentState &state);
+
+  VariableAssignmentState createNextState(const VariableAssignmentState &current_state,
+                                         const std::vector<double> &updated_degrees,
+                                         const std::vector<std::array<int, 2>> &bounds_vector);
+
+  // Helper structures and functions for findValidCriteria refactoring
+  struct CriteriaExplorationState {
+    std::set<std::vector<std::vector<double>>> visited;
+    std::queue<std::vector<std::vector<double>>> queue;
+  };
+
+  ValidatedCriteria buildValidatedCriteriaFromValid(const std::vector<std::vector<double>> &criteria,
+                                                   int variable_count);
+
+  ValidatedCriteria searchForValidCriteria(int variable_count);
+
+  std::vector<std::vector<double>> combineInequalitiesAndCriteria();
+
+  CriteriaExplorationState initializeCriteriaExploration();
+
+  ValidatedCriteria exploreCriteriaCombinations(const std::vector<std::vector<double>> &current_criteria,
+                                               const std::vector<std::vector<double>> &inequalities,
+                                               int variable_count,
+                                               CriteriaExplorationState &state);
+
+  bool isPotentiallyBeneficial(const std::vector<double> &criterion,
+                              const std::vector<double> &inequality,
+                              int variable_count);
+
+  std::vector<std::vector<double>> createCombinedCriteria(const std::vector<std::vector<double>> &base_criteria,
+                                                         const std::vector<double> &inequality,
+                                                         int criterion_index,
+                                                         int variable_count);
 };
 
 } // namespace fk
