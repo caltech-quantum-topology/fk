@@ -17,7 +17,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "fkcompute"
-version = "0.2.10"
+version = "0.2.11"
 description = "Compute the FK invariant for braids (inversion + ILP + compiled helper binary)."
 readme = "README.md"
 requires-python = ">=3.9"
