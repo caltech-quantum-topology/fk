@@ -9,7 +9,7 @@ int parseStringToInteger(std::string inputString) {
     isNegative = true;
     startIndex = 1;
   }
-  for (int i = startIndex; i < inputString.size(); i++) {
+  for (size_t i = startIndex; i < inputString.size(); i++) {
     accumulator +=
         (inputString[i] - '0') * std::pow(10, inputString.size() - i - 1);
   }
@@ -36,7 +36,7 @@ double parseStringToDouble(std::string inputString) {
     accumulator +=
         (inputString[i] - '0') * std::pow(10, decimalPointIndex - i - 1);
   }
-  for (int i = decimalPointIndex + 1; i < inputString.size(); i++) {
+  for (size_t i = decimalPointIndex + 1; i < inputString.size(); i++) {
     accumulator +=
         (inputString[i] - '0') * std::pow(10, -(i - decimalPointIndex));
   }

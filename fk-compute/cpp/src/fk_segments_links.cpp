@@ -504,7 +504,9 @@ private:
   int prefactors;
   int crossings;
   int degree;
+  int points_found = 0;
   void computeNumericalAssignment(const std::vector<int> &angles) {
+    points_found++;
     std::cout<<"Computing for angles: "<<std::endl;
     for (auto angle : angles){   std::cout<<angle<<std::endl;  }
 
@@ -913,6 +915,7 @@ public:
                           increment_offset, 0, -1, components,
                           maxima);
     result.syncFromSparseVector(resultCoeffs1);
+    std::cout<<"Points found: "<<points_found<<std::endl;
     writeResultsToJson(outfile_);
 
     // for (int w = 0; w < degree + 1; w++) {

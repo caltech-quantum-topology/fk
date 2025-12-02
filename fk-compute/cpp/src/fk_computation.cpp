@@ -18,25 +18,6 @@
 #include <omp.h>
 #endif
 
-void printTerms(const std::vector<Term> &terms) {
-  std::cout << "=== Terms (" << terms.size() << ") ===\n";
-
-  for (const auto &[xPowers, bilvec] : terms) {
-    // Print the x-powers
-    std::cout << "x-powers: [";
-    for (size_t i = 0; i < xPowers.size(); ++i) {
-      std::cout << xPowers[i];
-      if (i + 1 < xPowers.size())
-        std::cout << ", ";
-    }
-    std::cout << "]\n";
-
-    // Delegate to bilvector's own print function
-    std::cout << "  q-bilvector: ";
-    bilvec.print();
-    std::cout << "\n";
-  }
-}
 
 namespace fk {
 // FKConfiguration implementation
@@ -317,8 +298,6 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     std::cout << "ip: " << param_ip << std::endl;
     std::cout << "jp: " << param_jp << std::endl;
     */
-    double q_acc_old = q_power_accumulator_double;
-    std::vector<double> x_acc_old = x_power_accumulator_double;
     if (relation_type == 1 || relation_type == 2) {
       q_power_accumulator_double +=
           (param_j + param_jp + 0.5) / 2.0 + param_j * param_jp;
@@ -349,10 +328,10 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
           (param_j - param_ip) * (param_j - param_ip + 1) / 2.0;
     }
     /*
-    std::cout << "Q power contr" << q_power_accumulator_double - q_acc_old
+    std::cout << "Q power contr" << q_power_accumulator_double
               << std::endl;
-    std::cout << "X power contr" << x_power_accumulator_double[0] - x_acc_old[0]
-              << " " << x_power_accumulator_double[1] - x_acc_old[1]
+    std::cout << "X power contr" << x_power_accumulator_double[0]
+              << " " << x_power_accumulator_double[1]
               << std::endl;
     */
   }
@@ -645,7 +624,7 @@ void FKComputation::compute(const FKConfiguration &config,
   }
 
   config_ = config;
-  std::cout<<"Computing to degree: "<<config_.degree<<std::endl;
+  std::cout << "Computing to degree: " << config_.degree << std::endl;
   initializeEngine(num_threads);
 
   // Find valid criteria
@@ -654,91 +633,17 @@ void FKComputation::compute(const FKConfiguration &config,
     throw std::runtime_error("No valid criteria found");
   }
 
-  // DEBUG: Print the inequalities used to find valid criteria
-  std::cout << "\n=== DEBUG: Inequalities being solved ===" << std::endl;
-  std::cout << "Main criteria (" << valid_criteria.criteria.size() << " constraints):" << std::endl;
-  for (size_t i = 0; i < valid_criteria.criteria.size(); ++i) {
-    std::cout << "  Constraint " << i << ": ";
-    for (size_t j = 0; j < valid_criteria.criteria[i].size(); ++j) {
-      std::cout << valid_criteria.criteria[i][j];
-      if (j < valid_criteria.criteria[i].size() - 1) std::cout << ", ";
-    }
-    std::cout << std::endl;
-  }
-
-  std::cout << "Supporting inequalities (" << config_.inequalities.size() << " constraints):" << std::endl;
-  for (size_t i = 0; i < config_.inequalities.size(); ++i) {
-    std::cout << "  Inequality " << i << ": ";
-    for (size_t j = 0; j < config_.inequalities[i].size(); ++j) {
-      std::cout << config_.inequalities[i][j];
-      if (j < config_.inequalities[i].size() - 1) std::cout << ", ";
-    }
-    std::cout << std::endl;
-  }
-
-  std::cout << "Degrees: ";
-  for (size_t i = 0; i < valid_criteria.degrees.size(); ++i) {
-    std::cout << valid_criteria.degrees[i];
-    if (i < valid_criteria.degrees.size() - 1) std::cout << ", ";
-  }
-  std::cout << std::endl;
-  std::cout << "========================================\n" << std::endl;
-
   // Assign variables to get list of variable assignments
   std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
   std::cout << assignments.size() << " assignments found" << std::endl;
-
-  // DEBUG: Print variable assignments
-  std::cout << "\n=== DEBUG: Variable assignments ===" << std::endl;
-  for (size_t i = 0; i < assignments.size(); ++i) {
-    std::cout << "Assignment " << i << " starting point: ";
-    for (size_t j = 0; j < assignments[i].point.size(); ++j) {
-      std::cout << assignments[i].point[j];
-      if (j < assignments[i].point.size() - 1) std::cout << ", ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << "==================================\n" << std::endl;
 
   // Collect all points from each variable assignment
   std::vector<std::vector<int>> all_points;
   for (size_t assign_idx = 0; assign_idx < assignments.size(); ++assign_idx) {
     const AssignmentResult &assignment = assignments[assign_idx];
     auto points = enumeratePoints(assignment);
-
-    // DEBUG: Print points generated from this assignment
-    std::cout << "Assignment " << assign_idx << " generated " << points.size() << " points:" << std::endl;
-    for (size_t p = 0; p < std::min(points.size(), size_t(10)); ++p) {  // Show first 10 points
-      std::cout << "  Point " << p << ": ";
-      for (size_t j = 0; j < points[p].size(); ++j) {
-        std::cout << points[p][j];
-        if (j < points[p].size() - 1) std::cout << ", ";
-      }
-      std::cout << std::endl;
-    }
-    if (points.size() > 10) {
-      std::cout << "  ... and " << (points.size() - 10) << " more points" << std::endl;
-    }
-
     all_points.insert(all_points.end(), points.begin(), points.end());
   }
-
-  // DEBUG: Print final summary of all points/angles
-  std::cout << "\n=== DEBUG: Final points/angles summary ===" << std::endl;
-  std::cout << "Total points to be processed: " << all_points.size() << std::endl;
-  std::cout << "First 10 points to be processed:" << std::endl;
-  for (size_t p = 0; p < std::min(all_points.size(), size_t(10)); ++p) {
-    std::cout << "  Point " << p << ": ";
-    for (size_t j = 0; j < all_points[p].size(); ++j) {
-      std::cout << all_points[p][j];
-      if (j < all_points[p].size() - 1) std::cout << ", ";
-    }
-    std::cout << std::endl;
-  }
-  if (all_points.size() > 10) {
-    std::cout << "  ... and " << (all_points.size() - 10) << " more points" << std::endl;
-  }
-  std::cout << "==========================================\n" << std::endl;
 
   // Execute work stealing computation
   setupWorkStealingComputation(all_points);
@@ -756,7 +661,7 @@ void FKComputation::compute(const FKConfiguration &config,
   xPowers[0] += 1;
   offset.setCoefficient(0, xPowers, 1);
   result *= offset;
-  result = result.truncate(config_.degree-1);
+  result = result.truncate(config_.degree - 1);
   writer_.writeToJson(result, output_filename);
 }
 
@@ -799,23 +704,13 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
 
   std::vector<std::vector<int>> valid_points;
 
-  // DEBUG: Print bounds being used for enumeration
-  std::cout << "    Enumerating with bounds: ";
-  for (const auto &bound : assignment.bounds) {
-    std::cout << "[" << bound[0] << "," << bound[1] << "] ";
-  }
-  std::cout << std::endl;
-
   if (assignment.bounds.empty()) {
     // Base case: check constraints and add point if valid
     if (satisfiesConstraints(assignment.point,
                              assignment.supporting_inequalities) &&
         satisfiesConstraints(assignment.point, assignment.criteria)) {
       valid_points.push_back(assignment.point);
-      std::cout << "    Base case: Point satisfies constraints" << std::endl;
-    } else {
-      std::cout << "    Base case: Point does not satisfy constraints" << std::endl;
-    }
+    } 
     return valid_points;
   }
 
@@ -910,6 +805,7 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
 
 std::vector<FKComputation::AssignmentResult>
 FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
+
   std::vector<AssignmentResult> assignments;
 
   if (valid_criteria.first_bounds.empty()) {
@@ -928,13 +824,15 @@ FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
     }
 
     processCurrentVariable(current_state, bounds_vector);
-    const auto updated_degrees = calculateUpdatedDegrees(current_state, bounds_vector);
+    const auto updated_degrees =
+        calculateUpdatedDegrees(current_state, bounds_vector);
 
     if (isLastVariable(current_state, bounds_vector)) {
       assignments.push_back(createAssignmentResult(current_state));
       current_state.current_value++;
     } else {
-      auto next_state = createNextState(current_state, updated_degrees, bounds_vector);
+      auto next_state =
+          createNextState(current_state, updated_degrees, bounds_vector);
       current_state.current_value++;
       stack.push(next_state);
     }
@@ -953,14 +851,15 @@ FKComputation::createSingleAssignment(const ValidatedCriteria &valid_criteria) {
   return result;
 }
 
-std::vector<std::array<int, 2>>
-FKComputation::convertBoundsToVector(const std::list<std::array<int, 2>> &bounds) {
+std::vector<std::array<int, 2>> FKComputation::convertBoundsToVector(
+    const std::list<std::array<int, 2>> &bounds) {
   return std::vector<std::array<int, 2>>(bounds.begin(), bounds.end());
 }
 
 std::stack<FKComputation::VariableAssignmentState>
-FKComputation::initializeAssignmentStack(const ValidatedCriteria &valid_criteria,
-                                         const std::vector<std::array<int, 2>> &bounds_vector) {
+FKComputation::initializeAssignmentStack(
+    const ValidatedCriteria &valid_criteria,
+    const std::vector<std::array<int, 2>> &bounds_vector) {
   std::stack<VariableAssignmentState> stack;
 
   VariableAssignmentState initial_state;
@@ -968,21 +867,23 @@ FKComputation::initializeAssignmentStack(const ValidatedCriteria &valid_criteria
   initial_state.degrees = valid_criteria.degrees;
   initial_state.criteria = valid_criteria.criteria;
   initial_state.bounds = valid_criteria.additional_bounds;
-  initial_state.supporting_inequalities = config_.inequalities;
+  auto all_original = config_.inequalities;
+  all_original.insert(all_original.end(), config_.criteria.begin(),
+                      config_.criteria.end());
+  initial_state.supporting_inequalities = all_original;
   initial_state.point = valid_criteria.initial_point;
   initial_state.current_var_index = 0;
   initial_state.current_value = 0;
-  initial_state.max_value = calculateMaxValue(valid_criteria.criteria,
-                                             valid_criteria.degrees,
-                                             bounds_vector[0]);
+  initial_state.max_value = calculateMaxValue(
+      valid_criteria.criteria, valid_criteria.degrees, bounds_vector[0]);
 
   stack.push(initial_state);
   return stack;
 }
 
-int FKComputation::calculateMaxValue(const std::vector<std::vector<double>> &criteria,
-                                    const std::vector<double> &degrees,
-                                    const std::array<int, 2> &bound) {
+int FKComputation::calculateMaxValue(
+    const std::vector<std::vector<double>> &criteria,
+    const std::vector<double> &degrees, const std::array<int, 2> &bound) {
   const int var_index = bound[0];
   const int constraint_index = bound[1];
   const double slope = -criteria[constraint_index][var_index];
@@ -993,27 +894,30 @@ bool FKComputation::isStateExhausted(const VariableAssignmentState &state) {
   return state.current_value > state.max_value;
 }
 
-void FKComputation::processCurrentVariable(VariableAssignmentState &state,
-                                          const std::vector<std::array<int, 2>> &bounds_vector) {
+void FKComputation::processCurrentVariable(
+    VariableAssignmentState &state,
+    const std::vector<std::array<int, 2>> &bounds_vector) {
   const int var_index = bounds_vector[state.current_var_index][0];
   state.point[var_index - 1] = state.current_value;
 }
 
-std::vector<double>
-FKComputation::calculateUpdatedDegrees(const VariableAssignmentState &state,
-                                      const std::vector<std::array<int, 2>> &bounds_vector) {
+std::vector<double> FKComputation::calculateUpdatedDegrees(
+    const VariableAssignmentState &state,
+    const std::vector<std::array<int, 2>> &bounds_vector) {
   const int var_index = bounds_vector[state.current_var_index][0];
   const int constraint_index = bounds_vector[state.current_var_index][1];
   const double slope = -state.new_criteria[constraint_index][var_index];
 
   auto updated_degrees = state.degrees;
-  updated_degrees[constraint_index] = state.degrees[constraint_index] - state.current_value * slope;
+  updated_degrees[constraint_index] =
+      state.degrees[constraint_index] - state.current_value * slope;
 
   return updated_degrees;
 }
 
-bool FKComputation::isLastVariable(const VariableAssignmentState &state,
-                                  const std::vector<std::array<int, 2>> &bounds_vector) {
+bool FKComputation::isLastVariable(
+    const VariableAssignmentState &state,
+    const std::vector<std::array<int, 2>> &bounds_vector) {
   return state.current_var_index == bounds_vector.size() - 1;
 }
 
@@ -1027,10 +931,10 @@ FKComputation::createAssignmentResult(const VariableAssignmentState &state) {
   return result;
 }
 
-FKComputation::VariableAssignmentState
-FKComputation::createNextState(const VariableAssignmentState &current_state,
-                              const std::vector<double> &updated_degrees,
-                              const std::vector<std::array<int, 2>> &bounds_vector) {
+FKComputation::VariableAssignmentState FKComputation::createNextState(
+    const VariableAssignmentState &current_state,
+    const std::vector<double> &updated_degrees,
+    const std::vector<std::array<int, 2>> &bounds_vector) {
   VariableAssignmentState next_state;
   next_state.new_criteria = current_state.new_criteria;
   next_state.degrees = updated_degrees;
@@ -1040,9 +944,9 @@ FKComputation::createNextState(const VariableAssignmentState &current_state,
   next_state.point = current_state.point;
   next_state.current_var_index = current_state.current_var_index + 1;
   next_state.current_value = 0;
-  next_state.max_value = calculateMaxValue(next_state.new_criteria,
-                                          updated_degrees,
-                                          bounds_vector[next_state.current_var_index]);
+  next_state.max_value =
+      calculateMaxValue(next_state.new_criteria, updated_degrees,
+                        bounds_vector[next_state.current_var_index]);
 
   return next_state;
 }
@@ -1098,9 +1002,11 @@ std::list<std::array<int, 2>> FKComputation::findAdditionalBounds(
             if (n != index && supporting_inequalities[l][1 + n] > 0 &&
                 !bounded_v[n]) {
               useful = false;
+              break;
             }
           }
           if (useful) {
+            std::cout<<index<<" "<<l<<std::endl;
             bounds.push_back({index, l});
             bounded_v[index] = true;
             bounded_count++;
@@ -1115,7 +1021,6 @@ std::list<std::array<int, 2>> FKComputation::findAdditionalBounds(
     }
     index++;
   }
-
   return bounds;
 }
 
@@ -1131,9 +1036,7 @@ std::vector<double> FKComputation::extractDegrees(
 bool FKComputation::validCriteria(
     const std::vector<std::vector<double>> &criteria,
     const std::vector<std::vector<double>> &supporting_inequalities, int size) {
-
   auto bounded_info = identifyBoundedVariables(criteria, size);
-
   if (bounded_info.bounded_count == 0) {
     return false; // Not valid - no bounded variables
   }
@@ -1146,7 +1049,6 @@ bool FKComputation::validCriteria(
   auto additional_bounds =
       findAdditionalBounds(bounded_info.bounded_v, bounded_info.bounded_count,
                            size, supporting_inequalities);
-
   return (bounded_info.bounded_count ==
           size - 1); // Valid if we now have enough
 }
@@ -1167,9 +1069,8 @@ FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
   return searchForValidCriteria(variable_count);
 }
 
-FKComputation::ValidatedCriteria
-FKComputation::buildValidatedCriteriaFromValid(const std::vector<std::vector<double>> &criteria,
-                                              int variable_count) {
+FKComputation::ValidatedCriteria FKComputation::buildValidatedCriteriaFromValid(
+    const std::vector<std::vector<double>> &criteria, int variable_count) {
   ValidatedCriteria result;
   const auto bounded_info = identifyBoundedVariables(criteria, variable_count);
 
@@ -1179,12 +1080,16 @@ FKComputation::buildValidatedCriteriaFromValid(const std::vector<std::vector<dou
   result.initial_point = std::vector<int>(variable_count - 1, 0);
   result.is_valid = true;
 
+  auto all_original = config_.inequalities;
+  all_original.insert(all_original.end(), config_.criteria.begin(),
+                      config_.criteria.end());
+
   if (bounded_info.bounded_count < variable_count - 1) {
     auto bounded_v_copy = bounded_info.bounded_v;
     auto bounded_count_copy = bounded_info.bounded_count;
-    result.additional_bounds = findAdditionalBounds(
-        bounded_v_copy, bounded_count_copy, variable_count,
-        config_.inequalities);
+    result.additional_bounds =
+        findAdditionalBounds(bounded_v_copy, bounded_count_copy, variable_count,
+                             all_original);//config_.inequalities);
   }
 
   return result;
@@ -1192,6 +1097,7 @@ FKComputation::buildValidatedCriteriaFromValid(const std::vector<std::vector<dou
 
 FKComputation::ValidatedCriteria
 FKComputation::searchForValidCriteria(int variable_count) {
+
   const auto combined_inequalities = combineInequalitiesAndCriteria();
   auto criteria_explorer = initializeCriteriaExploration();
 
@@ -1199,10 +1105,9 @@ FKComputation::searchForValidCriteria(int variable_count) {
     const auto current_criteria = std::move(criteria_explorer.queue.front());
     criteria_explorer.queue.pop();
 
-    const auto valid_result = exploreCriteriaCombinations(current_criteria,
-                                                         combined_inequalities,
-                                                         variable_count,
-                                                         criteria_explorer);
+    const auto valid_result =
+        exploreCriteriaCombinations(current_criteria, combined_inequalities,
+                                    variable_count, criteria_explorer);
     if (valid_result.is_valid) {
       return valid_result;
     }
@@ -1214,7 +1119,8 @@ FKComputation::searchForValidCriteria(int variable_count) {
 std::vector<std::vector<double>>
 FKComputation::combineInequalitiesAndCriteria() {
   std::vector<std::vector<double>> combined = config_.inequalities;
-  combined.insert(combined.end(), config_.criteria.begin(), config_.criteria.end());
+  combined.insert(combined.end(), config_.criteria.begin(),
+                  config_.criteria.end());
   return combined;
 }
 
@@ -1226,29 +1132,31 @@ FKComputation::initializeCriteriaExploration() {
   return state;
 }
 
-FKComputation::ValidatedCriteria
-FKComputation::exploreCriteriaCombinations(const std::vector<std::vector<double>> &current_criteria,
-                                          const std::vector<std::vector<double>> &inequalities,
-                                          int variable_count,
-                                          CriteriaExplorationState &state) {
+FKComputation::ValidatedCriteria FKComputation::exploreCriteriaCombinations(
+    const std::vector<std::vector<double>> &current_criteria,
+    const std::vector<std::vector<double>> &inequalities, int variable_count,
+    CriteriaExplorationState &state) {
   const int criterion_count = config_.criteria.size();
-
-  for (int criterion_index = 0; criterion_index < criterion_count; ++criterion_index) {
+  auto all_original = config_.inequalities;
+  all_original.insert(all_original.end(), config_.criteria.begin(),
+                      config_.criteria.end());
+  for (int criterion_index = 0; criterion_index < criterion_count;
+       ++criterion_index) {
     for (const auto &inequality : inequalities) {
-      if (!isPotentiallyBeneficial(current_criteria[criterion_index], inequality, variable_count)) {
+      if (!isPotentiallyBeneficial(current_criteria[criterion_index],
+                                   inequality, variable_count)) {
         continue;
       }
 
-      const auto new_criteria = createCombinedCriteria(current_criteria, inequality,
-                                                      criterion_index, variable_count);
-
+      const auto new_criteria = createCombinedCriteria(
+          current_criteria, inequality, criterion_index, variable_count);
       if (state.visited.find(new_criteria) != state.visited.end()) {
         continue;
       }
 
       state.visited.insert(new_criteria);
 
-      if (validCriteria(new_criteria, config_.inequalities, variable_count)) {
+      if (validCriteria(new_criteria, all_original, variable_count)) {
         return buildValidatedCriteriaFromValid(new_criteria, variable_count);
       }
 
@@ -1259,9 +1167,9 @@ FKComputation::exploreCriteriaCombinations(const std::vector<std::vector<double>
   return ValidatedCriteria();
 }
 
-bool FKComputation::isPotentiallyBeneficial(const std::vector<double> &criterion,
-                                           const std::vector<double> &inequality,
-                                           int variable_count) {
+bool FKComputation::isPotentiallyBeneficial(
+    const std::vector<double> &criterion, const std::vector<double> &inequality,
+    int variable_count) {
   for (int var_index = 1; var_index < variable_count; ++var_index) {
     if (criterion[var_index] > 0 && inequality[var_index] < 0) {
       return true;
@@ -1270,11 +1178,10 @@ bool FKComputation::isPotentiallyBeneficial(const std::vector<double> &criterion
   return false;
 }
 
-std::vector<std::vector<double>>
-FKComputation::createCombinedCriteria(const std::vector<std::vector<double>> &base_criteria,
-                                     const std::vector<double> &inequality,
-                                     int criterion_index,
-                                     int variable_count) {
+std::vector<std::vector<double>> FKComputation::createCombinedCriteria(
+    const std::vector<std::vector<double>> &base_criteria,
+    const std::vector<double> &inequality, int criterion_index,
+    int variable_count) {
   static const double COMBINATION_FACTOR = 0.5;
 
   auto combined_criteria = base_criteria;

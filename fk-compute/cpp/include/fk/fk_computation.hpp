@@ -173,6 +173,30 @@ public:
    */
   const FKConfiguration &getLastConfiguration() const { return config_; }
 
+  struct BoundedVariables {
+    std::vector<int> bounded_v;
+    int bounded_count;
+    std::list<std::array<int, 2>> first;
+  };
+
+  struct ValidatedCriteria {
+    std::vector<std::vector<double>> criteria;
+    std::vector<double> degrees;
+    std::list<std::array<int, 2>> first_bounds;
+    std::list<std::array<int, 2>> additional_bounds;
+    std::vector<int> initial_point;
+    bool is_valid;
+
+    ValidatedCriteria() : is_valid(false) {}
+  };
+
+  struct AssignmentResult {
+    std::vector<std::vector<double>> criteria;
+    std::list<std::array<int, 2>> bounds;
+    std::vector<std::vector<double>> supporting_inequalities;
+    std::vector<int> point;
+  };
+
 private:
   FKConfiguration config_;
   std::vector<std::unique_ptr<FKComputationEngine>> engines_;
@@ -206,30 +230,6 @@ private:
     size_t current_var_index;
     int current_value;
     int max_value;
-  };
-
-  struct BoundedVariables {
-    std::vector<int> bounded_v;
-    int bounded_count;
-    std::list<std::array<int, 2>> first;
-  };
-
-  struct ValidatedCriteria {
-    std::vector<std::vector<double>> criteria;
-    std::vector<double> degrees;
-    std::list<std::array<int, 2>> first_bounds;
-    std::list<std::array<int, 2>> additional_bounds;
-    std::vector<int> initial_point;
-    bool is_valid;
-
-    ValidatedCriteria() : is_valid(false) {}
-  };
-
-  struct AssignmentResult {
-    std::vector<std::vector<double>> criteria;
-    std::list<std::array<int, 2>> bounds;
-    std::vector<std::vector<double>> supporting_inequalities;
-    std::vector<int> point;
   };
 
   // Private pooling methods

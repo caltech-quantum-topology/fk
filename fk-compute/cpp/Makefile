@@ -9,7 +9,7 @@ ifeq ($(UNAME_S),Darwin)
     # Check if OpenMP is available via Homebrew
     HOMEBREW_OPENMP := $(shell brew --prefix libomp 2>/dev/null)
     ifneq ($(HOMEBREW_OPENMP),)
-        OPENMP_FLAGS = -Xpreprocessor -fopenmp -I$(HOMEBREW_OPENMP)/include -D_OPENMP
+        OPENMP_FLAGS = -Xpreprocessor -fopenmp -I$(HOMEBREW_OPENMP)/include
         OPENMP_LIBS = -L$(HOMEBREW_OPENMP)/lib -lomp
     else
         # No OpenMP available, compile without it
@@ -20,7 +20,7 @@ ifeq ($(UNAME_S),Darwin)
 else
     # Linux and other Unix-like systems: Use g++ with built-in OpenMP
     CXX = g++
-    OPENMP_FLAGS = -fopenmp -D_OPENMP
+    OPENMP_FLAGS = -fopenmp
     OPENMP_LIBS = -fopenmp
 endif
 
