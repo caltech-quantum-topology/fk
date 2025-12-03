@@ -24,10 +24,10 @@ else
     OPENMP_LIBS = -fopenmp
 endif
 
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 $(OPENMP_FLAGS) -Iinclude $(shell pkg-config --cflags flint)
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 $(OPENMP_FLAGS) -Iinclude $(shell pkg-config --cflags flint 2>/dev/null)
 DEBUG_FLAGS = -g -DDEBUG
 PROFILE_FLAGS = -g -pg -fno-omit-frame-pointer -O2 -DNDEBUG
-FLINT_LIBS = $(shell pkg-config --libs flint)
+FLINT_LIBS = $(shell pkg-config --libs flint 2>/dev/null || echo "-lflint")
 
 # Directories
 SRC_DIR = src
