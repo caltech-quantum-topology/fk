@@ -9,6 +9,9 @@
 #include <tuple>
 
 // VectorHash implementation
+// This function is called O(m*n) times during polynomial multiplication,
+// so performance is critical. Uses a boost-style hash that provides good
+// distribution for this use case.
 std::size_t VectorHash::operator()(const std::vector<int> &v) const {
   std::size_t seed = v.size();
   for (auto &i : v) {
@@ -306,18 +309,7 @@ MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) {
 }
 
 MultivariablePolynomial MultivariablePolynomial::truncate(int maxDegree) {
-  std::cout << "[DEBUG TRUNCATE] Single degree truncate called with maxDegree: "
-            << maxDegree << std::endl;
-  std::cout << "[DEBUG TRUNCATE] numXVariables: " << this->numXVariables
-            << std::endl;
-
   std::vector<int> maxXdegrees(this->numXVariables, maxDegree);
-  std::cout << "[DEBUG TRUNCATE] Created maxXdegrees vector with "
-            << maxXdegrees.size() << " elements, all set to " << maxDegree
-            << std::endl;
-
-  std::cout << "[DEBUG TRUNCATE] Calling vector-based truncate method"
-            << std::endl;
   return this->truncate(maxXdegrees);
 }
 
@@ -503,12 +495,14 @@ MultivariablePolynomial::operator*=(const MultivariablePolynomial &other) {
   // Create a new coefficient map for the result
   std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> result;
 
+  // Reusable vector for product x-powers (avoids allocation in inner loop)
+  std::vector<int> productXPowers(numXVariables);
+
   // Multiply each term in this polynomial with each term in other polynomial
   for (const auto &[thisXPowers, thisBilvec] : coeffs_) {
     for (const auto &[otherXPowers, otherBilvec] : other.coeffs_) {
 
       // Calculate product x-powers
-      std::vector<int> productXPowers(numXVariables);
       for (int i = 0; i < numXVariables; i++) {
         productXPowers[i] = thisXPowers[i] + otherXPowers[i];
       }

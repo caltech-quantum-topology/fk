@@ -343,26 +343,28 @@ PolynomialType qpochhammer_xq_q(int n, int qpow) {
   const int numXVars = 1;
   const int maxXDegree = n;
 
-  // Coefficients map: coeffs[x_degree][q_power] = coefficient
-  std::map<int, std::map<int, int>> coeffs;
-  coeffs[0][0] = 1; // Initialize with 1
+  // Flattened coefficients map: coeffs[(x_degree, q_power)] = coefficient
+  // Using pair keys instead of nested maps reduces allocations and improves cache locality
+  std::map<std::pair<int, int>, int> coeffs;
+  coeffs[{0, 0}] = 1; // Initialize with 1
 
   // For each factor (1 - x q^{qpow + k})
   for (int k = 0; k < n; ++k) {
     const int q_factor = qpow + k;
-    std::map<int, std::map<int, int>> new_coeffs;
+    std::map<std::pair<int, int>, int> new_coeffs;
 
     // Multiply current polynomial by (1 - x q^q_factor)
-    for (const auto &[x_deg, q_map] : coeffs) {
-      for (const auto &[q_pow, coeff] : q_map) {
-        if (coeff != 0) {
-          // "1" term
-          new_coeffs[x_deg][q_pow] += coeff;
+    for (const auto &[key, coeff] : coeffs) {
+      const int x_deg = key.first;
+      const int q_pow = key.second;
 
-          // "-x q^q_factor" term
-          if (x_deg + 1 <= maxXDegree) {
-            new_coeffs[x_deg + 1][q_pow + q_factor] -= coeff;
-          }
+      if (coeff != 0) {
+        // "1" term: contribute to same x_deg, q_pow
+        new_coeffs[{x_deg, q_pow}] += coeff;
+
+        // "-x q^q_factor" term: increment x_deg and add q_factor to q_pow
+        if (x_deg + 1 <= maxXDegree) {
+          new_coeffs[{x_deg + 1, q_pow + q_factor}] -= coeff;
         }
       }
     }
@@ -371,13 +373,12 @@ PolynomialType qpochhammer_xq_q(int n, int qpow) {
 
   // Build result polynomial
   PolynomialType result(numXVars, maxXDegree);
-  for (const auto &[x_deg, q_map] : coeffs) {
-    if (x_deg <= maxXDegree) {
-      for (const auto &[q_pow, coeff] : q_map) {
-        if (coeff != 0) {
-          result.addToCoefficient(q_pow, {x_deg}, coeff);
-        }
-      }
+  for (const auto &[key, coeff] : coeffs) {
+    const int x_deg = key.first;
+    const int q_pow = key.second;
+
+    if (x_deg <= maxXDegree && coeff != 0) {
+      result.addToCoefficient(q_pow, {x_deg}, coeff);
     }
   }
 
@@ -392,25 +393,27 @@ PolynomialType qpochhammer_xq_q(int n, int qpow) {
 PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
   const int numXVars = 1;
 
-  // Coefficients map: coeffs[x_degree][q_power] = coefficient
-  std::map<int, std::map<int, int>> coeffs;
-  coeffs[0][0] = 1; // Initialize with 1
+  // Flattened coefficients map: coeffs[(x_degree, q_power)] = coefficient
+  // Using pair keys instead of nested maps reduces allocations and improves cache locality
+  std::map<std::pair<int, int>, int> coeffs;
+  coeffs[{0, 0}] = 1; // Initialize with 1
 
   // For each factor (geometric series)
   for (int l = 0; l < n; ++l) {
     const int q_base = l + qpow;
-    std::map<int, std::map<int, int>> new_coeffs;
+    std::map<std::pair<int, int>, int> new_coeffs;
 
     // Multiply current polynomial by the l-th geometric series
-    for (const auto &[x_deg, q_map] : coeffs) {
-      for (const auto &[q_pow, coeff] : q_map) {
-        if (coeff != 0) {
-          // Add terms from geometric series: 1 + x*q^q_base + x^2*q^(2*q_base) + ...
-          for (int m = 0; x_deg + m <= xMax; ++m) {
-            const int new_x_deg = x_deg + m;
-            const int new_q_pow = q_pow + m * q_base;
-            new_coeffs[new_x_deg][new_q_pow] += coeff;
-          }
+    for (const auto &[key, coeff] : coeffs) {
+      const int x_deg = key.first;
+      const int q_pow = key.second;
+
+      if (coeff != 0) {
+        // Add terms from geometric series: 1 + x*q^q_base + x^2*q^(2*q_base) + ...
+        for (int m = 0; x_deg + m <= xMax; ++m) {
+          const int new_x_deg = x_deg + m;
+          const int new_q_pow = q_pow + m * q_base;
+          new_coeffs[{new_x_deg, new_q_pow}] += coeff;
         }
       }
     }
@@ -419,13 +422,12 @@ PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
 
   // Build result polynomial
   PolynomialType result(numXVars, 0);
-  for (const auto &[x_deg, q_map] : coeffs) {
-    if (x_deg <= xMax) {
-      for (const auto &[q_pow, coeff] : q_map) {
-        if (coeff != 0) {
-          result.addToCoefficient(q_pow, {x_deg}, coeff);
-        }
-      }
+  for (const auto &[key, coeff] : coeffs) {
+    const int x_deg = key.first;
+    const int q_pow = key.second;
+
+    if (x_deg <= xMax && coeff != 0) {
+      result.addToCoefficient(q_pow, {x_deg}, coeff);
     }
   }
   return result;

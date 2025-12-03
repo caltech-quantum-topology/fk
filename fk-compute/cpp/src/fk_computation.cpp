@@ -13,11 +13,36 @@
 #include <stack>
 #include <stdexcept>
 #include <vector>
+#include <chrono>
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
+// Timing utility
+class Timer {
+  std::chrono::high_resolution_clock::time_point start_;
+  std::string name_;
+public:
+  Timer(const std::string& name) : start_(std::chrono::high_resolution_clock::now()), name_(name) {}
+  ~Timer() {
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start_).count();
+    std::cout << "[TIMING] " << name_ << ": " << duration << " ms" << std::endl;
+  }
+};
+
+// Performance counters
+struct PerfCounters {
+  long long crossing_factor_us = 0;
+  long long poly_multiply_us = 0;
+  long long poly_truncate_us = 0;
+  long long total_compute_us = 0;
+  int num_points = 0;
+};
+
+// Global performance counters (one per potential thread)
+std::vector<PerfCounters> thread_perf_counters(64);  // Max 64 threads
 
 namespace fk {
 // FKConfiguration implementation
@@ -234,6 +259,15 @@ void FKComputationEngine::initializeAccumulatorBlockSizes() {
 
 PolynomialType
 FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
+  int thread_id = 0;
+  #ifdef _OPENMP
+  thread_id = omp_get_thread_num();
+  #endif
+  auto& perf = thread_perf_counters[thread_id];
+
+  auto start_compute = std::chrono::high_resolution_clock::now();
+  perf.num_points++;
+
   numerical_assignments_ = computeNumericalAssignments(angles);
 
   /*
@@ -368,12 +402,24 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   */
 
   // Perform crossing computations
-  poly *= crossingFactor(max_x_degrees);
+  auto start_cf = std::chrono::high_resolution_clock::now();
+  auto cf = crossingFactor(max_x_degrees);
+  auto end_cf = std::chrono::high_resolution_clock::now();
+  perf.crossing_factor_us += std::chrono::duration_cast<std::chrono::microseconds>(end_cf - start_cf).count();
+
+  auto start_mult = std::chrono::high_resolution_clock::now();
+  poly *= std::move(cf);
+  auto end_mult = std::chrono::high_resolution_clock::now();
+  perf.poly_multiply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_mult - start_mult).count();
 
   // Accumulate result
   PolynomialType offset(config_.components, 0);
   offset.setCoefficient(q_power_accumulator, x_power_accumulator, 1);
-  poly *= offset;
+
+  auto start_mult2 = std::chrono::high_resolution_clock::now();
+  poly *= std::move(offset);
+  auto end_mult2 = std::chrono::high_resolution_clock::now();
+  perf.poly_multiply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_mult2 - start_mult2).count();
   /*
   std::cout << "Angle contribution: ";
   offset.clear();
@@ -390,6 +436,10 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   */
 
   result_ += poly;
+
+  auto end_compute = std::chrono::high_resolution_clock::now();
+  perf.total_compute_us += std::chrono::duration_cast<std::chrono::microseconds>(end_compute - start_compute).count();
+
   return result_;
 }
 
@@ -537,7 +587,7 @@ void FKComputationEngine::performOffsetAdditionPoly(
     int q_offset, int sign_multiplier) {
 
   // Iterate through all coefficients in the source polynomial
-  const auto coeffs = source_poly.getCoefficients();
+  const auto& coeffs = source_poly.getCoefficientMap();
 
   for (const auto &[x_powers, q_poly] : coeffs) {
     // Calculate the offset x-powers
@@ -628,40 +678,61 @@ void FKComputation::compute(const FKConfiguration &config,
   initializeEngine(num_threads);
 
   // Find valid criteria
-  ValidatedCriteria valid_criteria = findValidCriteria();
+  ValidatedCriteria valid_criteria;
+  {
+    Timer t("Find valid criteria");
+    valid_criteria = findValidCriteria();
+  }
   if (!valid_criteria.is_valid) {
     throw std::runtime_error("No valid criteria found");
   }
 
   // Assign variables to get list of variable assignments
-  std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
+  std::vector<AssignmentResult> assignments;
+  {
+    Timer t("Assign variables");
+    assignments = assignVariables(valid_criteria);
+  }
   std::cout << assignments.size() << " assignments found" << std::endl;
 
   // Collect all points from each variable assignment
   std::vector<std::vector<int>> all_points;
-  for (size_t assign_idx = 0; assign_idx < assignments.size(); ++assign_idx) {
-    const AssignmentResult &assignment = assignments[assign_idx];
-    auto points = enumeratePoints(assignment);
-    all_points.insert(all_points.end(), points.begin(), points.end());
+  {
+    Timer t("Enumerate points");
+    for (size_t assign_idx = 0; assign_idx < assignments.size(); ++assign_idx) {
+      const AssignmentResult &assignment = assignments[assign_idx];
+      auto points = enumeratePoints(assignment);
+      all_points.insert(all_points.end(), points.begin(), points.end());
+    }
   }
 
   // Execute work stealing computation
-  setupWorkStealingComputation(all_points);
+  {
+    Timer t("Work stealing computation");
+    setupWorkStealingComputation(all_points);
+  }
 
   // Combine results and perform final computations
   PolynomialType result(config_.components, 0);
-  int num_engines = engines_.size();
-  for (int engine_idx = 0; engine_idx < num_engines; ++engine_idx) {
-    result += engines_[engine_idx]->getResult();
+  {
+    Timer t("Combine results");
+    int num_engines = engines_.size();
+    for (int engine_idx = 0; engine_idx < num_engines; ++engine_idx) {
+      result += engines_[engine_idx]->getResult();
+    }
   }
 
-  PolynomialType offset(config_.components, 0);
-  std::vector<int> xPowers(config_.components, 0);
-  offset.setCoefficient(0, xPowers, -1);
-  xPowers[0] += 1;
-  offset.setCoefficient(0, xPowers, 1);
-  result *= offset;
-  result = result.truncate(config_.degree - 1);
+  {
+    Timer t("Final polynomial operations");
+    PolynomialType offset(config_.components, 0);
+    std::vector<int> xPowers(config_.components, 0);
+    offset.setCoefficient(0, xPowers, -1);
+    xPowers[0] += 1;
+    offset.setCoefficient(0, xPowers, 1);
+    result *= offset;
+    result = result.truncate(config_.degree - 1);
+  }
+
   writer_.writeToJson(result, output_filename);
 }
 
@@ -1006,7 +1077,6 @@ std::list<std::array<int, 2>> FKComputation::findAdditionalBounds(
             }
           }
           if (useful) {
-            std::cout<<index<<" "<<l<<std::endl;
             bounds.push_back({index, l});
             bounded_v[index] = true;
             bounded_count++;
@@ -1231,6 +1301,25 @@ void FKComputation::setupWorkStealingComputation(
   }
 
   std::cout << "All points processed!" << std::endl;
+
+  // Aggregate performance counters from all threads
+  PerfCounters total;
+  for (const auto& perf : thread_perf_counters) {
+    total.crossing_factor_us += perf.crossing_factor_us;
+    total.poly_multiply_us += perf.poly_multiply_us;
+    total.poly_truncate_us += perf.poly_truncate_us;
+    total.total_compute_us += perf.total_compute_us;
+    total.num_points += perf.num_points;
+  }
+
+  std::cout << "\n[PERF] Performance breakdown:" << std::endl;
+  std::cout << "[PERF]   Total points processed: " << total.num_points << std::endl;
+  std::cout << "[PERF]   Crossing factor time: " << (total.crossing_factor_us / 1000.0) << " ms ("
+            << (total.crossing_factor_us * 100.0 / total.total_compute_us) << "%)" << std::endl;
+  std::cout << "[PERF]   Polynomial multiply time: " << (total.poly_multiply_us / 1000.0) << " ms ("
+            << (total.poly_multiply_us * 100.0 / total.total_compute_us) << "%)" << std::endl;
+  std::cout << "[PERF]   Total computation time: " << (total.total_compute_us / 1000.0) << " ms" << std::endl;
+  std::cout << "[PERF]   Avg per point: " << (total.total_compute_us / (double)total.num_points / 1000.0) << " ms" << std::endl;
 }
 
 void FKComputation::combineEngineResults() {
