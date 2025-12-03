@@ -4,6 +4,20 @@ project(fkcompute_cpp LANGUAGES CXX)
 # ---- scikit-build-core gives this so we know where to install in the wheel ----
 message(STATUS "Wheel platlib dir: ${SKBUILD_PLATLIB_DIR}")
 
+# ---- Clean previous builds using Makefile ----
+# Run make clean in the cpp directory to ensure clean build
+execute_process(
+    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_SOURCE_DIR}/cpp make clean
+    RESULT_VARIABLE CLEAN_RESULT
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if(CLEAN_RESULT EQUAL 0)
+    message(STATUS "Successfully ran make clean")
+else()
+    message(WARNING "make clean failed or not available")
+endif()
+
 # ---- Collect sources -----------------------------------------------------------
 # Define specific source files for fk_main (following Makefile pattern)
 set(FK_MAIN_SOURCES
