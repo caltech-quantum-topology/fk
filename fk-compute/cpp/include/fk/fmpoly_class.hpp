@@ -146,6 +146,11 @@ public:
   FMPoly truncate(const std::vector<int> &maxXdegrees) const;
 
   /**
+   * Truncate polynomial to same degree for all x variables
+   */
+  FMPoly truncate(int maxDegree) const;
+
+  /**
    * Get number of x variables
    */
   int getNumXVariables() const;
@@ -190,6 +195,12 @@ public:
   std::vector<Term> getCoefficients() const;
 
   /**
+   * Sync polynomial from sparse vector representation
+   * Replaces current polynomial with terms from the sparse vector
+   */
+  void syncFromSparseVector(const std::vector<Term> &sparseVector);
+
+  /**
    * Evaluate polynomial at a given point, returning coefficients for q
    * @param point Vector of values for x₁, x₂, ..., xₙ
    * @return Vector representing coefficients of the resulting polynomial in q
@@ -209,11 +220,29 @@ public:
   FMPoly &operator*=(const FMPoly &other);
 
   /**
+   * Arithmetic operators with QPolynomial
+   * These operate on the q-polynomial at x^0 (for +/-) or multiply all terms (for *)
+   */
+  FMPoly &operator+=(const QPolynomial &qPoly);
+  FMPoly &operator-=(const QPolynomial &qPoly);
+  FMPoly &operator*=(const QPolynomial &qPoly);
+
+  /**
    * Friend functions for binary operations
    */
   friend FMPoly operator+(const FMPoly &lhs, const FMPoly &rhs);
   friend FMPoly operator-(const FMPoly &lhs, const FMPoly &rhs);
   friend FMPoly operator*(const FMPoly &lhs, const FMPoly &rhs);
+
+  /**
+   * Friend functions for binary operations with QPolynomial
+   */
+  friend FMPoly operator+(const FMPoly &lhs, const QPolynomial &rhs);
+  friend FMPoly operator+(const QPolynomial &lhs, const FMPoly &rhs);
+  friend FMPoly operator-(const FMPoly &lhs, const QPolynomial &rhs);
+  friend FMPoly operator-(const QPolynomial &lhs, const FMPoly &rhs);
+  friend FMPoly operator*(const FMPoly &lhs, const QPolynomial &rhs);
+  friend FMPoly operator*(const QPolynomial &lhs, const FMPoly &rhs);
 
   /**
    * Get access to the underlying FLINT polynomial (for advanced operations)

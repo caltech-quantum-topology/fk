@@ -19,6 +19,12 @@ private:
   std::vector<std::vector<T>> positiveVectors = {};
 
 public:
+  /**
+   * Default constructor - creates a minimal bilvector
+   * Compatible with QPolynomial's default constructor
+   */
+  bilvector() : bilvector(0, 1, 1, T{}) {}
+
   bilvector(int initialNegativeVectorCount, int initialPositiveVectorCount,
             int componentSizeParam, T defaultValueParam) {
     componentSize = componentSizeParam;
@@ -141,6 +147,48 @@ public:
       }
       int vectorIndex = accessIndex / componentSize;
       return negativeVectors[vectorIndex][accessIndex - vectorIndex * componentSize];
+    }
+  }
+
+  /**
+   * QPolynomial-compatible interface methods
+   * These methods provide the same interface as QPolynomial for generic programming
+   */
+
+  /**
+   * Get coefficient at a specific power (const)
+   * Compatible with QPolynomial::getCoefficient()
+   */
+  T getCoefficient(int power) const {
+    return (*this)[power];
+  }
+
+  /**
+   * Set coefficient at a specific power
+   * Compatible with QPolynomial::setCoefficient()
+   */
+  void setCoefficient(int power, T value) {
+    (*this)[power] = value;
+  }
+
+  /**
+   * Add to coefficient at a specific power
+   * Compatible with QPolynomial::addToCoefficient()
+   */
+  void addToCoefficient(int power, T value) {
+    (*this)[power] += value;
+  }
+
+  /**
+   * Clear all coefficients (set to default value)
+   * Compatible with QPolynomial::clear()
+   */
+  void clear() {
+    for (auto& vec : negativeVectors) {
+      std::fill(vec.begin(), vec.end(), defaultValue);
+    }
+    for (auto& vec : positiveVectors) {
+      std::fill(vec.begin(), vec.end(), defaultValue);
     }
   }
 };

@@ -1,6 +1,7 @@
 #include "fk/qalg_links.hpp"
 #include "fk/linalg.hpp"
 #include <map>
+#include <stdexcept>
 
 void computePositiveQBinomialHelper(std::vector<int> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift) {
@@ -30,51 +31,34 @@ void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
     computePositiveQBinomialHelper(binomialCoefficients, upperLimit - 1,
                                    lowerLimit - 1, 0);
   }
+  // Copy the polynomial term to a temporary
+  QPolynomialType temporaryTerm = polynomialTerms[0];
+
+  // Clear the original
+  polynomialTerms[0].clear();
+
+  // Apply the q-binomial multiplication
   if (neg) {
-    int componentSize = polynomialTerms[0].getComponentSize();
-    if (componentSize <= 0) {
-      throw std::runtime_error(
-          "polynomialTerms[0] has invalid componentSize: " +
-          std::to_string(componentSize));
-    }
-    QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                  polynomialTerms[0].getPositiveSize(),
-                                  componentSize, 0);
-    for (int j = polynomialTerms[0].getMaxNegativeIndex();
-         j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
-      temporaryTerm[j] = polynomialTerms[0][j];
-      polynomialTerms[0][j] = 0;
-    }
+    // Negative case: multiply with power shift j -> j-k
     for (int j = temporaryTerm.getMaxNegativeIndex();
          j <= temporaryTerm.getMaxPositiveIndex(); j++) {
-      if (temporaryTerm[j] != 0) {
+      int coeff_j = temporaryTerm.getCoefficient(j);
+      if (coeff_j != 0) {
         for (int k = 0; k < maxQDegree + 1; k++) {
-          polynomialTerms[0][j - k] +=
-              binomialCoefficients[k] * temporaryTerm[j];
+          polynomialTerms[0].addToCoefficient(j - k,
+                                              binomialCoefficients[k] * coeff_j);
         }
       }
     }
   } else {
-    int componentSize = polynomialTerms[0].getComponentSize();
-    if (componentSize <= 0) {
-      throw std::runtime_error(
-          "polynomialTerms[0] has invalid componentSize: " +
-          std::to_string(componentSize));
-    }
-    QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                  polynomialTerms[0].getPositiveSize(),
-                                  componentSize, 0);
-    for (int j = polynomialTerms[0].getMaxNegativeIndex();
-         j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
-      temporaryTerm[j] = polynomialTerms[0][j];
-      polynomialTerms[0][j] = 0;
-    }
+    // Positive case: multiply with power shift j -> j+k
     for (int j = temporaryTerm.getMaxNegativeIndex();
          j <= temporaryTerm.getMaxPositiveIndex(); j++) {
-      if (temporaryTerm[j] != 0) {
+      int coeff_j = temporaryTerm.getCoefficient(j);
+      if (coeff_j != 0) {
         for (int k = 0; k < maxQDegree + 1; k++) {
-          polynomialTerms[0][j + k] +=
-              binomialCoefficients[k] * temporaryTerm[j];
+          polynomialTerms[0].addToCoefficient(j + k,
+                                              binomialCoefficients[k] * coeff_j);
         }
       }
     }
@@ -125,51 +109,36 @@ void computeNegativeQBinomial(std::vector<QPolynomialType> &polynomialTerms,
                                    lowerLimit, qDegreeDelta - maxQDegree,
                                    false);
   }
+  // Copy the polynomial term to a temporary
+  QPolynomialType temporaryTerm = polynomialTerms[0];
+
+  // Clear the original
+  polynomialTerms[0].clear();
+
+  // Apply the q-binomial multiplication
   if (neg) {
-    int componentSize = polynomialTerms[0].getComponentSize();
-    if (componentSize <= 0) {
-      throw std::runtime_error(
-          "polynomialTerms[0] has invalid componentSize: " +
-          std::to_string(componentSize));
-    }
-    QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                  polynomialTerms[0].getPositiveSize(),
-                                  componentSize, 0);
-    for (int j = polynomialTerms[0].getMaxNegativeIndex();
-         j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
-      temporaryTerm[j] = polynomialTerms[0][j];
-      polynomialTerms[0][j] = 0;
-    }
+    // Negative case: multiply with power shift j -> j - k + qDegreeDelta - maxQDegree
     for (int j = temporaryTerm.getMaxNegativeIndex();
          j <= temporaryTerm.getMaxPositiveIndex(); j++) {
-      if (temporaryTerm[j] != 0) {
+      int coeff_j = temporaryTerm.getCoefficient(j);
+      if (coeff_j != 0) {
         for (int k = 0; k < qDegreeDelta + 1; k++) {
-          polynomialTerms[0][j - k + qDegreeDelta - maxQDegree] +=
-              binomialCoefficients[k] * temporaryTerm[j];
+          polynomialTerms[0].addToCoefficient(
+              j - k + qDegreeDelta - maxQDegree,
+              binomialCoefficients[k] * coeff_j);
         }
       }
     }
   } else {
-    int componentSize = polynomialTerms[0].getComponentSize();
-    if (componentSize <= 0) {
-      throw std::runtime_error(
-          "polynomialTerms[0] has invalid componentSize: " +
-          std::to_string(componentSize));
-    }
-    QPolynomialType temporaryTerm(polynomialTerms[0].getNegativeSize(),
-                                  polynomialTerms[0].getPositiveSize(),
-                                  componentSize, 0);
-    for (int j = polynomialTerms[0].getMaxNegativeIndex();
-         j <= polynomialTerms[0].getMaxPositiveIndex(); j++) {
-      temporaryTerm[j] = polynomialTerms[0][j];
-      polynomialTerms[0][j] = 0;
-    }
+    // Positive case: multiply with power shift j -> j + k - qDegreeDelta + maxQDegree
     for (int j = temporaryTerm.getMaxNegativeIndex();
          j <= temporaryTerm.getMaxPositiveIndex(); j++) {
-      if (temporaryTerm[j] != 0) {
+      int coeff_j = temporaryTerm.getCoefficient(j);
+      if (coeff_j != 0) {
         for (int k = 0; k < qDegreeDelta + 1; k++) {
-          polynomialTerms[0][j + k - qDegreeDelta + maxQDegree] +=
-              binomialCoefficients[k] * temporaryTerm[j];
+          polynomialTerms[0].addToCoefficient(
+              j + k - qDegreeDelta + maxQDegree,
+              binomialCoefficients[k] * coeff_j);
         }
       }
     }
@@ -216,18 +185,18 @@ QPolynomialType QBinomialPositive(int upperLimit, int lowerLimit) {
 
   // Zero polynomial if out of range
   if (k < 0 || n < 0 || k > n) {
-    return QPolynomialType(0, 1, 1, 0); // all zero, only exponent 0 allocated
+    return QPolynomialType(); // zero polynomial
   }
 
   auto makeConstOne = []() {
-    QPolynomialType p(0, 1, 1, 0); // exponent 0 only
-    p[0] = 1;
+    QPolynomialType p;
+    p.setCoefficient(0, 1); // p = 1
     return p;
   };
 
   // C[i][j] = [i choose j]_q
   std::vector<std::vector<QPolynomialType>> C(
-      n + 1, std::vector<QPolynomialType>(k + 1, QPolynomialType(0, 1, 1, 0)));
+      n + 1, std::vector<QPolynomialType>(k + 1, QPolynomialType()));
 
   C[0][0] = makeConstOne();
 
@@ -297,7 +266,7 @@ QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
 
   // Handle nonsense k
   if (k < 0) {
-    return QPolynomialType(0, 1, 1, 0); // zero polynomial
+    return QPolynomialType(); // zero polynomial
   }
 
   // If upperLimit >= 0, just reuse the positive version
@@ -324,7 +293,8 @@ QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
     int minExp = result.getMaxNegativeIndex();
     int maxExp = result.getMaxPositiveIndex();
     for (int e = minExp; e <= maxExp; ++e) {
-      result[e] = -result[e];
+      int coeff = result.getCoefficient(e);
+      result.setCoefficient(e, -coeff);
     }
   }
 

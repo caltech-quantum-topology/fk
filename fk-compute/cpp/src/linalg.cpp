@@ -31,8 +31,9 @@ void matrixIndexColumnRecursive(int &dimensions, std::vector<int> arrayLengths,
       int d = accumulator + rankOffset * blockSizes[sliceIndex];
       for (int k = polynomialTerms[accumulator].getMaxNegativeIndex();
            k <= polynomialTerms[accumulator].getMaxPositiveIndex(); k++) {
-        polynomialTerms[d][k + rankOffset * zVariable] +=
-            signMultiplier * polynomialTerms[accumulator][k];
+        int coeff = polynomialTerms[accumulator].getCoefficient(k);
+        polynomialTerms[d].addToCoefficient(k + rankOffset * zVariable,
+                                            signMultiplier * coeff);
       }
     }
   } else {
@@ -47,8 +48,9 @@ void matrixIndexColumnRecursive(int &dimensions, std::vector<int> arrayLengths,
         int d = accumulator + rankOffset * blockSizes[sliceIndex];
         for (int k = polynomialTerms[accumulator].getMaxNegativeIndex();
              k <= polynomialTerms[accumulator].getMaxPositiveIndex(); k++) {
-          polynomialTerms[d][k + rankOffset * zVariable] +=
-              signMultiplier * polynomialTerms[accumulator][k];
+          int coeff = polynomialTerms[accumulator].getCoefficient(k);
+          polynomialTerms[d].addToCoefficient(k + rankOffset * zVariable,
+                                              signMultiplier * coeff);
         }
       }
     }
@@ -69,8 +71,9 @@ void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
       int d = sliceValue + rankOffset;
       for (int k = polynomialTerms[sliceValue].getMaxNegativeIndex();
            k <= polynomialTerms[sliceValue].getMaxPositiveIndex(); k++) {
-        polynomialTerms[d][k + rankOffset * zVariable] +=
-            signMultiplier * polynomialTerms[sliceValue][k];
+        int coeff = polynomialTerms[sliceValue].getCoefficient(k);
+        polynomialTerms[d].addToCoefficient(k + rankOffset * zVariable,
+                                            signMultiplier * coeff);
       }
     }
   } else {
@@ -83,8 +86,9 @@ void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
         int d = i + rankOffset;
         for (int k = polynomialTerms[i].getMaxNegativeIndex();
              k <= polynomialTerms[i].getMaxPositiveIndex(); k++) {
-          polynomialTerms[d][k + rankOffset * zVariable] +=
-              signMultiplier * polynomialTerms[i][k];
+          int coeff = polynomialTerms[i].getCoefficient(k);
+          polynomialTerms[d].addToCoefficient(k + rankOffset * zVariable,
+                                              signMultiplier * coeff);
         }
       }
     }
@@ -101,8 +105,9 @@ void performOffsetAddition(std::vector<QPolynomialType> &targetArray,
     for (int i = std::max(0, -offsetVector[0]); i < arrayLengths[0] + 1; i++) {
       for (int q = sourceArray[i].getMaxNegativeIndex();
            q <= sourceArray[i].getMaxPositiveIndex(); q++) {
-        targetArray[i + offsetVector[0]][q + bilvectorOffset] +=
-            signMultiplier * sourceArray[i][q];
+        int coeff = sourceArray[i].getCoefficient(q);
+        targetArray[i + offsetVector[0]].addToCoefficient(
+            q + bilvectorOffset, signMultiplier * coeff);
       }
     }
     return;
@@ -127,8 +132,9 @@ void performOffsetAddition(std::vector<QPolynomialType> &targetArray,
 
     for (int q = sourceArray[sourceAccumulator].getMaxNegativeIndex();
          q <= sourceArray[sourceAccumulator].getMaxPositiveIndex(); q++) {
-      targetArray[targetAccumulator][q + bilvectorOffset] +=
-          signMultiplier * sourceArray[sourceAccumulator][q];
+      int coeff = sourceArray[sourceAccumulator].getCoefficient(q);
+      targetArray[targetAccumulator].addToCoefficient(
+          q + bilvectorOffset, signMultiplier * coeff);
     }
 
     int d = dimensions - 1;
@@ -196,7 +202,7 @@ void performOffsetAddition(
         [&](const Term &t) { return t.first == shifted; });
 
     if (it == targetArray.end()) {
-      targetArray.emplace_back(shifted, QPolynomialType(0, 1, 20, 0));
+      targetArray.emplace_back(shifted, QPolynomialType());
       it = std::prev(targetArray.end());
     }
 
@@ -206,9 +212,9 @@ void performOffsetAddition(
     for (int q = srcBil.getMaxNegativeIndex();
          q <= srcBil.getMaxPositiveIndex(); ++q) {
 
-      int coeff = srcBil[q];
+      int coeff = srcBil.getCoefficient(q);
       if (coeff != 0) {
-        destBil[q + bilvectorOffset] += signMultiplier * coeff;
+        destBil.addToCoefficient(q + bilvectorOffset, signMultiplier * coeff);
       }
     }
   }

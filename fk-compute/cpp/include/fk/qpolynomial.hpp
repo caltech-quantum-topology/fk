@@ -142,4 +142,48 @@ public:
    * Get access to the underlying FLINT polynomial (for advanced operations)
    */
   const fmpz_poly_t &getFlintPoly() const { return poly; }
+
+  /**
+   * Compatibility methods for bilvector interface
+   * These allow QPolynomial to be used as a drop-in replacement for bilvector<int>
+   */
+
+  /**
+   * Get minimum power (bilvector-compatible name)
+   * Same as getMinPower()
+   */
+  int getMaxNegativeIndex() const { return getMinPower(); }
+
+  /**
+   * Get maximum power (bilvector-compatible name)
+   * Same as getMaxPower()
+   */
+  int getMaxPositiveIndex() const { return getMaxPower(); }
+
+  /**
+   * Array-style coefficient access (bilvector-compatible)
+   * @param power Power of q
+   * @return Coefficient value
+   */
+  int operator[](int power) const { return getCoefficient(power); }
 };
+
+/**
+ * Multiply QPolynomial by q^power (shift all exponents by power)
+ * Compatible with bilvector's multiplyByQPower
+ */
+inline QPolynomial multiplyByQPower(const QPolynomial& poly, int power) {
+  if (power == 0) {
+    return poly;
+  }
+
+  QPolynomial result;
+  for (int e = poly.getMinPower(); e <= poly.getMaxPower(); ++e) {
+    int coeff = poly.getCoefficient(e);
+    if (coeff != 0) {
+      result.setCoefficient(e + power, coeff);
+    }
+  }
+
+  return result;
+}
