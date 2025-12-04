@@ -501,31 +501,60 @@ void FMPoly::setQPolynomial(const std::vector<int> &xPowers,
         "X powers vector size must match number of variables");
   }
 
-  // Clear existing coefficients for this x-monomial
-  // We need to iterate through existing terms and clear those matching xPowers
-  // For simplicity, we'll clear by setting to zero for the range we're about to
-  // set
+  // First, collect all q-powers that need to be cleared for this x-monomial
+  std::vector<int> qPowersToClear;
+  slong numTerms = fmpz_mpoly_length(poly, ctx);
 
-  if (qPoly.isZero()) {
-    // If setting to zero polynomial, we should clear existing terms
-    // This is complex to implement efficiently, so for now we'll skip
-    return;
+  for (slong i = 0; i < numTerms; i++) {
+    // Get exponent vector for this term
+    fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
+    fmpz **exp_ptrs = (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+    for (int j = 0; j <= numXVariables; j++) {
+      fmpz_init(&exps[j]);
+      exp_ptrs[j] = &exps[j];
+    }
+
+    fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
+
+    // Extract x-powers from exponent vector
+    int qPower;
+    std::vector<int> termXPowers;
+    getExponentsFromMonomial(exps, qPower, termXPowers);
+
+    // Check if x-powers match
+    bool match = true;
+    for (int j = 0; j < numXVariables; j++) {
+      if (termXPowers[j] != xPowers[j]) {
+        match = false;
+        break;
+      }
+    }
+
+    // If match, record this q-power for clearing
+    if (match) {
+      qPowersToClear.push_back(qPower);
+    }
+
+    // Cleanup
+    for (int j = 0; j <= numXVariables; j++) {
+      fmpz_clear(&exps[j]);
+    }
+    flint_free(exp_ptrs);
+    flint_free(exps);
   }
 
-  // Get the range of powers in the QPolynomial
-  int minPower = qPoly.getMinPower();
-  int maxPower = qPoly.getMaxPower();
-
-  // Clear existing terms in this range
-  for (int qPower = minPower; qPower <= maxPower; qPower++) {
+  // Now clear all the collected q-powers
+  for (int qPower : qPowersToClear) {
     setCoefficient(qPower, xPowers, 0);
   }
 
-  // Set new coefficients
-  for (int qPower = minPower; qPower <= maxPower; qPower++) {
-    int coeff = qPoly.getCoefficient(qPower);
-    if (coeff != 0) {
-      setCoefficient(qPower, xPowers, coeff);
+  // Finally, set new coefficients if not zero
+  if (!qPoly.isZero()) {
+    for (int qPower = qPoly.getMinPower(); qPower <= qPoly.getMaxPower(); qPower++) {
+      int coeff = qPoly.getCoefficient(qPower);
+      if (coeff != 0) {
+        setCoefficient(qPower, xPowers, coeff);
+      }
     }
   }
 }
@@ -1042,19 +1071,62 @@ int FMPoly::nTerms() const {
 
 FMPoly &FMPoly::operator+=(const FMPoly &other) {
   checkCompatibility(other);
-  fmpz_mpoly_add(poly, poly, other.poly, ctx);
+
+  // Always use term-by-term addition to avoid ground power issues
+  auto otherTerms = other.getCoefficients();
+  for (const auto &term : otherTerms) {
+    addQPolynomial(term.first, term.second);
+  }
+
   return *this;
 }
 
 FMPoly &FMPoly::operator-=(const FMPoly &other) {
   checkCompatibility(other);
-  fmpz_mpoly_sub(poly, poly, other.poly, ctx);
+
+  // Always use term-by-term subtraction to avoid ground power issues
+  auto otherTerms = other.getCoefficients();
+  for (const auto &term : otherTerms) {
+    QPolynomial negated;
+    for (int q = term.second.getMinPower(); q <= term.second.getMaxPower(); ++q) {
+      int coeff = term.second.getCoefficient(q);
+      if (coeff != 0) {
+        negated.setCoefficient(q, -coeff);
+      }
+    }
+    addQPolynomial(term.first, negated);
+  }
+
   return *this;
 }
 
 FMPoly &FMPoly::operator*=(const FMPoly &other) {
   checkCompatibility(other);
-  fmpz_mpoly_mul(poly, poly, other.poly, ctx);
+
+  // Always use term-by-term multiplication to avoid ground power issues
+  auto thisTerms = getCoefficients();
+  auto otherTerms = other.getCoefficients();
+
+  // Clear this polynomial
+  clear();
+
+  // Multiply term by term
+  for (const auto &thisTerm : thisTerms) {
+    for (const auto &otherTerm : otherTerms) {
+      // Multiply x-powers
+      std::vector<int> resultXPowers(numXVariables);
+      for (int i = 0; i < numXVariables; i++) {
+        resultXPowers[i] = thisTerm.first[i] + otherTerm.first[i];
+      }
+
+      // Multiply q-polynomials
+      QPolynomial productQPoly = thisTerm.second * otherTerm.second;
+
+      // Add to result
+      addQPolynomial(resultXPowers, productQPoly);
+    }
+  }
+
   return *this;
 }
 
