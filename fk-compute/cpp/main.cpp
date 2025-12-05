@@ -169,8 +169,8 @@ int main(int argc, char* argv[]) {
         // Show brief result statistics
         const auto& result = computation.getLastResult();
 
-        std::cout << "📊 Result contains " << result.nTerms()
-                  << " non-zero terms\n";
+        // std::cout << "📊 Result contains " << result.nTerms()
+        //           << " non-zero terms\n";
 
     } catch (const std::exception& e) {
         std::cerr << "\n❌ Error: " << e.what() << "\n";

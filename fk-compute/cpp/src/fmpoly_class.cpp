@@ -3,6 +3,7 @@
 #include <flint/fmpz.h>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <sstream>
 #include <stdexcept>
@@ -311,96 +312,60 @@ void FMPoly::addToCoefficient(int qPower, const std::vector<int> &xPowers,
     return;
   }
 
-  int currentCoeff = getCoefficient(qPower, xPowers);
-  setCoefficient(qPower, xPowers, currentCoeff + coefficient);
-}
-
-std::vector<int> FMPoly::getQPolynomial(const std::vector<int> &xPowers) const {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
   }
 
-  // Map to store q-powers and their coefficients
-  std::map<int, int> qCoeffs;
-
-  // Get number of terms in the polynomial
-  slong numTerms = fmpz_mpoly_length(poly, ctx);
-
-  // Iterate through all terms in the FLINT polynomial
-  for (slong i = 0; i < numTerms; i++) {
-    // Get coefficient of this term
-    fmpz_t coeff;
-    fmpz_init(coeff);
-    fmpz_mpoly_get_term_coeff_fmpz(coeff, poly, i, ctx);
-
-    // Get exponent vector for this term
-    fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
-    fmpz **exp_ptrs =
-        (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
-    for (int j = 0; j <= numXVariables; j++) {
-      fmpz_init(&exps[j]);
-      exp_ptrs[j] = &exps[j];
-    }
-
-    fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
-
-    // Extract q-power and x-powers from exponent vector
-    int qPower;
-    std::vector<int> termXPowers;
-    getExponentsFromMonomial(exps, qPower, termXPowers);
-
-    // Check if x-powers match the requested ones
-    bool match = true;
-    for (int j = 0; j < numXVariables; j++) {
-      if (termXPowers[j] != xPowers[j]) {
-        match = false;
+  // Fast path: only check adjustment if exponent would be out of range
+  bool needsAdjustmentCheck = (qPower < allGroundPowers[0]);
+  if (!needsAdjustmentCheck) {
+    for (int i = 0; i < numXVariables; i++) {
+      if (xPowers[i] < allGroundPowers[i + 1]) {
+        needsAdjustmentCheck = true;
         break;
       }
     }
-
-    if (match) {
-      // Add this coefficient to the q-polynomial
-      int coeffValue = fmpz_get_si(coeff);
-      qCoeffs[qPower] += coeffValue;
-    }
-
-    // Cleanup
-    fmpz_clear(coeff);
-    for (int j = 0; j <= numXVariables; j++) {
-      fmpz_clear(&exps[j]);
-    }
-    flint_free(exp_ptrs);
-    flint_free(exps);
   }
 
-  // Convert map to vector format
-  std::vector<int> result;
-  if (qCoeffs.empty()) {
-    return result; // Return empty vector if no matching terms
+  // Only call adjustment if needed
+  if (needsAdjustmentCheck) {
+    adjustGroundPowersIfNeeded(qPower, xPowers);
   }
 
-  // Find the range of q-powers
-  int minQPower = qCoeffs.begin()->first;
-  int maxQPower = qCoeffs.rbegin()->first;
+  // Convert exponents with ground power offset
+  fmpz *exps;
+  slong exp_bits;
+  convertExponents(qPower, xPowers, &exps, &exp_bits);
 
-  // Create vector with appropriate size, accounting for negative indices
-  int vectorSize = maxQPower - minQPower + 1;
-  result.resize(vectorSize, 0);
+  // Create coefficient to add
+  fmpz_t coeff;
+  fmpz_init(coeff);
+  fmpz_set_si(coeff, coefficient);
 
-  // Fill in the coefficients
-  for (const auto &[qPower, coeff] : qCoeffs) {
-    if (coeff != 0) {
-      result[qPower - minQPower] = coeff;
-    }
+  // Create array of pointers for FLINT API
+  fmpz **exp_ptrs = (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+  for (int i = 0; i <= numXVariables; i++) {
+    exp_ptrs[i] = &(exps[i]);
   }
 
-  // Store the minimum q-power information somehow for the caller
-  // Since we can't modify the function signature, we'll assume the caller
-  // knows to call this in conjunction with other methods if needed
-  // For QPolynomial integration, use getQPolynomialObject() instead
+  // Get current coefficient and add to it
+  fmpz_t current;
+  fmpz_init(current);
+  fmpz_mpoly_get_coeff_fmpz_fmpz(current, poly, exp_ptrs, ctx);
+  fmpz_add(current, current, coeff);
 
-  return result;
+  // Set the new coefficient
+  fmpz_mpoly_set_coeff_fmpz_fmpz(poly, current, exp_ptrs, ctx);
+
+  // Cleanup
+  fmpz_clear(coeff);
+  fmpz_clear(current);
+  for (int i = 0; i <= numXVariables; i++) {
+    fmpz_clear(&(exps[i]));
+  }
+  flint_free(exp_ptrs);
+  flint_free(exps);
 }
 
 QPolynomial
@@ -569,93 +534,13 @@ void FMPoly::addQPolynomial(const std::vector<int> &xPowers,
   if (qPoly.isZero())
     return;
 
-  // Get existing q-polynomial for this x-monomial
-  QPolynomial existing = getQPolynomialObject(xPowers);
-
-  // Add the new polynomial
-  QPolynomial result = existing + qPoly;
-
-  // Set the result back
-  setQPolynomial(xPowers, result);
-}
-
-void FMPoly::multiplyQPolynomial(const std::vector<int> &xPowers,
-                                 const QPolynomial &qPoly) {
-  if (xPowers.size() != static_cast<size_t>(numXVariables)) {
-    throw std::invalid_argument(
-        "X powers vector size must match number of variables");
-  }
-
-  if (qPoly.isZero()) {
-    // Multiplying by zero should make this x-monomial's q-polynomial zero
-    setQPolynomial(xPowers, QPolynomial());
-    return;
-  }
-
-  // Get existing q-polynomial for this x-monomial
-  QPolynomial existing = getQPolynomialObject(xPowers);
-
-  if (existing.isZero())
-    return; // 0 * anything = 0
-
-  // Multiply the polynomials
-  QPolynomial result = existing * qPoly;
-
-  // Set the result back
-  setQPolynomial(xPowers, result);
-}
-
-FMPoly FMPoly::invertVariable(const int target_index) const {
-  if (target_index < 0 || target_index >= numXVariables) {
-    throw std::invalid_argument("Target variable index out of range");
-  }
-
-  FMPoly result(numXVariables, 0);
-  result.allGroundPowers = allGroundPowers;
-
-  // Get number of terms in the polynomial
-  slong numTerms = fmpz_mpoly_length(poly, ctx);
-
-  // Iterate through all terms in the FLINT polynomial
-  for (slong i = 0; i < numTerms; i++) {
-    // Get coefficient of this term
-    fmpz_t coeff;
-    fmpz_init(coeff);
-    fmpz_mpoly_get_term_coeff_fmpz(coeff, poly, i, ctx);
-
-    // Get exponent vector for this term
-    fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
-    fmpz **exp_ptrs =
-        (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
-    for (int j = 0; j <= numXVariables; j++) {
-      fmpz_init(&exps[j]);
-      exp_ptrs[j] = &exps[j];
+  // Directly add each term from qPoly instead of get+add+set
+  for (int qPower = qPoly.getMinPower(); qPower <= qPoly.getMaxPower(); qPower++) {
+    int coeff = qPoly.getCoefficient(qPower);
+    if (coeff != 0) {
+      addToCoefficient(qPower, xPowers, coeff);
     }
-
-    fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
-
-    // Extract q-power and x-powers from exponent vector
-    int qPower;
-    std::vector<int> xPowers;
-    getExponentsFromMonomial(exps, qPower, xPowers);
-
-    // Negate the exponent of the target variable
-    xPowers[target_index] = -xPowers[target_index];
-
-    // Add term to result polynomial
-    int coeffValue = fmpz_get_si(coeff);
-    result.addToCoefficient(qPower, xPowers, coeffValue);
-
-    // Cleanup
-    fmpz_clear(coeff);
-    for (int j = 0; j <= numXVariables; j++) {
-      fmpz_clear(&exps[j]);
-    }
-    flint_free(exp_ptrs);
-    flint_free(exps);
   }
-
-  return result;
 }
 
 FMPoly FMPoly::truncate(const std::vector<int> &maxXdegrees) const {
@@ -726,10 +611,6 @@ FMPoly FMPoly::truncate(int maxDegree) const {
 }
 
 int FMPoly::getNumXVariables() const { return numXVariables; }
-
-const std::vector<int> &FMPoly::getMaxXDegrees() const { return maxXDegrees; }
-
-const std::vector<int> &FMPoly::getBlockSizes() const { return blockSizes; }
 
 void FMPoly::clear() { fmpz_mpoly_zero(poly, ctx); }
 
@@ -984,77 +865,6 @@ FMPoly::getCoefficients() const {
   return result;
 }
 
-void FMPoly::syncFromSparseVector(const std::vector<Term> &sparseVector) {
-  // Clear the current polynomial
-  clear();
-
-  // Add each term from the sparse vector
-  for (const auto &term : sparseVector) {
-    const std::vector<int> &xPowers = term.first;
-    const QPolynomial &qPoly = term.second;
-
-    // Only add non-zero q-polynomials
-    if (!qPoly.isZero()) {
-      setQPolynomial(xPowers, qPoly);
-    }
-  }
-}
-
-std::vector<int> FMPoly::evaluate(const std::vector<int> &point) const {
-  if (point.size() != static_cast<size_t>(numXVariables)) {
-    throw std::invalid_argument(
-        "Point dimension must match number of variables");
-  }
-
-  QPolynomial result;
-
-  // Get all terms in the polynomial
-  auto terms = getCoefficients();
-
-  for (const auto &term : terms) {
-    const std::vector<int> &xPowers = term.first;
-    const QPolynomial &qPoly = term.second;
-
-    // Evaluate the x-monomial at the given point
-    int termValue = 1;
-
-    for (size_t i = 0; i < xPowers.size(); ++i) {
-      if (xPowers[i] > 0) {
-        // Positive exponent: multiply
-        for (int exp = 0; exp < xPowers[i]; ++exp) {
-          termValue *= point[i];
-        }
-      } else if (xPowers[i] < 0) {
-        // Negative exponent: divide
-        if (point[i] == 0) {
-          throw std::domain_error("Division by zero: negative exponent with "
-                                  "zero value at variable " +
-                                  std::to_string(i));
-        }
-        for (int exp = 0; exp > xPowers[i]; --exp) {
-          if (termValue % point[i] != 0) {
-            throw std::domain_error(
-                "Division would result in non-integer coefficient");
-          }
-          termValue /= point[i];
-        }
-      }
-    }
-
-    // Multiply the q-polynomial by the evaluated term value and add to result
-    for (int qPower = qPoly.getMinPower(); qPower <= qPoly.getMaxPower();
-         ++qPower) {
-      int coefficient = qPoly.getCoefficient(qPower);
-      if (coefficient != 0) {
-        result.addToCoefficient(qPower, coefficient * termValue);
-      }
-    }
-  }
-
-  // Convert QPolynomial to vector<int>
-  return result.getCoefficients();
-}
-
 void FMPoly::checkCompatibility(const FMPoly &other) const {
   if (numXVariables != other.numXVariables) {
     throw std::invalid_argument(
@@ -1062,39 +872,52 @@ void FMPoly::checkCompatibility(const FMPoly &other) const {
   }
 }
 
-int FMPoly::nTerms() const {
-  if (isZero())
-    return 0;
-
-  return static_cast<int>(fmpz_mpoly_length(poly, ctx));
-}
-
 FMPoly &FMPoly::operator+=(const FMPoly &other) {
   checkCompatibility(other);
 
-  // Always use term-by-term addition to avoid ground power issues
+  // Pre-adjust ground powers once based on other's ground powers
+  // This avoids multiple adjustments during term addition
+  std::vector<int> minPowers = allGroundPowers;
+  for (int i = 0; i <= numXVariables; i++) {
+    if (other.allGroundPowers[i] < minPowers[i]) {
+      minPowers[i] = other.allGroundPowers[i];
+    }
+  }
+
+  // Do a single adjustment if needed
+  if (minPowers != allGroundPowers) {
+    // Find any term from other to trigger adjustment
+    auto otherTerms = other.getCoefficients();
+    if (!otherTerms.empty()) {
+      const auto &firstTerm = otherTerms.front();
+      int minQPower = firstTerm.second.getMinPower();
+
+      // Find minimum q power across all terms
+      for (const auto &term : otherTerms) {
+        if (term.second.getMinPower() < minQPower) {
+          minQPower = term.second.getMinPower();
+        }
+      }
+
+      // Find minimum x powers
+      std::vector<int> minXPowers(numXVariables, std::numeric_limits<int>::max());
+      for (const auto &term : otherTerms) {
+        for (int i = 0; i < numXVariables; i++) {
+          if (term.first[i] < minXPowers[i]) {
+            minXPowers[i] = term.first[i];
+          }
+        }
+      }
+
+      // Trigger adjustment with minimum powers
+      adjustGroundPowersIfNeeded(minQPower, minXPowers);
+    }
+  }
+
+  // Now add all terms - adjustment should not be needed anymore
   auto otherTerms = other.getCoefficients();
   for (const auto &term : otherTerms) {
     addQPolynomial(term.first, term.second);
-  }
-
-  return *this;
-}
-
-FMPoly &FMPoly::operator-=(const FMPoly &other) {
-  checkCompatibility(other);
-
-  // Always use term-by-term subtraction to avoid ground power issues
-  auto otherTerms = other.getCoefficients();
-  for (const auto &term : otherTerms) {
-    QPolynomial negated;
-    for (int q = term.second.getMinPower(); q <= term.second.getMaxPower(); ++q) {
-      int coeff = term.second.getCoefficient(q);
-      if (coeff != 0) {
-        negated.setCoefficient(q, -coeff);
-      }
-    }
-    addQPolynomial(term.first, negated);
   }
 
   return *this;
@@ -1130,68 +953,18 @@ FMPoly &FMPoly::operator*=(const FMPoly &other) {
   return *this;
 }
 
-FMPoly operator+(const FMPoly &lhs, const FMPoly &rhs) {
-  FMPoly result = lhs;
-  result += rhs;
-  return result;
-}
+FMPoly FMPoly::operator*(const QPolynomial &qPoly) const {
+  FMPoly result(numXVariables, 0, maxXDegrees);
 
-FMPoly operator-(const FMPoly &lhs, const FMPoly &rhs) {
-  FMPoly result = lhs;
-  result -= rhs;
-  return result;
-}
-
-FMPoly operator*(const FMPoly &lhs, const FMPoly &rhs) {
-  FMPoly result = lhs;
-  result *= rhs;
-  return result;
-}
-
-// Operators with QPolynomial
-FMPoly &FMPoly::operator+=(const QPolynomial &qPoly) {
-  // Add to the x^0 term
-  std::vector<int> zeroXPowers(numXVariables, 0);
-  addQPolynomial(zeroXPowers, qPoly);
-  return *this;
-}
-
-FMPoly &FMPoly::operator-=(const QPolynomial &qPoly) {
-  // Subtract from the x^0 term
-  std::vector<int> zeroXPowers(numXVariables, 0);
-
-  // Create negated qPoly
-  QPolynomial negated;
-  for (int q = qPoly.getMinPower(); q <= qPoly.getMaxPower(); ++q) {
-    int coeff = qPoly.getCoefficient(q);
-    if (coeff != 0) {
-      negated.setCoefficient(q, -coeff);
-    }
+  // If this polynomial is zero or qPoly is zero, return zero
+  if (isZero() || qPoly.isZero()) {
+    return result;
   }
 
-  addQPolynomial(zeroXPowers, negated);
-  return *this;
-}
-
-FMPoly &FMPoly::operator*=(const QPolynomial &qPoly) {
-  // If qPoly is zero, result is zero
-  if (qPoly.isZero()) {
-    clear();
-    return *this;
-  }
-
-  // If this polynomial is zero, nothing to do
-  if (isZero()) {
-    return *this;
-  }
-
-  // Get all current terms
+  // Get all terms from this polynomial
   auto terms = getCoefficients();
 
-  // Clear the polynomial
-  clear();
-
-  // Multiply each term by qPoly and add back
+  // Multiply each term by qPoly
   for (const auto &term : terms) {
     const std::vector<int> &xPowers = term.first;
     const QPolynomial &thisQPoly = term.second;
@@ -1199,53 +972,9 @@ FMPoly &FMPoly::operator*=(const QPolynomial &qPoly) {
     // Multiply the two q-polynomials
     QPolynomial product = thisQPoly * qPoly;
 
-    // Add the result back
-    addQPolynomial(xPowers, product);
+    // Add to result
+    result.addQPolynomial(xPowers, product);
   }
 
-  return *this;
-}
-
-// Binary operators with QPolynomial
-FMPoly operator+(const FMPoly &lhs, const QPolynomial &rhs) {
-  FMPoly result = lhs;
-  result += rhs;
-  return result;
-}
-
-FMPoly operator+(const QPolynomial &lhs, const FMPoly &rhs) {
-  FMPoly result = rhs;
-  result += lhs;
-  return result;
-}
-
-FMPoly operator-(const FMPoly &lhs, const QPolynomial &rhs) {
-  FMPoly result = lhs;
-  result -= rhs;
-  return result;
-}
-
-FMPoly operator-(const QPolynomial &lhs, const FMPoly &rhs) {
-  // Create FMPoly from lhs, then subtract rhs
-  FMPoly result(rhs.getNumXVariables(), 10, rhs.getMaxXDegrees());
-  result += lhs;
-
-  // Negate rhs and add
-  FMPoly negated = rhs;
-  negated *= QPolynomial({-1}, 0); // Multiply by -1
-  result += negated;
-
-  return result;
-}
-
-FMPoly operator*(const FMPoly &lhs, const QPolynomial &rhs) {
-  FMPoly result = lhs;
-  result *= rhs;
-  return result;
-}
-
-FMPoly operator*(const QPolynomial &lhs, const FMPoly &rhs) {
-  FMPoly result = rhs;
-  result *= lhs;
   return result;
 }

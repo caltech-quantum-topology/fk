@@ -9,13 +9,15 @@
  * - 0: MultivariablePolynomial (sparse implementation with unordered_map)
  * - 1: FMPoly (FLINT-based dense implementation for performance)
  * - 2: BMPoly (Basic vector-based implementation with negative exponent support)
+ * - 3: HMPoly (Hash map polynomial implementation)
+ * - 4: ZMPoly (Sparse implementation with arbitrary precision integer coefficients)
  *
  * All classes have identical public interfaces, making them interchangeable.
  */
 
-// Configuration: Set to 0, 1, or 2 to choose polynomial implementation
+// Configuration: Set to 0, 1, 2, 3, or 4 to choose polynomial implementation
 #ifndef POLYNOMIAL_TYPE
-#define POLYNOMIAL_TYPE 1  // Default to MultivariablePolynomial
+#define POLYNOMIAL_TYPE 4  // Default to MultivariablePolynomial
 #endif
 
 #if POLYNOMIAL_TYPE == 0
@@ -33,8 +35,19 @@
     using PolynomialType = BMPoly;
     using QPolynomialType = bilvector<int>;
     #define POLYNOMIAL_CLASS_NAME "BMPoly"
+#elif POLYNOMIAL_TYPE == 3
+    #include "fk/hmpoly.hpp"
+    using PolynomialType = HMPoly;
+    using QPolynomialType = bilvector<int>;
+    #define POLYNOMIAL_CLASS_NAME "HMPoly"
+#elif POLYNOMIAL_TYPE == 4
+    #include "fk/zmpoly.hpp"
+    #include "fk/qpolynomial.hpp"
+    using PolynomialType = ZMPoly;
+    using QPolynomialType = QPolynomial;
+    #define POLYNOMIAL_CLASS_NAME "ZMPoly"
 #else
-    #error "Invalid POLYNOMIAL_TYPE: must be 0 (MultivariablePolynomial), 1 (FMPoly), or 2 (BMPoly)"
+    #error "Invalid POLYNOMIAL_TYPE: must be 0 (MultivariablePolynomial), 1 (FMPoly), 2 (BMPoly), 3 (HMPoly), or 4 (ZMPoly)"
 #endif
 
 // Backward compatibility: Support old USE_FMPOLY macro

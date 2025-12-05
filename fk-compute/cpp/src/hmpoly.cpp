@@ -1,28 +1,25 @@
-#include "fk/multivariable_polynomial.hpp"
-
+#include "fk/hmpoly.hpp"
 #include <algorithm>
+#include <flint/fmpz.h>
 #include <fstream>
-#include <functional>
 #include <iostream>
+#include <map>
 #include <stdexcept>
-#include <thread>
-#include <tuple>
 
-// VectorHash implementation
-std::size_t VectorHash::operator()(const std::vector<int> &v) const {
+// HMPolyVectorHash implementation
+std::size_t HMPolyVectorHash::operator()(const std::vector<int> &v) const {
   std::size_t seed = v.size();
   for (auto &i : v) {
-    // Mix the hash with signed int support
     seed ^= std::hash<int>{}(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   }
   return seed;
 }
 
-// MultivariablePolynomial implementation
+// HMPoly implementation
 
-MultivariablePolynomial::MultivariablePolynomial(
-    int numVariables, int degree, const std::vector<int> &maxDegrees)
-    : numXVariables(numVariables) {
+HMPoly::HMPoly(int numVariables, int degree,
+               const std::vector<int> &maxDegrees)
+    : numXVariables(numVariables), ctx_initialized(false) {
 
   if (maxDegrees.empty()) {
     maxXDegrees = std::vector<int>(numVariables, degree);
@@ -34,7 +31,7 @@ MultivariablePolynomial::MultivariablePolynomial(
     maxXDegrees = maxDegrees;
   }
 
-  // Calculate block sizes for compatibility (not used for indexing)
+  // Calculate block sizes for compatibility
   blockSizes.resize(numVariables);
   if (numVariables > 0) {
     blockSizes[0] = 1;
@@ -44,10 +41,10 @@ MultivariablePolynomial::MultivariablePolynomial(
   }
 }
 
-MultivariablePolynomial::MultivariablePolynomial(
-    const MultivariablePolynomial &source, int newNumVariables,
-    int targetVariableIndex, int degree, const std::vector<int> &maxDegrees)
-    : numXVariables(newNumVariables) {
+HMPoly::HMPoly(const HMPoly &source, int newNumVariables,
+               int targetVariableIndex, int degree,
+               const std::vector<int> &maxDegrees)
+    : numXVariables(newNumVariables), ctx_initialized(false) {
 
   if (newNumVariables < source.numXVariables) {
     throw std::invalid_argument(
@@ -75,7 +72,7 @@ MultivariablePolynomial::MultivariablePolynomial(
     maxXDegrees = maxDegrees;
   }
 
-  // Calculate block sizes for compatibility (not used for indexing)
+  // Calculate block sizes
   blockSizes.resize(newNumVariables);
   if (newNumVariables > 0) {
     blockSizes[0] = 1;
@@ -84,25 +81,187 @@ MultivariablePolynomial::MultivariablePolynomial(
     }
   }
 
-  // Copy coefficients from source, mapping the single variable to
-  // targetVariableIndex
+  // Copy coefficients from source
   for (const auto &[sourceXPowers, bilvec] : source.coeffs_) {
-    // Create new x-powers vector with zeros except at targetVariableIndex
     std::vector<int> newXPowers(newNumVariables, 0);
     newXPowers[targetVariableIndex] = sourceXPowers[0];
-
-    // Copy the entire bilvector
     coeffs_.emplace(newXPowers, bilvec);
   }
 }
 
-void MultivariablePolynomial::pruneZeros() {
+HMPoly::HMPoly(const HMPoly &other)
+    : numXVariables(other.numXVariables), maxXDegrees(other.maxXDegrees),
+      blockSizes(other.blockSizes), coeffs_(other.coeffs_),
+      ctx_initialized(false) {}
+
+HMPoly &HMPoly::operator=(const HMPoly &other) {
+  if (this != &other) {
+    if (ctx_initialized) {
+      clearFlintContext();
+    }
+    numXVariables = other.numXVariables;
+    maxXDegrees = other.maxXDegrees;
+    blockSizes = other.blockSizes;
+    coeffs_ = other.coeffs_;
+    ctx_initialized = false;
+  }
+  return *this;
+}
+
+HMPoly::~HMPoly() {
+  if (ctx_initialized) {
+    clearFlintContext();
+  }
+}
+
+void HMPoly::initFlintContext() const {
+  if (!ctx_initialized) {
+    fmpz_mpoly_ctx_init(ctx, numXVariables + 1, ORD_LEX);
+    ctx_initialized = true;
+  }
+}
+
+void HMPoly::clearFlintContext() const {
+  if (ctx_initialized) {
+    fmpz_mpoly_ctx_clear(ctx);
+    ctx_initialized = false;
+  }
+}
+
+void HMPoly::toFlint(fmpz_mpoly_t poly) const {
+  initFlintContext();
+  fmpz_mpoly_init(poly, ctx);
+
+  // Find minimum exponents for ground powers
+  std::vector<int> minPowers(numXVariables + 1, 0);
+  bool hasTerms = false;
+
+  for (const auto &[xPowers, bilvec] : coeffs_) {
+    for (int qPower = bilvec.getMaxNegativeIndex();
+         qPower <= bilvec.getMaxPositiveIndex(); qPower++) {
+      if (bilvec[qPower] != 0) {
+        if (!hasTerms) {
+          minPowers[0] = qPower;
+          for (int i = 0; i < numXVariables; i++) {
+            minPowers[i + 1] = xPowers[i];
+          }
+          hasTerms = true;
+        } else {
+          if (qPower < minPowers[0])
+            minPowers[0] = qPower;
+          for (int i = 0; i < numXVariables; i++) {
+            if (xPowers[i] < minPowers[i + 1])
+              minPowers[i + 1] = xPowers[i];
+          }
+        }
+      }
+    }
+  }
+
+  // Convert each term to FLINT
+  for (const auto &[xPowers, bilvec] : coeffs_) {
+    for (int qPower = bilvec.getMaxNegativeIndex();
+         qPower <= bilvec.getMaxPositiveIndex(); qPower++) {
+      int coeff = bilvec[qPower];
+      if (coeff != 0) {
+        // Create exponent array
+        fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
+        fmpz **exp_ptrs =
+            (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+
+        for (int i = 0; i <= numXVariables; i++) {
+          fmpz_init(&exps[i]);
+          exp_ptrs[i] = &exps[i];
+        }
+
+        // Set exponents (with ground power offset)
+        fmpz_set_si(&exps[0], qPower - minPowers[0]);
+        for (int i = 0; i < numXVariables; i++) {
+          fmpz_set_si(&exps[i + 1], xPowers[i] - minPowers[i + 1]);
+        }
+
+        // Set coefficient
+        fmpz_t fmpz_coeff;
+        fmpz_init(fmpz_coeff);
+        fmpz_set_si(fmpz_coeff, coeff);
+        fmpz_mpoly_set_coeff_fmpz_fmpz(poly, fmpz_coeff, exp_ptrs, ctx);
+
+        // Cleanup
+        fmpz_clear(fmpz_coeff);
+        for (int i = 0; i <= numXVariables; i++) {
+          fmpz_clear(&exps[i]);
+        }
+        flint_free(exp_ptrs);
+        flint_free(exps);
+      }
+    }
+  }
+}
+
+void HMPoly::fromFlint(const fmpz_mpoly_t poly) {
+  coeffs_.clear();
+  initFlintContext();
+
+  slong numTerms = fmpz_mpoly_length(poly, ctx);
+
+  for (slong i = 0; i < numTerms; i++) {
+    // Get coefficient
+    fmpz_t coeff;
+    fmpz_init(coeff);
+    fmpz_mpoly_get_term_coeff_fmpz(coeff, poly, i, ctx);
+
+    if (fmpz_is_zero(coeff)) {
+      fmpz_clear(coeff);
+      continue;
+    }
+
+    // Get exponents
+    fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
+    fmpz **exp_ptrs =
+        (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+
+    for (int j = 0; j <= numXVariables; j++) {
+      fmpz_init(&exps[j]);
+      exp_ptrs[j] = &exps[j];
+    }
+
+    fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
+
+    // Extract powers
+    int qPower = fmpz_get_si(&exps[0]);
+    std::vector<int> xPowers(numXVariables);
+    for (int j = 0; j < numXVariables; j++) {
+      xPowers[j] = fmpz_get_si(&exps[j + 1]);
+    }
+
+    int coeffValue = fmpz_get_si(coeff);
+
+    // Add to map
+    auto it = coeffs_.find(xPowers);
+    if (it == coeffs_.end()) {
+      auto result = coeffs_.emplace(xPowers, bilvector<int>(0, 1, 20, 0));
+      it = result.first;
+    }
+    it->second[qPower] = coeffValue;
+
+    // Cleanup
+    fmpz_clear(coeff);
+    for (int j = 0; j <= numXVariables; j++) {
+      fmpz_clear(&exps[j]);
+    }
+    flint_free(exp_ptrs);
+    flint_free(exps);
+  }
+
+  pruneZeros();
+}
+
+void HMPoly::pruneZeros() {
   auto it = coeffs_.begin();
   while (it != coeffs_.end()) {
     bool isZero = true;
     const auto &bilvec = it->second;
 
-    // Check if this bilvector is all zeros
     for (int j = bilvec.getMaxNegativeIndex();
          j <= bilvec.getMaxPositiveIndex(); j++) {
       if (bilvec[j] != 0) {
@@ -119,20 +278,17 @@ void MultivariablePolynomial::pruneZeros() {
   }
 }
 
-void MultivariablePolynomial::setCoefficient(int qPower,
-                                             const std::vector<int> &xPowers,
-                                             int coefficient) {
+void HMPoly::setCoefficient(int qPower, const std::vector<int> &xPowers,
+                            int coefficient) {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
   }
 
   if (coefficient == 0) {
-    // If setting to zero, just remove or don't add
     auto it = coeffs_.find(xPowers);
     if (it != coeffs_.end()) {
       it->second[qPower] = 0;
-      // Check if entire bilvector became zero and remove if so
       bool allZero = true;
       for (int j = it->second.getMaxNegativeIndex();
            j <= it->second.getMaxPositiveIndex(); j++) {
@@ -146,10 +302,8 @@ void MultivariablePolynomial::setCoefficient(int qPower,
       }
     }
   } else {
-    // Create entry if it doesn't exist, then set coefficient
     auto it = coeffs_.find(xPowers);
     if (it == coeffs_.end()) {
-      // Create new bilvector for this x-monomial
       auto result = coeffs_.emplace(xPowers, bilvector<int>(0, 1, 20, 0));
       it = result.first;
     }
@@ -157,30 +311,26 @@ void MultivariablePolynomial::setCoefficient(int qPower,
   }
 }
 
-void MultivariablePolynomial::addToCoefficient(int qPower,
-                                               const std::vector<int> &xPowers,
-                                               int coefficient) {
+void HMPoly::addToCoefficient(int qPower, const std::vector<int> &xPowers,
+                              int coefficient) {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
   }
 
   if (coefficient == 0) {
-    return; // Adding zero does nothing
+    return;
   }
 
   auto it = coeffs_.find(xPowers);
   if (it == coeffs_.end()) {
-    // Create new bilvector for this x-monomial
     auto result = coeffs_.emplace(xPowers, bilvector<int>(0, 1, 20, 0));
     it = result.first;
   }
 
   it->second[qPower] += coefficient;
 
-  // If the result became zero, we might want to clean up
   if (it->second[qPower] == 0) {
-    // Check if entire bilvector became zero
     bool allZero = true;
     for (int j = it->second.getMaxNegativeIndex();
          j <= it->second.getMaxPositiveIndex(); j++) {
@@ -196,7 +346,7 @@ void MultivariablePolynomial::addToCoefficient(int qPower,
 }
 
 std::vector<std::pair<std::vector<int>, bilvector<int>>>
-MultivariablePolynomial::getCoefficients() const {
+HMPoly::getCoefficients() const {
   std::vector<std::pair<std::vector<int>, bilvector<int>>> result;
   result.reserve(coeffs_.size());
 
@@ -204,7 +354,6 @@ MultivariablePolynomial::getCoefficients() const {
     const auto &xPowers = entry.first;
     const auto &qPoly = entry.second;
 
-    // Only include non-zero polynomials
     if (!qPoly.isZero()) {
       result.emplace_back(xPowers, qPoly);
     }
@@ -213,10 +362,9 @@ MultivariablePolynomial::getCoefficients() const {
   return result;
 }
 
-MultivariablePolynomial
-MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) const {
+HMPoly HMPoly::truncate(const std::vector<int> &maxXdegrees) const {
+  HMPoly newPoly(this->numXVariables, 0);
 
-  MultivariablePolynomial newPoly(this->numXVariables, 0);
   for (const auto &[xPowers, qPoly] : this->coeffs_) {
     bool in_range = true;
     for (int j = 0; j < this->numXVariables; ++j) {
@@ -227,7 +375,6 @@ MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) const {
     }
 
     if (in_range) {
-      // Copy the term to new polynomial
       newPoly.coeffs_.emplace(xPowers, qPoly);
     }
   }
@@ -235,19 +382,18 @@ MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) const {
   return newPoly;
 }
 
-MultivariablePolynomial MultivariablePolynomial::truncate(int maxDegree) const {
+HMPoly HMPoly::truncate(int maxDegree) const {
   std::vector<int> maxXdegrees(this->numXVariables, maxDegree);
   return this->truncate(maxXdegrees);
 }
 
-void MultivariablePolynomial::clear() { coeffs_.clear(); }
+void HMPoly::clear() { coeffs_.clear(); }
 
-void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
+void HMPoly::exportToJson(const std::string &fileName) const {
   std::ofstream outputFile;
   outputFile.open(fileName + ".json");
   outputFile << "{\n\t\"terms\":[\n";
 
-  // Collect and sort x-power keys for deterministic output
   std::vector<std::vector<int>> sortedXPowers;
   sortedXPowers.reserve(coeffs_.size());
   for (const auto &[xPowers, bilvec] : coeffs_) {
@@ -259,8 +405,7 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
   for (const auto &xPowers : sortedXPowers) {
     const auto &bilvec = coeffs_.at(xPowers);
 
-    // Collect all non-zero q-terms for this x-power combination
-    std::vector<std::pair<int, int>> qTerms; // (q_power, coefficient)
+    std::vector<std::pair<int, int>> qTerms;
     for (int j = bilvec.getMaxNegativeIndex();
          j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
@@ -269,7 +414,6 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
       }
     }
 
-    // Only output if there are non-zero terms
     if (!qTerms.empty()) {
       if (!firstTerm) {
         outputFile << ",\n";
@@ -304,13 +448,13 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
       outputFile << ",";
   }
   outputFile << "],\n";
-  outputFile << "\t\t\"storage_type\": \"sparse\"\n";
+  outputFile << "\t\t\"storage_type\": \"hybrid\"\n";
   outputFile << "\t}\n}";
   outputFile.close();
 }
 
-void MultivariablePolynomial::print(int maxTerms) const {
-  std::cout << "Multivariable Polynomial P(q";
+void HMPoly::print(int maxTerms) const {
+  std::cout << "HMPoly P(q";
   for (int i = 0; i < numXVariables; i++) {
     std::cout << ", x" << (i + 1);
   }
@@ -321,7 +465,6 @@ void MultivariablePolynomial::print(int maxTerms) const {
     return;
   }
 
-  // Collect all terms and sort for deterministic output
   std::vector<std::tuple<std::vector<int>, int, int>> terms;
   for (const auto &[xPowers, bilvec] : coeffs_) {
     for (int j = bilvec.getMaxNegativeIndex();
@@ -333,7 +476,6 @@ void MultivariablePolynomial::print(int maxTerms) const {
     }
   }
 
-  // Sort terms for consistent output
   std::sort(terms.begin(), terms.end());
 
   int termCount = 0;
@@ -361,13 +503,13 @@ void MultivariablePolynomial::print(int maxTerms) const {
   std::cout << std::endl;
 }
 
-MultivariablePolynomial &
-MultivariablePolynomial::operator+=(const MultivariablePolynomial &other) {
+HMPoly &HMPoly::operator+=(const HMPoly &other) {
   if (numXVariables != other.numXVariables) {
     throw std::invalid_argument(
         "Polynomials must have the same number of x variables");
   }
 
+  // Use map directly - fast O(m) operation
   for (const auto &[xPowers, bilvec] : other.coeffs_) {
     for (int j = bilvec.getMaxNegativeIndex();
          j <= bilvec.getMaxPositiveIndex(); j++) {
@@ -381,74 +523,45 @@ MultivariablePolynomial::operator+=(const MultivariablePolynomial &other) {
   return *this;
 }
 
-MultivariablePolynomial &
-MultivariablePolynomial::operator*=(const MultivariablePolynomial &other) {
+HMPoly &HMPoly::operator*=(const HMPoly &other) {
   if (numXVariables != other.numXVariables) {
     throw std::invalid_argument(
         "Polynomials must have the same number of x variables");
   }
 
-  // Create a new coefficient map for the result
-  std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> result;
+  // Use FLINT for multiplication - optimized for bulk operations
+  fmpz_mpoly_t thisPoly, otherPoly, resultPoly;
 
-  // Multiply each term in this polynomial with each term in other polynomial
-  for (const auto &[thisXPowers, thisBilvec] : coeffs_) {
-    for (const auto &[otherXPowers, otherBilvec] : other.coeffs_) {
+  toFlint(thisPoly);
+  other.toFlint(otherPoly);
 
-      // Calculate product x-powers
-      std::vector<int> productXPowers(numXVariables);
-      for (int i = 0; i < numXVariables; i++) {
-        productXPowers[i] = thisXPowers[i] + otherXPowers[i];
-      }
+  initFlintContext();
+  fmpz_mpoly_init(resultPoly, ctx);
 
-      // Multiply all q-coefficient combinations
-      for (int thisQ = thisBilvec.getMaxNegativeIndex();
-           thisQ <= thisBilvec.getMaxPositiveIndex(); thisQ++) {
-        int thisCoeff = thisBilvec[thisQ];
-        if (thisCoeff != 0) {
-          for (int otherQ = otherBilvec.getMaxNegativeIndex();
-               otherQ <= otherBilvec.getMaxPositiveIndex(); otherQ++) {
-            int otherCoeff = otherBilvec[otherQ];
-            if (otherCoeff != 0) {
-              int productQ = thisQ + otherQ;
-              int productCoeff = thisCoeff * otherCoeff;
+  // FLINT multiplication
+  fmpz_mpoly_mul(resultPoly, thisPoly, otherPoly, ctx);
 
-              // Add to result
-              auto it = result.find(productXPowers);
-              if (it == result.end()) {
-                auto insertResult =
-                    result.emplace(productXPowers, bilvector<int>(0, 1, 20, 0));
-                it = insertResult.first;
-              }
-              it->second[productQ] += productCoeff;
-            }
-          }
-        }
-      }
-    }
-  }
+  // Convert back to map
+  fromFlint(resultPoly);
 
-  // Replace coefficients with result
-  coeffs_ = std::move(result);
-
-  // Clean up any zeros that might have been created
-  pruneZeros();
+  // Cleanup
+  fmpz_mpoly_clear(thisPoly, ctx);
+  fmpz_mpoly_clear(otherPoly, ctx);
+  fmpz_mpoly_clear(resultPoly, ctx);
 
   return *this;
 }
 
-MultivariablePolynomial
-MultivariablePolynomial::operator*(const bilvector<int> &qPoly) const {
-  MultivariablePolynomial result(numXVariables, 0, maxXDegrees);
+HMPoly HMPoly::operator*(const bilvector<int> &qPoly) const {
+  HMPoly result(numXVariables, 0, maxXDegrees);
 
-  // If this polynomial is zero or qPoly is zero, return zero
   if (coeffs_.empty()) {
     return result;
   }
 
-  // Check if qPoly is zero
   bool qPolyIsZero = true;
-  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
+  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex();
+       ++q) {
     if (qPoly[q] != 0) {
       qPolyIsZero = false;
       break;
@@ -458,11 +571,9 @@ MultivariablePolynomial::operator*(const bilvector<int> &qPoly) const {
     return result;
   }
 
-  // Multiply each term
+  // Use map directly - element-wise multiplication is fast
   for (const auto &[xPowers, thisBilvec] : coeffs_) {
     bilvector<int> product = thisBilvec * qPoly;
-
-    // Add to result
     result.coeffs_.emplace(xPowers, std::move(product));
   }
 

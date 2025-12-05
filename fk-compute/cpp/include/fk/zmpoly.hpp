@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fk/bilvector.hpp"
 #include "fk/polynomial_base.hpp"
+#include "fk/qpolynomial.hpp"
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -10,31 +10,33 @@
 /**
  * Custom hash function for vector<int> keys
  */
-struct VectorHash {
+struct VectorHashZM {
   std::size_t operator()(const std::vector<int> &v) const;
 };
 
 /**
- * MultivariablePolynomial: A polynomial in variables q, x₁, x₂, ..., xₙ
+ * ZMPoly: A polynomial in variables q, x₁, x₂, ..., xₙ with arbitrary precision integer coefficients
  *
  * Represents polynomials of the form:
  * P(q, x₁, x₂, ..., xₙ) = Σᵢⱼ coeffᵢⱼ × q^j × x₁^a₁ᵢ × x₂^a₂ᵢ × ... × xₙ^aₙᵢ
  *
  * Features:
+ * - Arbitrary precision integer coefficients (using FLINT's fmpz_t via QPolynomial)
  * - Arbitrary positive/negative q powers
  * - Configurable number of x variables
  * - Sparse storage using unordered_map (only non-zero coefficients)
  * - Support for negative x exponents
  * - Efficient indexing and arithmetic operations
+ * - Same interface as MultivariablePolynomial for drop-in replacement
  */
-class MultivariablePolynomial : public PolynomialBase<int> {
+class ZMPoly : public PolynomialBase<int, QPolynomial> {
 private:
   int numXVariables;            // Number of x variables (components)
   std::vector<int> maxXDegrees; // Max degrees (advisory only, not enforced)
   std::vector<int> blockSizes; // Block sizes (advisory only, for compatibility)
 
   // Sparse storage: map from x-exponent vector to q-polynomial
-  std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> coeffs_;
+  std::unordered_map<std::vector<int>, QPolynomial, VectorHashZM> coeffs_;
 
   // Prune zero coefficients from the map
   void pruneZeros();
@@ -47,8 +49,8 @@ public:
    * @param maxDegrees Optional: different max degree for each variable
    * (advisory only)
    */
-  MultivariablePolynomial(int numVariables, int degree = 10,
-                          const std::vector<int> &maxDegrees = {});
+  ZMPoly(int numVariables, int degree = 10,
+         const std::vector<int> &maxDegrees = {});
 
   /**
    * Constructor to increase the number of variables from another polynomial
@@ -58,11 +60,11 @@ public:
    * @param degree Maximum degree for each new x variable (advisory only)
    * @param maxDegrees Optional: different max degree for each variable (advisory only)
    */
-  MultivariablePolynomial(const MultivariablePolynomial &source,
-                          int newNumVariables,
-                          int targetVariableIndex,
-                          int degree = 10,
-                          const std::vector<int> &maxDegrees = {});
+  ZMPoly(const ZMPoly &source,
+         int newNumVariables,
+         int targetVariableIndex,
+         int degree = 10,
+         const std::vector<int> &maxDegrees = {});
 
   /**
    * Set coefficient for specific term
@@ -85,20 +87,20 @@ public:
   /**
    * Truncate multivariable polynomial to given degrees
    */
-  MultivariablePolynomial truncate(const std::vector<int> & maxXdegrees) const;
+  ZMPoly truncate(const std::vector<int> & maxXdegrees) const;
 
   /**
    * Truncate multivariable polynomial to the same degree for all x variables
    * @param maxDegree Maximum degree to keep for all x variables
    */
-  MultivariablePolynomial truncate(int maxDegree) const;
+  ZMPoly truncate(int maxDegree) const;
 
 
   /**
    * Get coefficients as a vector of (x-powers, q-polynomial) pairs
-   * Compatible with FMPoly's interface
+   * Compatible with other polynomial classes' interface
    */
-  using Term = std::pair<std::vector<int>, bilvector<int>>;
+  using Term = std::pair<std::vector<int>, QPolynomial>;
   std::vector<Term> getCoefficients() const override;
 
   /**
@@ -121,17 +123,16 @@ public:
   /**
    * Add another polynomial to this one
    */
-  MultivariablePolynomial &operator+=(const MultivariablePolynomial &other);
+  ZMPoly &operator+=(const ZMPoly &other);
 
   /**
    * Multiply this polynomial by another
    */
-  MultivariablePolynomial &operator*=(const MultivariablePolynomial &other);
+  ZMPoly &operator*=(const ZMPoly &other);
 
   /**
-   * Multiply this polynomial by a q-polynomial (bilvector)
-   * Each q-coefficient is multiplied by the bilvector
+   * Multiply this polynomial by a q-polynomial (QPolynomial)
+   * Each q-coefficient is multiplied by the QPolynomial
    */
-  MultivariablePolynomial operator*(const bilvector<int> &qPoly) const;
+  ZMPoly operator*(const QPolynomial &qPoly) const;
 };
-

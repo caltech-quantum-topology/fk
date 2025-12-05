@@ -1,15 +1,14 @@
-#include "fk/multivariable_polynomial.hpp"
+#include "fk/zmpoly.hpp"
 
 #include <algorithm>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
-#include <thread>
 #include <tuple>
 
-// VectorHash implementation
-std::size_t VectorHash::operator()(const std::vector<int> &v) const {
+// VectorHashZM implementation
+std::size_t VectorHashZM::operator()(const std::vector<int> &v) const {
   std::size_t seed = v.size();
   for (auto &i : v) {
     // Mix the hash with signed int support
@@ -18,10 +17,10 @@ std::size_t VectorHash::operator()(const std::vector<int> &v) const {
   return seed;
 }
 
-// MultivariablePolynomial implementation
+// ZMPoly implementation
 
-MultivariablePolynomial::MultivariablePolynomial(
-    int numVariables, int degree, const std::vector<int> &maxDegrees)
+ZMPoly::ZMPoly(int numVariables, int degree,
+               const std::vector<int> &maxDegrees)
     : numXVariables(numVariables) {
 
   if (maxDegrees.empty()) {
@@ -44,9 +43,9 @@ MultivariablePolynomial::MultivariablePolynomial(
   }
 }
 
-MultivariablePolynomial::MultivariablePolynomial(
-    const MultivariablePolynomial &source, int newNumVariables,
-    int targetVariableIndex, int degree, const std::vector<int> &maxDegrees)
+ZMPoly::ZMPoly(const ZMPoly &source, int newNumVariables,
+               int targetVariableIndex, int degree,
+               const std::vector<int> &maxDegrees)
     : numXVariables(newNumVariables) {
 
   if (newNumVariables < source.numXVariables) {
@@ -86,32 +85,20 @@ MultivariablePolynomial::MultivariablePolynomial(
 
   // Copy coefficients from source, mapping the single variable to
   // targetVariableIndex
-  for (const auto &[sourceXPowers, bilvec] : source.coeffs_) {
+  for (const auto &[sourceXPowers, qPoly] : source.coeffs_) {
     // Create new x-powers vector with zeros except at targetVariableIndex
     std::vector<int> newXPowers(newNumVariables, 0);
     newXPowers[targetVariableIndex] = sourceXPowers[0];
 
-    // Copy the entire bilvector
-    coeffs_.emplace(newXPowers, bilvec);
+    // Copy the QPolynomial
+    coeffs_.emplace(newXPowers, qPoly);
   }
 }
 
-void MultivariablePolynomial::pruneZeros() {
+void ZMPoly::pruneZeros() {
   auto it = coeffs_.begin();
   while (it != coeffs_.end()) {
-    bool isZero = true;
-    const auto &bilvec = it->second;
-
-    // Check if this bilvector is all zeros
-    for (int j = bilvec.getMaxNegativeIndex();
-         j <= bilvec.getMaxPositiveIndex(); j++) {
-      if (bilvec[j] != 0) {
-        isZero = false;
-        break;
-      }
-    }
-
-    if (isZero) {
+    if (it->second.isZero()) {
       it = coeffs_.erase(it);
     } else {
       ++it;
@@ -119,9 +106,8 @@ void MultivariablePolynomial::pruneZeros() {
   }
 }
 
-void MultivariablePolynomial::setCoefficient(int qPower,
-                                             const std::vector<int> &xPowers,
-                                             int coefficient) {
+void ZMPoly::setCoefficient(int qPower, const std::vector<int> &xPowers,
+                            int coefficient) {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
@@ -131,17 +117,9 @@ void MultivariablePolynomial::setCoefficient(int qPower,
     // If setting to zero, just remove or don't add
     auto it = coeffs_.find(xPowers);
     if (it != coeffs_.end()) {
-      it->second[qPower] = 0;
-      // Check if entire bilvector became zero and remove if so
-      bool allZero = true;
-      for (int j = it->second.getMaxNegativeIndex();
-           j <= it->second.getMaxPositiveIndex(); j++) {
-        if (it->second[j] != 0) {
-          allZero = false;
-          break;
-        }
-      }
-      if (allZero) {
+      it->second.setCoefficient(qPower, 0);
+      // Check if entire QPolynomial became zero and remove if so
+      if (it->second.isZero()) {
         coeffs_.erase(it);
       }
     }
@@ -149,17 +127,16 @@ void MultivariablePolynomial::setCoefficient(int qPower,
     // Create entry if it doesn't exist, then set coefficient
     auto it = coeffs_.find(xPowers);
     if (it == coeffs_.end()) {
-      // Create new bilvector for this x-monomial
-      auto result = coeffs_.emplace(xPowers, bilvector<int>(0, 1, 20, 0));
+      // Create new QPolynomial for this x-monomial
+      auto result = coeffs_.emplace(xPowers, QPolynomial());
       it = result.first;
     }
-    it->second[qPower] = coefficient;
+    it->second.setCoefficient(qPower, coefficient);
   }
 }
 
-void MultivariablePolynomial::addToCoefficient(int qPower,
-                                               const std::vector<int> &xPowers,
-                                               int coefficient) {
+void ZMPoly::addToCoefficient(int qPower, const std::vector<int> &xPowers,
+                              int coefficient) {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {
     throw std::invalid_argument(
         "X powers vector size must match number of variables");
@@ -171,33 +148,22 @@ void MultivariablePolynomial::addToCoefficient(int qPower,
 
   auto it = coeffs_.find(xPowers);
   if (it == coeffs_.end()) {
-    // Create new bilvector for this x-monomial
-    auto result = coeffs_.emplace(xPowers, bilvector<int>(0, 1, 20, 0));
+    // Create new QPolynomial for this x-monomial
+    auto result = coeffs_.emplace(xPowers, QPolynomial());
     it = result.first;
   }
 
-  it->second[qPower] += coefficient;
+  it->second.addToCoefficient(qPower, coefficient);
 
-  // If the result became zero, we might want to clean up
-  if (it->second[qPower] == 0) {
-    // Check if entire bilvector became zero
-    bool allZero = true;
-    for (int j = it->second.getMaxNegativeIndex();
-         j <= it->second.getMaxPositiveIndex(); j++) {
-      if (it->second[j] != 0) {
-        allZero = false;
-        break;
-      }
-    }
-    if (allZero) {
-      coeffs_.erase(it);
-    }
+  // If the result became zero, clean up
+  if (it->second.isZero()) {
+    coeffs_.erase(it);
   }
 }
 
-std::vector<std::pair<std::vector<int>, bilvector<int>>>
-MultivariablePolynomial::getCoefficients() const {
-  std::vector<std::pair<std::vector<int>, bilvector<int>>> result;
+std::vector<std::pair<std::vector<int>, QPolynomial>>
+ZMPoly::getCoefficients() const {
+  std::vector<std::pair<std::vector<int>, QPolynomial>> result;
   result.reserve(coeffs_.size());
 
   for (const auto &entry : coeffs_) {
@@ -213,10 +179,9 @@ MultivariablePolynomial::getCoefficients() const {
   return result;
 }
 
-MultivariablePolynomial
-MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) const {
+ZMPoly ZMPoly::truncate(const std::vector<int> &maxXdegrees) const {
 
-  MultivariablePolynomial newPoly(this->numXVariables, 0);
+  ZMPoly newPoly(this->numXVariables, 0);
   for (const auto &[xPowers, qPoly] : this->coeffs_) {
     bool in_range = true;
     for (int j = 0; j < this->numXVariables; ++j) {
@@ -235,14 +200,14 @@ MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) const {
   return newPoly;
 }
 
-MultivariablePolynomial MultivariablePolynomial::truncate(int maxDegree) const {
+ZMPoly ZMPoly::truncate(int maxDegree) const {
   std::vector<int> maxXdegrees(this->numXVariables, maxDegree);
   return this->truncate(maxXdegrees);
 }
 
-void MultivariablePolynomial::clear() { coeffs_.clear(); }
+void ZMPoly::clear() { coeffs_.clear(); }
 
-void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
+void ZMPoly::exportToJson(const std::string &fileName) const {
   std::ofstream outputFile;
   outputFile.open(fileName + ".json");
   outputFile << "{\n\t\"terms\":[\n";
@@ -250,20 +215,21 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
   // Collect and sort x-power keys for deterministic output
   std::vector<std::vector<int>> sortedXPowers;
   sortedXPowers.reserve(coeffs_.size());
-  for (const auto &[xPowers, bilvec] : coeffs_) {
+  for (const auto &[xPowers, qPoly] : coeffs_) {
     sortedXPowers.push_back(xPowers);
   }
   std::sort(sortedXPowers.begin(), sortedXPowers.end());
 
   bool firstTerm = true;
   for (const auto &xPowers : sortedXPowers) {
-    const auto &bilvec = coeffs_.at(xPowers);
+    const auto &qPoly = coeffs_.at(xPowers);
 
     // Collect all non-zero q-terms for this x-power combination
     std::vector<std::pair<int, int>> qTerms; // (q_power, coefficient)
-    for (int j = bilvec.getMaxNegativeIndex();
-         j <= bilvec.getMaxPositiveIndex(); j++) {
-      int coeff = bilvec[j];
+    const int minQ = qPoly.getMinPower();
+    const int maxQ = qPoly.getMaxPower();
+    for (int j = minQ; j <= maxQ; j++) {
+      int coeff = qPoly.getCoefficient(j);
       if (coeff != 0) {
         qTerms.emplace_back(j, coeff);
       }
@@ -304,13 +270,14 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
       outputFile << ",";
   }
   outputFile << "],\n";
-  outputFile << "\t\t\"storage_type\": \"sparse\"\n";
+  outputFile << "\t\t\"storage_type\": \"sparse\",\n";
+  outputFile << "\t\t\"coefficient_type\": \"arbitrary_precision\"\n";
   outputFile << "\t}\n}";
   outputFile.close();
 }
 
-void MultivariablePolynomial::print(int maxTerms) const {
-  std::cout << "Multivariable Polynomial P(q";
+void ZMPoly::print(int maxTerms) const {
+  std::cout << "ZMPoly (Arbitrary Precision) P(q";
   for (int i = 0; i < numXVariables; i++) {
     std::cout << ", x" << (i + 1);
   }
@@ -323,10 +290,11 @@ void MultivariablePolynomial::print(int maxTerms) const {
 
   // Collect all terms and sort for deterministic output
   std::vector<std::tuple<std::vector<int>, int, int>> terms;
-  for (const auto &[xPowers, bilvec] : coeffs_) {
-    for (int j = bilvec.getMaxNegativeIndex();
-         j <= bilvec.getMaxPositiveIndex(); j++) {
-      int coeff = bilvec[j];
+  for (const auto &[xPowers, qPoly] : coeffs_) {
+    const int minQ = qPoly.getMinPower();
+    const int maxQ = qPoly.getMaxPower();
+    for (int j = minQ; j <= maxQ; j++) {
+      int coeff = qPoly.getCoefficient(j);
       if (coeff != 0) {
         terms.emplace_back(xPowers, j, coeff);
       }
@@ -361,17 +329,24 @@ void MultivariablePolynomial::print(int maxTerms) const {
   std::cout << std::endl;
 }
 
-MultivariablePolynomial &
-MultivariablePolynomial::operator+=(const MultivariablePolynomial &other) {
+ZMPoly &ZMPoly::operator+=(const ZMPoly &other) {
   if (numXVariables != other.numXVariables) {
     throw std::invalid_argument(
         "Polynomials must have the same number of x variables");
   }
 
-  for (const auto &[xPowers, bilvec] : other.coeffs_) {
-    for (int j = bilvec.getMaxNegativeIndex();
-         j <= bilvec.getMaxPositiveIndex(); j++) {
-      int coeff = bilvec[j];
+  // Reserve space in coeffs_ if needed to reduce rehashing
+  if (coeffs_.size() + other.coeffs_.size() > coeffs_.bucket_count()) {
+    coeffs_.reserve(coeffs_.size() + other.coeffs_.size());
+  }
+
+  for (const auto &[xPowers, qPoly] : other.coeffs_) {
+    // Cache range to avoid repeated function calls
+    const int minQ = qPoly.getMinPower();
+    const int maxQ = qPoly.getMaxPower();
+
+    for (int j = minQ; j <= maxQ; j++) {
+      int coeff = qPoly.getCoefficient(j);
       if (coeff != 0) {
         addToCoefficient(j, xPowers, coeff);
       }
@@ -381,19 +356,27 @@ MultivariablePolynomial::operator+=(const MultivariablePolynomial &other) {
   return *this;
 }
 
-MultivariablePolynomial &
-MultivariablePolynomial::operator*=(const MultivariablePolynomial &other) {
+ZMPoly &ZMPoly::operator*=(const ZMPoly &other) {
   if (numXVariables != other.numXVariables) {
     throw std::invalid_argument(
         "Polynomials must have the same number of x variables");
   }
 
   // Create a new coefficient map for the result
-  std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> result;
+  // Reserve capacity to reduce rehashing (estimated size)
+  std::unordered_map<std::vector<int>, QPolynomial, VectorHashZM> result;
+  result.reserve(coeffs_.size() * other.coeffs_.size());
 
   // Multiply each term in this polynomial with each term in other polynomial
-  for (const auto &[thisXPowers, thisBilvec] : coeffs_) {
-    for (const auto &[otherXPowers, otherBilvec] : other.coeffs_) {
+  for (const auto &[thisXPowers, thisQPoly] : coeffs_) {
+    // Cache range for thisQPoly to avoid repeated function calls
+    const int thisMinQ = thisQPoly.getMinPower();
+    const int thisMaxQ = thisQPoly.getMaxPower();
+
+    for (const auto &[otherXPowers, otherQPoly] : other.coeffs_) {
+      // Cache range for otherQPoly to avoid repeated function calls
+      const int otherMinQ = otherQPoly.getMinPower();
+      const int otherMaxQ = otherQPoly.getMaxPower();
 
       // Calculate product x-powers
       std::vector<int> productXPowers(numXVariables);
@@ -401,26 +384,23 @@ MultivariablePolynomial::operator*=(const MultivariablePolynomial &other) {
         productXPowers[i] = thisXPowers[i] + otherXPowers[i];
       }
 
-      // Multiply all q-coefficient combinations
-      for (int thisQ = thisBilvec.getMaxNegativeIndex();
-           thisQ <= thisBilvec.getMaxPositiveIndex(); thisQ++) {
-        int thisCoeff = thisBilvec[thisQ];
+      // Find or create the result entry once for this x-power combination
+      auto it = result.find(productXPowers);
+      if (it == result.end()) {
+        auto insertResult = result.emplace(productXPowers, QPolynomial());
+        it = insertResult.first;
+      }
+
+      // Multiply all q-coefficient combinations and add to the same result entry
+      for (int thisQ = thisMinQ; thisQ <= thisMaxQ; thisQ++) {
+        int thisCoeff = thisQPoly.getCoefficient(thisQ);
         if (thisCoeff != 0) {
-          for (int otherQ = otherBilvec.getMaxNegativeIndex();
-               otherQ <= otherBilvec.getMaxPositiveIndex(); otherQ++) {
-            int otherCoeff = otherBilvec[otherQ];
+          for (int otherQ = otherMinQ; otherQ <= otherMaxQ; otherQ++) {
+            int otherCoeff = otherQPoly.getCoefficient(otherQ);
             if (otherCoeff != 0) {
               int productQ = thisQ + otherQ;
               int productCoeff = thisCoeff * otherCoeff;
-
-              // Add to result
-              auto it = result.find(productXPowers);
-              if (it == result.end()) {
-                auto insertResult =
-                    result.emplace(productXPowers, bilvector<int>(0, 1, 20, 0));
-                it = insertResult.first;
-              }
-              it->second[productQ] += productCoeff;
+              it->second.addToCoefficient(productQ, productCoeff);
             }
           }
         }
@@ -437,33 +417,22 @@ MultivariablePolynomial::operator*=(const MultivariablePolynomial &other) {
   return *this;
 }
 
-MultivariablePolynomial
-MultivariablePolynomial::operator*(const bilvector<int> &qPoly) const {
-  MultivariablePolynomial result(numXVariables, 0, maxXDegrees);
+ZMPoly ZMPoly::operator*(const QPolynomial &qPoly) const {
+  ZMPoly result(numXVariables, 0, maxXDegrees);
 
   // If this polynomial is zero or qPoly is zero, return zero
-  if (coeffs_.empty()) {
-    return result;
-  }
-
-  // Check if qPoly is zero
-  bool qPolyIsZero = true;
-  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
-    if (qPoly[q] != 0) {
-      qPolyIsZero = false;
-      break;
-    }
-  }
-  if (qPolyIsZero) {
+  if (coeffs_.empty() || qPoly.isZero()) {
     return result;
   }
 
   // Multiply each term
-  for (const auto &[xPowers, thisBilvec] : coeffs_) {
-    bilvector<int> product = thisBilvec * qPoly;
+  for (const auto &[xPowers, thisQPoly] : coeffs_) {
+    QPolynomial product = thisQPoly * qPoly;
 
-    // Add to result
-    result.coeffs_.emplace(xPowers, std::move(product));
+    // Add to result (only if non-zero)
+    if (!product.isZero()) {
+      result.coeffs_.emplace(xPowers, std::move(product));
+    }
   }
 
   return result;

@@ -721,19 +721,28 @@ private:
       }
     }
 
-    auto resultCoeffs = result.getCoefficients();
-    // Convert polynomialTerms to the expected format
-    std::vector<std::pair<std::vector<int>, bilvector<int>>> polynomialTermsConverted;
+    // Add polynomialTerms to result with offset
+    // Refactored to use direct addToCoefficient instead of get/sync pattern
     for (size_t i = 0; i < polynomialTerms.size(); ++i) {
+        const auto &qPoly = polynomialTerms[i];
+
+        // Build x-powers vector (simplified - assumes single variable for now)
         std::vector<int> xPowers(components, 0);
-        // Convert linear index back to x-powers (simplified - assumes single variable for now)
         xPowers[0] = static_cast<int>(i);
-        polynomialTermsConverted.push_back({xPowers, polynomialTerms[i]});
+
+        // Apply offset to x-powers
+        for (int j = 0; j < components; ++j) {
+            xPowers[j] += xPowerAccumulator[j];
+        }
+
+        // Add each q-coefficient with offset
+        for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
+            int coeff = qPoly[q];
+            if (coeff != 0) {
+                result.addToCoefficient(q + qPowerAccumulator, xPowers, coeff);
+            }
+        }
     }
-    performOffsetAddition(resultCoeffs, polynomialTermsConverted,
-                          xPowerAccumulator, qPowerAccumulator, 1, components,
-                          maxXDegrees);
-    result.syncFromSparseVector(resultCoeffs);
   }
   void writeResultsToJson(std::string fileName) {
     result.exportToJson(fileName);
@@ -909,12 +918,16 @@ public:
     // std::cout << accumulatorBlockSizes.size() << " " <<
     // increment_offset.size() << " " << components << " " << maxima.size() <<
     // "\n";
-    auto resultCoeffs1 = result.getCoefficients();
-    auto resultCoeffs2 = result.getCoefficients();
-    performOffsetAddition(resultCoeffs1, resultCoeffs2,
-                          increment_offset, 0, -1, components,
-                          maxima);
-    result.syncFromSparseVector(resultCoeffs1);
+    // Apply final offset: multiply by (-1 + x₀) and truncate
+    // Refactored to use direct polynomial operations instead of get/sync pattern
+    PolynomialType offset(components, 0);
+    std::vector<int> xPowers(components, 0);
+    offset.setCoefficient(0, xPowers, -1);  // Coefficient for x₀⁰: -1
+    xPowers[0] = 1;
+    offset.setCoefficient(0, xPowers, 1);   // Coefficient for x₀¹: +1
+
+    result *= offset;
+    result = result.truncate(maxima);
     std::cout<<"Points found: "<<points_found<<std::endl;
     writeResultsToJson(outfile_);
 

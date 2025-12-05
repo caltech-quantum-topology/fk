@@ -450,7 +450,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       const PolynomialType poch(
           qpochhammer_xq_q(param_i - param_jp, param_j + 1), config_.components,
           bottom_comp);
-      factor = binomial * poch;
+      factor = poch * binomial;
       break;
     }
     case 2: {
@@ -469,7 +469,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
                                    param_j - param_jp + param_i + 1,
                                    max_x_degrees[bottom_comp]),
           config_.components, bottom_comp);
-      factor = binomial * poch;
+      factor = poch * binomial;
       break;
     }
     case 3: {
@@ -492,7 +492,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
                                    param_i - param_ip + param_j + 1,
                                    max_x_degrees[top_comp]),
           config_.components, top_comp);
-      factor = binomial * poch;
+      factor = poch * binomial;
       break;
     }
     case 4: {
@@ -510,7 +510,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       const PolynomialType poch(
           qpochhammer_xq_q(param_j - param_ip, param_i + 1), config_.components,
           top_comp);
-      factor = binomial * poch;
+      factor = poch * binomial;
       break;
     }
     }
@@ -537,6 +537,7 @@ void FKComputationEngine::performOffsetAdditionPoly(
     int q_offset, int sign_multiplier) {
 
   // Iterate through all coefficients in the source polynomial
+  // Use getCoefficients() for efficient read-only access
   const auto coeffs = source_poly.getCoefficients();
 
   for (const auto &[x_powers, q_poly] : coeffs) {
@@ -1006,7 +1007,6 @@ std::list<std::array<int, 2>> FKComputation::findAdditionalBounds(
             }
           }
           if (useful) {
-            std::cout<<index<<" "<<l<<std::endl;
             bounds.push_back({index, l});
             bounded_v[index] = true;
             bounded_count++;
@@ -1244,31 +1244,26 @@ void FKComputation::combineEngineResults() {
 }
 
 void FKComputation::performFinalOffsetComputation() {
-  // Final offset addition
-  std::vector<int> increment_offset(config_.components, 0);
-  increment_offset[0] = 1;
+  // Final offset addition: multiply by (-1 + x₀)
+  // This computes the discrete derivative in the x₀ direction
+
+  PolynomialType offset(config_.components, 0);
+  std::vector<int> xPowers(config_.components, 0);
+
+  // Coefficient for x₀⁰: -1
+  offset.setCoefficient(0, xPowers, -1);
+
+  // Coefficient for x₀¹: +1
+  xPowers[0] = 1;
+  offset.setCoefficient(0, xPowers, 1);
+
+  // Multiply result by offset polynomial
+  const_cast<PolynomialType &>(engines_[0]->getResult()) *= offset;
+
+  // Truncate to final degree
   std::vector<int> maxima(config_.components, config_.degree - 1);
-
-  auto combined_coeffs1 = engines_[0]->getResult().getCoefficients();
-  auto combined_coeffs2 = engines_[0]->getResult().getCoefficients();
-
-  std::vector<int> accumulator_block_sizes;
-  accumulator_block_sizes.push_back(1);
-  for (int i = 1; i < config_.components; i++) {
-    accumulator_block_sizes.push_back(accumulator_block_sizes[i - 1] *
-                                      (config_.degree + 1));
-  }
-
-  int components_copy = config_.components; // Make a mutable copy
-
-  performOffsetAddition(combined_coeffs1, combined_coeffs2, increment_offset, 0,
-                        -1,
-                        components_copy, // dimensions
-                        maxima           // arrayLengths
-  );
-
-  const_cast<PolynomialType &>(engines_[0]->getResult())
-      .syncFromSparseVector(combined_coeffs1);
+  const_cast<PolynomialType &>(engines_[0]->getResult()) =
+      engines_[0]->getResult().truncate(maxima);
 }
 
 } // namespace fk

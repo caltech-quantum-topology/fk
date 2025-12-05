@@ -46,6 +46,7 @@ SOURCES = $(SRC_DIR)/fk_segments_links.cpp \
           $(SRC_DIR)/qpolynomial.cpp \
           $(SRC_DIR)/fmpoly_class.cpp \
           $(SRC_DIR)/bmpoly.cpp \
+          $(SRC_DIR)/zmpoly.cpp \
           $(SRC_DIR)/qalg_links.cpp \
           $(SRC_DIR)/linalg.cpp \
           $(SRC_DIR)/string_to_int.cpp \
@@ -61,6 +62,7 @@ HEADERS = $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp \
           $(INCLUDE_DIR)/fk/qpolynomial.hpp \
           $(INCLUDE_DIR)/fk/fmpoly_class.hpp \
           $(INCLUDE_DIR)/fk/bmpoly.hpp \
+          $(INCLUDE_DIR)/fk/zmpoly.hpp \
           $(INCLUDE_DIR)/fk/qalg_links.hpp \
           $(INCLUDE_DIR)/fk/linalg.hpp \
           $(INCLUDE_DIR)/fk/string_to_int.hpp \
@@ -94,11 +96,12 @@ NEW_QBINOM = new_qbinomials
 XQ_EXMPL = xq_poch_example
 RANDOM_FMPOLY_TARGET = random_fmpoly
 BMPOLY_TEST_TARGET = bmpoly_test
-INVERSE_QPOCHHAMMER_TEST_TARGET = inverse_qpochhammer_test 
+INVERSE_QPOCHHAMMER_TEST_TARGET = inverse_qpochhammer_test
+BENCHMARK_POLY_TARGET = benchmark_poly 
 
 
 # Default target - now builds main.cpp
-all: $(FK_MAIN_TARGET) $(EXAMPLE_TARGET)
+all: $(FK_MAIN_TARGET)
 
 # Main target is now fk_main (from main.cpp) - explicit rule to override built-in
 main: $(FK_MAIN_TARGET)
@@ -172,7 +175,7 @@ $(TREFOIL_COMPLETE_TARGET): $(BUILD_DIR)/trefoil_complete_example.o $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(OPENMP_LIBS)
 
 # FK Main executable (refactored API)
-$(FK_MAIN_TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o $(BUILD_DIR)/bmpoly.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
+$(FK_MAIN_TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/fk_computation.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/fmpoly.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/fmpoly_class.o $(BUILD_DIR)/bmpoly.o $(BUILD_DIR)/hmpoly.o $(BUILD_DIR)/zmpoly.o $(BUILD_DIR)/qalg_links.o $(BUILD_DIR)/linalg.o $(BUILD_DIR)/string_to_int.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS) $(OPENMP_LIBS)
 
 # Parser comparison test executable
@@ -183,6 +186,9 @@ $(PARSER_TEST_TARGET): $(BUILD_DIR)/parser_comparison_test.o $(BUILD_DIR)/fk_com
 $(TEST_TARGET): $(BUILD_DIR)/testing.o $(filter-out $(BUILD_DIR)/fk_segments_links.o,$(OBJECTS))
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS) $(OPENMP_LIBS)
 
+# Benchmark executable
+$(BENCHMARK_POLY_TARGET): $(BUILD_DIR)/benchmark_poly.o $(BUILD_DIR)/fmpoly_class.o $(BUILD_DIR)/multivariable_polynomial.o $(BUILD_DIR)/qpolynomial.o $(BUILD_DIR)/hmpoly.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(FLINT_LIBS)
 
 # Debug versions
 debug: CXXFLAGS += $(DEBUG_FLAGS)
@@ -256,7 +262,9 @@ $(BUILD_DIR)/multivariable_polynomial.o: $(SRC_DIR)/multivariable_polynomial.cpp
 $(BUILD_DIR)/fmpoly.o: $(SRC_DIR)/fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp $(INCLUDE_DIR)/fk/qpolynomial.hpp $(INCLUDE_DIR)/fk/fmpoly_class.hpp
 $(BUILD_DIR)/qpolynomial.o: $(SRC_DIR)/qpolynomial.cpp $(INCLUDE_DIR)/fk/qpolynomial.hpp
 $(BUILD_DIR)/fmpoly_class.o: $(SRC_DIR)/fmpoly_class.cpp $(INCLUDE_DIR)/fk/fmpoly_class.hpp $(INCLUDE_DIR)/fk/qpolynomial.hpp
+$(BUILD_DIR)/hmpoly.o: $(SRC_DIR)/hmpoly.cpp $(INCLUDE_DIR)/fk/hmpoly.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/bmpoly.o: $(SRC_DIR)/bmpoly.cpp $(INCLUDE_DIR)/fk/bmpoly.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
+$(BUILD_DIR)/zmpoly.o: $(SRC_DIR)/zmpoly.cpp $(INCLUDE_DIR)/fk/zmpoly.hpp $(INCLUDE_DIR)/fk/qpolynomial.hpp
 $(BUILD_DIR)/qalg_links.o: $(SRC_DIR)/qalg_links.cpp $(INCLUDE_DIR)/fk/qalg_links.hpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/linalg.o: $(SRC_DIR)/linalg.cpp $(INCLUDE_DIR)/fk/linalg.hpp $(INCLUDE_DIR)/fk/bilvector.hpp
 $(BUILD_DIR)/solution_pool_1a_double_links.o: $(SRC_DIR)/solution_pool_1a_double_links.cpp $(INCLUDE_DIR)/fk/solution_pool_1a_double_links.hpp $(INCLUDE_DIR)/fk/btree.hpp
@@ -285,6 +293,7 @@ $(BUILD_DIR)/checkpoint_resume_demo.o: checkpoint_resume_demo.cpp $(INCLUDE_DIR)
 $(BUILD_DIR)/random_fmpoly.o: $(EXAMPLE_DIR)/random_fmpoly.cpp $(INCLUDE_DIR)/fk/fmpoly.hpp
 $(BUILD_DIR)/bmpoly_test.o: $(TEST_DIR)/bmpoly_test.cpp $(INCLUDE_DIR)/fk/bmpoly.hpp
 $(BUILD_DIR)/inverse_qpochhammer_test.o: $(TEST_DIR)/inverse_qpochhammer_test.cpp $(INCLUDE_DIR)/fk/qalg_links.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
+$(BUILD_DIR)/benchmark_poly.o: benchmark_poly.cpp $(INCLUDE_DIR)/fk/fmpoly_class.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/hmpoly.hpp
 
 # Utility targets
 clean:

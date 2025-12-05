@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fk/polynomial_base.hpp"
 #include "fk/qpolynomial.hpp"
 #include <flint/fmpz_mpoly.h>
 #include <string>
@@ -17,7 +18,7 @@
  * - Support for negative q exponents via offset tracking
  * - Drop-in replacement for MultivariablePolynomial
  */
-class FMPoly {
+class FMPoly : public PolynomialBase<int, QPolynomial> {
 private:
   int numXVariables; // Number of x variables
   std::vector<int>
@@ -36,7 +37,21 @@ private:
                                 std::vector<int> &xPowers) const;
   void adjustGroundPowersIfNeeded(int qPower, const std::vector<int> &xPowers);
 
+  // Internal methods used by public interface
+  int getCoefficient(int qPower, const std::vector<int> &xPowers) const;
+  QPolynomial getQPolynomialObject(const std::vector<int> &xPowers) const;
+  void setQPolynomial(const std::vector<int> &xPowers,
+                      const std::vector<int> &qCoeffs, int minQPower = 0);
+  void setQPolynomial(const std::vector<int> &xPowers,
+                      const QPolynomial &qPoly);
+  void addQPolynomial(const std::vector<int> &xPowers,
+                      const QPolynomial &qPoly);
+  void checkCompatibility(const FMPoly &other) const;
+  bool isZero() const;
+
 public:
+  using Term = std::pair<std::vector<int>, QPolynomial>;
+  std::vector<Term> getCoefficients() const override;
   /**
    * Constructor
    * @param numVariables Number of x variables
@@ -48,6 +63,11 @@ public:
 
   /**
    * Constructor to increase the number of variables from another polynomial
+   * @param source The source polynomial with fewer variables
+   * @param newNumVariables The new number of variables (must be >= source's numVariables)
+   * @param targetVariableIndex The index (0-based) where the source's variable should be mapped
+   * @param degree Maximum degree for each new x variable (advisory only)
+   * @param maxDegrees Optional: different max degree for each variable (advisory only)
    */
   FMPoly(const FMPoly &source, int newNumVariables, int targetVariableIndex,
          int degree = 10, const std::vector<int> &maxDegrees = {});
@@ -68,21 +88,13 @@ public:
   ~FMPoly();
 
   /**
-   * Get coefficient for specific term
-   * @param qPower Power of q
-   * @param xPowers Vector of powers for x₁, x₂, ..., xₙ
-   * @return Coefficient value
-   */
-  int getCoefficient(int qPower, const std::vector<int> &xPowers) const;
-
-  /**
    * Set coefficient for specific term
    * @param qPower Power of q
    * @param xPowers Vector of powers for x₁, x₂, ..., xₙ
    * @param coefficient New coefficient value
    */
   void setCoefficient(int qPower, const std::vector<int> &xPowers,
-                      int coefficient);
+                      int coefficient) override;
 
   /**
    * Add to coefficient for specific term
@@ -91,161 +103,62 @@ public:
    * @param coefficient Value to add
    */
   void addToCoefficient(int qPower, const std::vector<int> &xPowers,
-                        int coefficient);
-
-  /**
-   * Get a q-polynomial (univariate in q) for a specific x-multi-index
-   * Returns coefficients as a vector where index i represents q^(i + minQPower)
-   */
-  std::vector<int> getQPolynomial(const std::vector<int> &xPowers) const;
-
-  /**
-   * Get a q-polynomial as QPolynomial object for a specific x-multi-index
-   * Returns a QPolynomial object with proper handling of negative powers
-   */
-  QPolynomial getQPolynomialObject(const std::vector<int> &xPowers) const;
-
-  /**
-   * Get the numer of terms of poly
-   */
-  int nTerms() const;
-
-  /**
-   * Set q-polynomial for a specific x-multi-index
-   */
-  void setQPolynomial(const std::vector<int> &xPowers,
-                      const std::vector<int> &qCoeffs, int minQPower = 0);
-
-  /**
-   * Set q-polynomial for a specific x-multi-index using QPolynomial object
-   */
-  void setQPolynomial(const std::vector<int> &xPowers,
-                      const QPolynomial &qPoly);
-
-  /**
-   * Add a QPolynomial to existing q-polynomial for a specific x-multi-index
-   */
-  void addQPolynomial(const std::vector<int> &xPowers,
-                      const QPolynomial &qPoly);
-
-  /**
-   * Multiply existing q-polynomial by a QPolynomial for a specific
-   * x-multi-index
-   */
-  void multiplyQPolynomial(const std::vector<int> &xPowers,
-                           const QPolynomial &qPoly);
-
-  /**
-   * Invert a specific variable
-   */
-  FMPoly invertVariable(const int target_index) const;
+                        int coefficient) override;
 
   /**
    * Truncate polynomial to given degrees
+   * @param maxXdegrees Maximum degree for each x variable
    */
   FMPoly truncate(const std::vector<int> &maxXdegrees) const;
 
   /**
    * Truncate polynomial to same degree for all x variables
+   * @param maxDegree Maximum degree to keep for all x variables
    */
   FMPoly truncate(int maxDegree) const;
 
   /**
-   * Get number of x variables
-   */
-  int getNumXVariables() const;
-
-  /**
-   * Get maximum degrees for each x variable
-   */
-  const std::vector<int> &getMaxXDegrees() const;
-
-  /**
-   * Get block sizes (for compatibility)
-   */
-  const std::vector<int> &getBlockSizes() const;
-
-  /**
    * Clear all coefficients
    */
-  void clear();
-
-  /**
-   * Check if polynomial is zero
-   */
-  bool isZero() const;
+  void clear() override;
 
   /**
    * Export to JSON format
    * @param fileName Output file name
    */
-  void exportToJson(const std::string &fileName) const;
+  void exportToJson(const std::string &fileName) const override;
 
   /**
    * Print polynomial in human-readable format
    * @param maxTerms Maximum number of terms to print
    */
-  void print(int maxTerms = 10) const;
+  void print(int maxTerms = 10) const override;
 
   /**
-   * Get coefficients as sparse representation  Returns vector of pairs:
-   * (x-powers, q-polynomial) for non-zero terms only
-   */
-  using Term = std::pair<std::vector<int>, QPolynomial>;
-  std::vector<Term> getCoefficients() const;
-
-  /**
-   * Sync polynomial from sparse vector representation
-   * Replaces current polynomial with terms from the sparse vector
-   */
-  void syncFromSparseVector(const std::vector<Term> &sparseVector);
-
-  /**
-   * Evaluate polynomial at a given point, returning coefficients for q
-   * @param point Vector of values for x₁, x₂, ..., xₙ
-   * @return Vector representing coefficients of the resulting polynomial in q
-   */
-  std::vector<int> evaluate(const std::vector<int> &point) const;
-
-  /**
-   * Check if two polynomials are compatible for arithmetic operations
-   */
-  void checkCompatibility(const FMPoly &other) const;
-
-  /**
-   * Arithmetic operators
+   * Add another polynomial to this one
    */
   FMPoly &operator+=(const FMPoly &other);
-  FMPoly &operator-=(const FMPoly &other);
+
+  /**
+   * Multiply this polynomial by another
+   */
   FMPoly &operator*=(const FMPoly &other);
 
   /**
-   * Arithmetic operators with QPolynomial
-   * These operate on the q-polynomial at x^0 (for +/-) or multiply all terms (for *)
+   * Multiply this polynomial by a q-polynomial (QPolynomial)
+   * Each coefficient is multiplied by the QPolynomial
    */
-  FMPoly &operator+=(const QPolynomial &qPoly);
-  FMPoly &operator-=(const QPolynomial &qPoly);
-  FMPoly &operator*=(const QPolynomial &qPoly);
+  FMPoly operator*(const QPolynomial &qPoly) const;
 
   /**
-   * Friend functions for binary operations
+   * Get number of x variables
+   * (Kept for compatibility with existing code)
    */
-  friend FMPoly operator+(const FMPoly &lhs, const FMPoly &rhs);
-  friend FMPoly operator-(const FMPoly &lhs, const FMPoly &rhs);
-  friend FMPoly operator*(const FMPoly &lhs, const FMPoly &rhs);
-
-  /**
-   * Friend functions for binary operations with QPolynomial
-   */
-  friend FMPoly operator+(const FMPoly &lhs, const QPolynomial &rhs);
-  friend FMPoly operator+(const QPolynomial &lhs, const FMPoly &rhs);
-  friend FMPoly operator-(const FMPoly &lhs, const QPolynomial &rhs);
-  friend FMPoly operator-(const QPolynomial &lhs, const FMPoly &rhs);
-  friend FMPoly operator*(const FMPoly &lhs, const QPolynomial &rhs);
-  friend FMPoly operator*(const QPolynomial &lhs, const FMPoly &rhs);
+  int getNumXVariables() const;
 
   /**
    * Get access to the underlying FLINT polynomial (for advanced operations)
+   * Similar to MultivariablePolynomial::getCoefficientMap()
    */
   const fmpz_mpoly_t &getFlintPoly() const { return poly; }
   const fmpz_mpoly_ctx_t &getFlintContext() const { return ctx; }

@@ -5,7 +5,7 @@
 
 int evaluateLinearPolynomial(const PolynomialType& poly, const std::vector<int>& point) {
     int result = 0;
-    const auto& coeffMap = poly.getCoefficientMap();
+    const auto coeffMap = poly.getCoefficients();
 
     for (const auto& [xPowers, qPoly] : coeffMap) {
         if (xPowers.size() != point.size()) {
