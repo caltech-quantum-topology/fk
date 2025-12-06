@@ -132,7 +132,7 @@ private:
   mutable std::shared_mutex crossing_factor_mutex_;
 
   void initializeAccumulatorBlockSizes();
-  std::vector<std::vector<int>>
+  void
   computeNumericalAssignments(const std::vector<int> &angles);
 
   PolynomialType

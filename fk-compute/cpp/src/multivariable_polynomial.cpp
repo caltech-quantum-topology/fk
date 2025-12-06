@@ -89,10 +89,10 @@ MultivariablePolynomial::MultivariablePolynomial(
   for (const auto &[sourceXPowers, bilvec] : source.coeffs_) {
     // Create new x-powers vector with zeros except at targetVariableIndex
     std::vector<int> newXPowers(newNumVariables, 0);
-    newXPowers[targetVariableIndex] = sourceXPowers[0];
+    newXPowers[targetVariableIndex] = sourceXPowers.e[0];
 
-    // Copy the entire bilvector
-    coeffs_.emplace(newXPowers, bilvec);
+    // Copy the entire bilvector, using ExponentKey as map key
+    coeffs_.emplace(makeKey(newXPowers), bilvec);
   }
 }
 
@@ -127,9 +127,11 @@ void MultivariablePolynomial::setCoefficient(int qPower,
         "X powers vector size must match number of variables");
   }
 
+  ExponentKey key = makeKey(xPowers);
+
   if (coefficient == 0) {
     // If setting to zero, just remove or don't add
-    auto it = coeffs_.find(xPowers);
+    auto it = coeffs_.find(key);
     if (it != coeffs_.end()) {
       it->second[qPower] = 0;
       // Check if entire bilvector became zero and remove if so
@@ -147,10 +149,11 @@ void MultivariablePolynomial::setCoefficient(int qPower,
     }
   } else {
     // Create entry if it doesn't exist, then set coefficient
-    auto it = coeffs_.find(xPowers);
+    auto it = coeffs_.find(key);
     if (it == coeffs_.end()) {
       // Create new bilvector for this x-monomial
-      auto result = coeffs_.emplace(xPowers, bilvector<int>(0, 1, 20, 0));
+      auto result =
+          coeffs_.emplace(makeKey(xPowers), bilvector<int>(0, 1, 20, 0));
       it = result.first;
     }
     it->second[qPower] = coefficient;
@@ -168,11 +171,13 @@ void MultivariablePolynomial::addToCoefficient(int qPower,
   if (coefficient == 0) {
     return; // Adding zero does nothing
   }
+  ExponentKey key = makeKey(xPowers);
 
-  auto it = coeffs_.find(xPowers);
+  auto it = coeffs_.find(key);
   if (it == coeffs_.end()) {
     // Create new bilvector for this x-monomial
-    auto result = coeffs_.emplace(xPowers, bilvector<int>(0, 1, 20, 0));
+    auto result =
+        coeffs_.emplace(makeKey(xPowers), bilvector<int>(0, 1, 20, 0));
     it = result.first;
   }
 
@@ -201,12 +206,18 @@ MultivariablePolynomial::getCoefficients() const {
   result.reserve(coeffs_.size());
 
   for (const auto &entry : coeffs_) {
-    const auto &xPowers = entry.first;
+    const auto &key = entry.first;
     const auto &qPoly = entry.second;
 
     // Only include non-zero polynomials
     if (!qPoly.isZero()) {
-      result.emplace_back(xPowers, qPoly);
+      // Convert ExponentKey -> std::vector<int>
+      std::vector<int> xPowers(numXVariables);
+      for (int i = 0; i < numXVariables; ++i) {
+        xPowers[i] = key.e[i];
+      }
+
+      result.emplace_back(std::move(xPowers), qPoly);
     }
   }
 
@@ -217,18 +228,19 @@ MultivariablePolynomial
 MultivariablePolynomial::truncate(const std::vector<int> &maxXdegrees) const {
 
   MultivariablePolynomial newPoly(this->numXVariables, 0);
-  for (const auto &[xPowers, qPoly] : this->coeffs_) {
+
+  for (const auto &[key, qPoly] : this->coeffs_) {
     bool in_range = true;
     for (int j = 0; j < this->numXVariables; ++j) {
-      if (xPowers[j] > maxXdegrees[j]) {
+      if (key.e[j] > maxXdegrees[j]) {
         in_range = false;
         break;
       }
     }
 
     if (in_range) {
-      // Copy the term to new polynomial
-      newPoly.coeffs_.emplace(xPowers, qPoly);
+      // Copy the term to new polynomial (key is already an ExponentKey)
+      newPoly.coeffs_.emplace(key, qPoly);
     }
   }
 
@@ -248,7 +260,7 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
   outputFile << "{\n\t\"terms\":[\n";
 
   // Collect and sort x-power keys for deterministic output
-  std::vector<std::vector<int>> sortedXPowers;
+  std::vector<ExponentKey> sortedXPowers;
   sortedXPowers.reserve(coeffs_.size());
   for (const auto &[xPowers, bilvec] : coeffs_) {
     sortedXPowers.push_back(xPowers);
@@ -277,9 +289,9 @@ void MultivariablePolynomial::exportToJson(const std::string &fileName) const {
       firstTerm = false;
 
       outputFile << "\t\t{\"x\": [";
-      for (size_t k = 0; k < xPowers.size(); k++) {
-        outputFile << xPowers[k];
-        if (k < xPowers.size() - 1)
+      for (size_t k = 0; k < xPowers.e.size(); k++) {
+        outputFile << xPowers.e[k];
+        if (k < xPowers.e.size() - 1)
           outputFile << ",";
       }
       outputFile << "], \"q_terms\": [";
@@ -323,7 +335,13 @@ void MultivariablePolynomial::print(int maxTerms) const {
 
   // Collect all terms and sort for deterministic output
   std::vector<std::tuple<std::vector<int>, int, int>> terms;
-  for (const auto &[xPowers, bilvec] : coeffs_) {
+  for (const auto &[key, bilvec] : coeffs_) {
+    // Convert ExponentKey -> std::vector<int> for output
+    std::vector<int> xPowers(numXVariables);
+    for (int i = 0; i < numXVariables; ++i) {
+      xPowers[i] = key.e[i];
+    }
+
     for (int j = bilvec.getMaxNegativeIndex();
          j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
@@ -332,7 +350,6 @@ void MultivariablePolynomial::print(int maxTerms) const {
       }
     }
   }
-
   // Sort terms for consistent output
   std::sort(terms.begin(), terms.end());
 
@@ -368,7 +385,13 @@ MultivariablePolynomial::operator+=(const MultivariablePolynomial &other) {
         "Polynomials must have the same number of x variables");
   }
 
-  for (const auto &[xPowers, bilvec] : other.coeffs_) {
+  for (const auto &[key, bilvec] : other.coeffs_) {
+    // Convert ExponentKey -> std::vector<int> for addToCoefficient
+    std::vector<int> xPowers(numXVariables);
+    for (int i = 0; i < numXVariables; ++i) {
+      xPowers[i] = key.e[i];
+    }
+
     for (int j = bilvec.getMaxNegativeIndex();
          j <= bilvec.getMaxPositiveIndex(); j++) {
       int coeff = bilvec[j];
@@ -389,40 +412,42 @@ MultivariablePolynomial::operator*=(const MultivariablePolynomial &other) {
   }
 
   // Create a new coefficient map for the result
-  std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> result;
+  std::unordered_map<ExponentKey, bilvector<int>, ExponentKeyHash> result;
+
+  // Reserve space to avoid repeated rehashing/allocations during multiplication
+  result.reserve(coeffs_.size() * other.coeffs_.size());
 
   // Multiply each term in this polynomial with each term in other polynomial
-  for (const auto &[thisXPowers, thisBilvec] : coeffs_) {
-    for (const auto &[otherXPowers, otherBilvec] : other.coeffs_) {
+  for (const auto &[thisKey, thisBilvec] : coeffs_) {
+    for (const auto &[otherKey, otherBilvec] : other.coeffs_) {
 
       // Calculate product x-powers
       std::vector<int> productXPowers(numXVariables);
+      ExponentKey productKey;
       for (int i = 0; i < numXVariables; i++) {
-        productXPowers[i] = thisXPowers[i] + otherXPowers[i];
+        productKey.e[i] = thisKey.e[i] + otherKey.e[i];
       }
 
       // Multiply all q-coefficient combinations
       for (int thisQ = thisBilvec.getMaxNegativeIndex();
            thisQ <= thisBilvec.getMaxPositiveIndex(); thisQ++) {
         int thisCoeff = thisBilvec[thisQ];
-        if (thisCoeff != 0) {
-          for (int otherQ = otherBilvec.getMaxNegativeIndex();
-               otherQ <= otherBilvec.getMaxPositiveIndex(); otherQ++) {
-            int otherCoeff = otherBilvec[otherQ];
-            if (otherCoeff != 0) {
-              int productQ = thisQ + otherQ;
-              int productCoeff = thisCoeff * otherCoeff;
-
-              // Add to result
-              auto it = result.find(productXPowers);
-              if (it == result.end()) {
-                auto insertResult =
-                    result.emplace(productXPowers, bilvector<int>(0, 1, 20, 0));
-                it = insertResult.first;
-              }
-              it->second[productQ] += productCoeff;
-            }
+        if (thisCoeff == 0) {
+          continue;
+        }
+        for (int otherQ = otherBilvec.getMaxNegativeIndex();
+             otherQ <= otherBilvec.getMaxPositiveIndex(); otherQ++) {
+          int otherCoeff = otherBilvec[otherQ];
+          if (otherCoeff == 0) {
+            continue;
           }
+          int productQ = thisQ + otherQ;
+          int productCoeff = thisCoeff * otherCoeff;
+
+          // Add to result (lookup + insert in one step)
+          auto [it, inserted] = result.try_emplace(
+              productKey, 0, 1, 20, 0); // bilvector<int>(0,1,20,0)
+          it->second[productQ] += productCoeff;
         }
       }
     }
@@ -448,7 +473,8 @@ MultivariablePolynomial::operator*(const bilvector<int> &qPoly) const {
 
   // Check if qPoly is zero
   bool qPolyIsZero = true;
-  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex(); ++q) {
+  for (int q = qPoly.getMaxNegativeIndex(); q <= qPoly.getMaxPositiveIndex();
+       ++q) {
     if (qPoly[q] != 0) {
       qPolyIsZero = false;
       break;
@@ -459,12 +485,25 @@ MultivariablePolynomial::operator*(const bilvector<int> &qPoly) const {
   }
 
   // Multiply each term
-  for (const auto &[xPowers, thisBilvec] : coeffs_) {
+  for (const auto &[key, thisBilvec] : coeffs_) {
     bilvector<int> product = thisBilvec * qPoly;
 
     // Add to result
-    result.coeffs_.emplace(xPowers, std::move(product));
+    result.coeffs_.emplace(key, std::move(product));
   }
 
   return result;
+}
+
+MultivariablePolynomial::ExponentKey
+MultivariablePolynomial::makeKey(const std::vector<int> &xPowers) const {
+  ExponentKey key{}; // all zeros
+
+  // assume xPowers.size() == numXVariables
+  for (int i = 0; i < numXVariables; ++i) {
+    key.e[i] = xPowers[i];
+  }
+
+  // remaining entries stay 0
+  return key;
 }

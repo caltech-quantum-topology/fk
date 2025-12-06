@@ -19,7 +19,6 @@
 #include <omp.h>
 #endif
 
-
 namespace fk {
 // FKConfiguration implementation
 bool FKConfiguration::isValid() const {
@@ -235,30 +234,13 @@ void FKComputationEngine::initializeAccumulatorBlockSizes() {
 
 PolynomialType
 FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
-  numerical_assignments_ = computeNumericalAssignments(angles);
-
-  /*
-  if (angles != std::vector<int>{0, 0, 0, 0, 0, 0, 1, 0, 0}){
-    return result_;
-  }
-
-  std::cout << "Angle: ";
-  for (auto it : angles) {
-    std::cout << it << " ";
-  }
-  std::cout << std::endl;
-  */
-
+  computeNumericalAssignments(angles);
+  //
   // Calculate power accumulators
   // Writhe is the writhe of the link.
   // Prefactors is sum_{closed_strands} sign(strand_closure)*1/2
   double q_power_accumulator_double =
       (config_.writhe / 2. - config_.prefactors) / 2.0;
-  /*
-  std::cout << "Writhe: " << config_.writhe << std::endl;
-  std::cout << "Prefactors: " << config_.prefactors << std::endl;
-  std::cout << "Overall: " << q_power_accumulator_double << std::endl;
-  */
 
   std::vector<double> x_power_accumulator_double(config_.components, 0);
   int initial_coefficient = 1;
@@ -270,10 +252,7 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   }
   // q_power_accumulator_double -= config_.writhe/4.0;
   x_power_accumulator_double[0] -= 0.5;
-  /*
-  std::cout << "Closing prefactors: " << q_power_accumulator_double << " "
-            << x_power_accumulator_double[0] << std::endl;
-  */
+
   // Apply crossing adjustments
   for (int crossing_index = 0; crossing_index < config_.crossings;
        crossing_index++) {
@@ -292,13 +271,6 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     int bottom_component = config_.bottom_crossing_components[crossing_index];
     int relation_type = config_.crossing_relation_types[crossing_index];
 
-    /*
-    std::cout << "Relation type: " << relation_type << std::endl;
-    std::cout << "i: " << param_i << std::endl;
-    std::cout << "j: " << param_j << std::endl;
-    std::cout << "ip: " << param_ip << std::endl;
-    std::cout << "jp: " << param_jp << std::endl;
-    */
     if (relation_type == 1 || relation_type == 2) {
       q_power_accumulator_double +=
           (param_j + param_jp + 0.5) / 2.0 + param_j * param_jp;
@@ -328,98 +300,42 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
           -param_i * (param_j - param_ip) -
           (param_j - param_ip) * (param_j - param_ip + 1) / 2.0;
     }
-    /*
-    std::cout << "Q power contr" << q_power_accumulator_double
-              << std::endl;
-    std::cout << "X power contr" << x_power_accumulator_double[0]
-              << " " << x_power_accumulator_double[1]
-              << std::endl;
-    */
   }
-  /*
-  std::cout << "Initial Coefficient: " << initial_coefficient << std::endl;
-  std::cout << "x_power_accumulator: " << x_power_accumulator_double[0] << " "
-            << x_power_accumulator_double[1] << std::endl;
-  std::cout << "q_power_accumulator: " << q_power_accumulator_double
-            << std::endl;
-  */
 
   // Convert to integer power accumulators
   int q_power_accumulator =
       static_cast<int>(std::floor(q_power_accumulator_double));
   std::vector<int> x_power_accumulator(config_.components);
   std::vector<int> max_x_degrees(config_.components);
-  std::vector<int> block_sizes(config_.components);
 
-  block_sizes[0] = 1;
   for (int n = 0; n < config_.components; n++) {
     x_power_accumulator[n] =
         static_cast<int>(std::floor(x_power_accumulator_double[n]));
     max_x_degrees[n] = config_.degree - x_power_accumulator[n];
-    if (n != 0) {
-      block_sizes[n] = (max_x_degrees[n - 1] + 1) * block_sizes[n - 1];
-    }
   }
 
-  PolynomialType poly(config_.components, 0, max_x_degrees);
-  poly.setCoefficient(0, std::vector<int>(config_.components, 0),
-                      initial_coefficient);
-  /*
-  poly.setCoefficient(0, std::vector<int>(config_.components, 0), 1);
-  */
-
-  // Perform crossing computations
-  poly *= crossingFactor(max_x_degrees);
-
   // Accumulate result
-  PolynomialType offset(config_.components, 0);
-  offset.setCoefficient(q_power_accumulator, x_power_accumulator, 1);
-  poly *= offset;
-  /*
-  std::cout << "Angle contribution: ";
-  offset.clear();
-  std::vector<int> xPowers(config_.components,0);
-  offset.setCoefficient(0, xPowers, -1);
-  xPowers[0] += 1;
-  offset.setCoefficient(0, xPowers, 1);
-  (offset*poly).print();
-  // performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator,
-  // 1);
-
-  std::cout << "==========================\n";
-  std::cout << "\n\n";
-  */
-
+  PolynomialType poly(config_.components, 0);
+  poly.setCoefficient(q_power_accumulator, x_power_accumulator,
+                      initial_coefficient);
+  poly *= crossingFactor(max_x_degrees);
   result_ += poly;
   return result_;
 }
 
-std::vector<std::vector<int>> FKComputationEngine::computeNumericalAssignments(
+void FKComputationEngine::computeNumericalAssignments(
     const std::vector<int> &angles) {
-
-  std::vector<std::vector<int>> assignments(
-      config_.crossings + 1, std::vector<int>(config_.prefactors + 1));
+  // assume numerical_assignments_ is already sized correctly in ctor/reset
   for (int i = 0; i < config_.crossings + 1; i++) {
     for (int j = 0; j < config_.prefactors + 1; j++) {
-      assignments[i][j] =
+      numerical_assignments_[i][j] =
           computeDotProduct(config_.variable_assignments[i][j], angles);
     }
   }
-  return assignments;
 }
 
 PolynomialType
 FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
-  // Check cache first
-  CrossingFactorKey key{numerical_assignments_, max_x_degrees};
-
-  {
-    std::shared_lock<std::shared_mutex> lock(crossing_factor_mutex_);
-    auto it = crossing_factor_cache_.find(key);
-    if (it != crossing_factor_cache_.end()) {
-      return it->second;
-    }
-  }
 
   PolynomialType result(config_.components, 0);
   result.setCoefficient(0, std::vector<int>(config_.components, 0), 1);
@@ -443,15 +359,6 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     const int top_comp = config_.top_crossing_components[crossing_index];
     const int bottom_comp = config_.bottom_crossing_components[crossing_index];
     // Apply binomial and Pochhammer operations based on relation type
-    /*
-    std::cout << "Relation type: " << relation_type << std::endl;
-    std::cout << "Top component: " << top_comp << std::endl;
-    std::cout << "Bottom component: " << bottom_comp << std::endl;
-    std::cout << "i: " << param_i << std::endl;
-    std::cout << "j: " << param_j << std::endl;
-    std::cout << "ip: " << param_ip << std::endl;
-    std::cout << "jp: " << param_jp << std::endl;
-    */
     PolynomialType factor(config_.components, 0);
     switch (relation_type) {
     case 1: {
@@ -470,12 +377,6 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       auto binomial = QBinomial(param_i, param_jp);
 
       // Pochhammer part
-      /*
-      const PolynomialType poch(
-          inverse_qpochhammer_xq_q(param_j - param_ip, param_ip + 1,
-                                   max_x_degrees[bottom_comp]),
-          config_.components, bottom_comp);
-      */
       const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_jp - param_i,
                                    param_j - param_jp + param_i + 1,
@@ -486,19 +387,9 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     }
     case 3: {
       // Binomial part
-      /*
-      auto binomial = QBinomial(param_j, param_ip).invertExponents();
-      */
       auto binomial = QBinomial(param_j, param_ip);
 
       // Pochhammer part
-      /*
-      const PolynomialType poch(
-          inverse_qpochhammer_xq_q(param_ip - param_j,
-                                   param_i - param_ip + param_j + 1,
-                                   max_x_degrees[top_comp]),
-          config_.components, top_comp);
-      */
       const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_ip - param_j,
                                    param_i - param_ip + param_j + 1,
@@ -509,13 +400,6 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     }
     case 4: {
       // Binomial part
-      /*
-      const QPolynomialType binomial =
-          (param_j > 0)
-              ? QBinomial(param_j, param_j - param_ip).invertExponents()
-              : QBinomial(param_j, param_j - param_ip)
-                    .invertExponents();
-      */
       const QPolynomialType binomial = QBinomial(param_j, param_j - param_ip);
 
       // Pochhammer part
@@ -526,65 +410,11 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       break;
     }
     }
-    /*
-    std::cout << "Crossing Factor: ";
-    (factor.truncate(max_x_degrees)).print(100);
-    */
     result *= factor;
-  }
-  result = result.truncate(max_x_degrees);
-  /*
-  std::cout << "Angle crossing contribution: ";
-  result.print(100);
-  PolynomialType x_pow(1,0);
-  x_pow.setCoefficient(0, {config_.degree - max_x_degrees[0]}, 1);
-  std::cout << "Angle result: ";
-  (x_pow*result).print(100);
-  */
-
-  // Cache the result
-  {
-    std::unique_lock<std::shared_mutex> lock(crossing_factor_mutex_);
-    crossing_factor_cache_.emplace(key, result);
+    result = result.truncate(max_x_degrees);
   }
 
   return result;
-}
-
-void FKComputationEngine::performOffsetAdditionPoly(
-    const PolynomialType &source_poly, const std::vector<int> &x_offset,
-    int q_offset, int sign_multiplier) {
-
-  // Iterate through all coefficients in the source polynomial
-  // Use getCoefficients() for efficient read-only access
-  const auto coeffs = source_poly.getCoefficients();
-
-  for (const auto &[x_powers, q_poly] : coeffs) {
-    // Calculate the offset x-powers
-    std::vector<int> offset_x_powers = x_powers;
-    for (size_t i = 0; i < x_powers.size(); ++i) {
-      offset_x_powers[i] += x_offset[i];
-    }
-
-    // Iterate through all q-powers in the bilvector
-    for (int q_power = q_poly.getMaxNegativeIndex();
-         q_power <= q_poly.getMaxPositiveIndex(); ++q_power) {
-
-      int coeff = q_poly[q_power];
-      if (coeff != 0) {
-        // Apply q-offset and add to result polynomial
-        result_.addToCoefficient(q_power + q_offset, offset_x_powers,
-                                 sign_multiplier * coeff);
-      }
-    }
-  }
-}
-
-void FKComputationEngine::accumulateResultPoly(
-    const PolynomialType &poly, const std::vector<int> &x_power_accumulator,
-    int q_power_accumulator) {
-
-  performOffsetAdditionPoly(poly, x_power_accumulator, q_power_accumulator, 1);
 }
 
 void FKComputationEngine::reset() {
@@ -736,7 +566,7 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
                              assignment.supporting_inequalities) &&
         satisfiesConstraints(assignment.point, assignment.criteria)) {
       valid_points.push_back(assignment.point);
-    } 
+    }
     return valid_points;
   }
 
@@ -1095,7 +925,8 @@ FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
   return searchForValidCriteria(variable_count);
 }
 
-FKComputation::ValidatedCriteria FKComputation::tryInitialCriteria(int variable_count) {
+FKComputation::ValidatedCriteria
+FKComputation::tryInitialCriteria(int variable_count) {
   if (validCriteria(config_.criteria, config_.inequalities, variable_count)) {
     return buildValidatedCriteriaFromValid(config_.criteria, variable_count);
   }
@@ -1103,7 +934,7 @@ FKComputation::ValidatedCriteria FKComputation::tryInitialCriteria(int variable_
 }
 
 FKComputation::ValidatedCriteria FKComputation::buildValidatedCriteriaFromValid(
-    const std::vector<std::vector<double>>& criteria, int variable_count) {
+    const std::vector<std::vector<double>> &criteria, int variable_count) {
   ValidatedCriteria result;
   const auto bounded_info = identifyBoundedVariables(criteria, variable_count);
 
@@ -1116,24 +947,27 @@ FKComputation::ValidatedCriteria FKComputation::buildValidatedCriteriaFromValid(
   // Find additional bounds if needed
   if (bounded_info.bounded_count < variable_count - 1) {
     auto all_original = config_.inequalities;
-    all_original.insert(all_original.end(), config_.criteria.begin(), config_.criteria.end());
+    all_original.insert(all_original.end(), config_.criteria.begin(),
+                        config_.criteria.end());
 
     auto bounded_v_copy = bounded_info.bounded_v;
     auto bounded_count_copy = bounded_info.bounded_count;
-    result.additional_bounds = findAdditionalBounds(bounded_v_copy, bounded_count_copy,
-                                                   variable_count, all_original);
+    result.additional_bounds = findAdditionalBounds(
+        bounded_v_copy, bounded_count_copy, variable_count, all_original);
   }
 
   return result;
 }
 
-FKComputation::ValidatedCriteria FKComputation::searchForValidCriteria(int variable_count) {
+FKComputation::ValidatedCriteria
+FKComputation::searchForValidCriteria(int variable_count) {
   auto criteria_explorer = initializeCriteriaExploration();
 
   while (criteria_explorer.hasMoreToExplore()) {
     const auto current_criteria = criteria_explorer.getNextCriteria();
 
-    const auto valid_result = exploreCriteriaCombinations(current_criteria, variable_count, criteria_explorer);
+    const auto valid_result = exploreCriteriaCombinations(
+        current_criteria, variable_count, criteria_explorer);
     if (valid_result.is_valid) {
       return valid_result;
     }
@@ -1141,13 +975,16 @@ FKComputation::ValidatedCriteria FKComputation::searchForValidCriteria(int varia
   return ValidatedCriteria();
 }
 
-std::vector<std::vector<double>> FKComputation::combineInequalitiesAndCriteria() const {
+std::vector<std::vector<double>>
+FKComputation::combineInequalitiesAndCriteria() const {
   std::vector<std::vector<double>> combined = config_.inequalities;
-  combined.insert(combined.end(), config_.criteria.begin(), config_.criteria.end());
+  combined.insert(combined.end(), config_.criteria.begin(),
+                  config_.criteria.end());
   return combined;
 }
 
-FKComputation::CriteriaExplorationState FKComputation::initializeCriteriaExploration() {
+FKComputation::CriteriaExplorationState
+FKComputation::initializeCriteriaExploration() {
   CriteriaExplorationState state;
   state.markVisited(config_.criteria);
   state.addToQueue(config_.criteria);
@@ -1155,22 +992,24 @@ FKComputation::CriteriaExplorationState FKComputation::initializeCriteriaExplora
 }
 
 FKComputation::ValidatedCriteria FKComputation::exploreCriteriaCombinations(
-    const std::vector<std::vector<double>>& current_criteria,
-    int variable_count,
-    CriteriaExplorationState& state) {
+    const std::vector<std::vector<double>> &current_criteria,
+    int variable_count, CriteriaExplorationState &state) {
 
   const int criterion_count = config_.criteria.size();
   const auto combined_inequalities = combineInequalitiesAndCriteria();
   const auto all_original = combineInequalitiesAndCriteria();
 
-  for (int criterion_index = 0; criterion_index < criterion_count; ++criterion_index) {
-    for (const auto& inequality : combined_inequalities) {
+  for (int criterion_index = 0; criterion_index < criterion_count;
+       ++criterion_index) {
+    for (const auto &inequality : combined_inequalities) {
 
-      if (!shouldExploreCombination(current_criteria, inequality, criterion_index, state)) {
+      if (!shouldExploreCombination(current_criteria, inequality,
+                                    criterion_index, state)) {
         continue;
       }
 
-      const auto new_criteria = createCombinedCriteria(current_criteria, inequality, criterion_index);
+      const auto new_criteria =
+          createCombinedCriteria(current_criteria, inequality, criterion_index);
       state.markVisited(new_criteria);
 
       if (validCriteria(new_criteria, all_original, variable_count)) {
@@ -1185,7 +1024,8 @@ FKComputation::ValidatedCriteria FKComputation::exploreCriteriaCombinations(
 }
 
 bool FKComputation::isPotentiallyBeneficial(
-    const std::vector<double>& criterion, const std::vector<double>& inequality) const {
+    const std::vector<double> &criterion,
+    const std::vector<double> &inequality) const {
   // Check if this combination could be beneficial (has opposing signs)
   for (size_t var_index = 1; var_index < criterion.size(); ++var_index) {
     if (criterion[var_index] > 0 && inequality[var_index] < 0) {
@@ -1196,23 +1036,22 @@ bool FKComputation::isPotentiallyBeneficial(
 }
 
 std::vector<std::vector<double>> FKComputation::createCombinedCriteria(
-    const std::vector<std::vector<double>>& base_criteria,
-    const std::vector<double>& inequality,
-    int criterion_index) const {
+    const std::vector<std::vector<double>> &base_criteria,
+    const std::vector<double> &inequality, int criterion_index) const {
 
   auto combined_criteria = base_criteria;
   for (size_t var_index = 0; var_index < inequality.size(); ++var_index) {
-    combined_criteria[criterion_index][var_index] += inequality[var_index] * COMBINATION_FACTOR;
+    combined_criteria[criterion_index][var_index] +=
+        inequality[var_index] * COMBINATION_FACTOR;
   }
 
   return combined_criteria;
 }
 
 bool FKComputation::shouldExploreCombination(
-    const std::vector<std::vector<double>>& current_criteria,
-    const std::vector<double>& inequality,
-    int criterion_index,
-    CriteriaExplorationState& state) const {
+    const std::vector<std::vector<double>> &current_criteria,
+    const std::vector<double> &inequality, int criterion_index,
+    CriteriaExplorationState &state) const {
 
   // Check if this combination could be beneficial
   if (!isPotentiallyBeneficial(current_criteria[criterion_index], inequality)) {
@@ -1220,7 +1059,8 @@ bool FKComputation::shouldExploreCombination(
   }
 
   // Check if we've already seen this combination
-  const auto new_criteria = createCombinedCriteria(current_criteria, inequality, criterion_index);
+  const auto new_criteria =
+      createCombinedCriteria(current_criteria, inequality, criterion_index);
   if (state.hasBeenVisited(new_criteria)) {
     return false;
   }
@@ -1231,9 +1071,9 @@ bool FKComputation::shouldExploreCombination(
 void FKComputation::setupWorkStealingComputation(
     const std::vector<std::vector<int>> &all_points) {
   int total_points = all_points.size();
-  int num_engines = engines_.size();
 
 #ifdef _OPENMP
+  int num_engines = engines_.size();
   omp_set_num_threads(num_engines);
   std::cout << "Processing " << total_points << " points with " << num_engines
             << " threads using OpenMP" << std::endl;

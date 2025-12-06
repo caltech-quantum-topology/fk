@@ -2,7 +2,7 @@
 
 #include "fk/bilvector.hpp"
 #include "fk/polynomial_base.hpp"
-#include <memory>
+#include <array>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -33,13 +33,40 @@ private:
   std::vector<int> maxXDegrees; // Max degrees (advisory only, not enforced)
   std::vector<int> blockSizes; // Block sizes (advisory only, for compatibility)
 
-  // Sparse storage: map from x-exponent vector to q-polynomial
-  std::unordered_map<std::vector<int>, bilvector<int>, VectorHash> coeffs_;
-
   // Prune zero coefficients from the map
   void pruneZeros();
 
 public:
+  // Choose a reasonable upper bound for number of x variables
+  static constexpr int kMaxXVariables = 5; // adjust if you need more
+
+  struct ExponentKey {
+    std::array<int, kMaxXVariables> e{};
+
+    bool operator==(const ExponentKey &other) const noexcept {
+      return e == other.e;
+    }
+    
+    // For std::sort and other ordered operations
+    bool operator<(const ExponentKey &other) const noexcept {
+      return e < other.e;  // std::array has lexicographic operator<
+    }
+  };
+
+  ExponentKey makeKey(const std::vector<int> &xPowers) const;
+
+  struct ExponentKeyHash {
+    std::size_t operator()(const ExponentKey &ex) const noexcept {
+      std::size_t h = 0;
+      // We will only use first numXVariables entries in practice,
+      // but hashing all kMaxXVariables is fine (or we can restrict later).
+      for (int v : ex.e) {
+        h = h * 1315423911u + std::hash<int>{}(v);
+      }
+      return h;
+    }
+  };
+
   /**
    * Constructor
    * @param numVariables Number of x variables
@@ -53,14 +80,16 @@ public:
   /**
    * Constructor to increase the number of variables from another polynomial
    * @param source The source polynomial with fewer variables
-   * @param newNumVariables The new number of variables (must be >= source's numVariables)
-   * @param targetVariableIndex The index (0-based) where the source's variable should be mapped
+   * @param newNumVariables The new number of variables (must be >= source's
+   * numVariables)
+   * @param targetVariableIndex The index (0-based) where the source's variable
+   * should be mapped
    * @param degree Maximum degree for each new x variable (advisory only)
-   * @param maxDegrees Optional: different max degree for each variable (advisory only)
+   * @param maxDegrees Optional: different max degree for each variable
+   * (advisory only)
    */
   MultivariablePolynomial(const MultivariablePolynomial &source,
-                          int newNumVariables,
-                          int targetVariableIndex,
+                          int newNumVariables, int targetVariableIndex,
                           int degree = 10,
                           const std::vector<int> &maxDegrees = {});
 
@@ -85,14 +114,13 @@ public:
   /**
    * Truncate multivariable polynomial to given degrees
    */
-  MultivariablePolynomial truncate(const std::vector<int> & maxXdegrees) const;
+  MultivariablePolynomial truncate(const std::vector<int> &maxXdegrees) const;
 
   /**
    * Truncate multivariable polynomial to the same degree for all x variables
    * @param maxDegree Maximum degree to keep for all x variables
    */
   MultivariablePolynomial truncate(int maxDegree) const;
-
 
   /**
    * Get coefficients as a vector of (x-powers, q-polynomial) pairs
@@ -104,7 +132,7 @@ public:
   /**
    * Get number of x variables
    */
-  int getNumXVariables() const {return numXVariables;}
+  int getNumXVariables() const { return numXVariables; }
 
   /**
    * Clear all coefficients
@@ -138,5 +166,8 @@ public:
    * Each q-coefficient is multiplied by the bilvector
    */
   MultivariablePolynomial operator*(const bilvector<int> &qPoly) const;
-};
 
+private:
+  // Sparse storage: map from x-exponent vector to q-polynomial
+  std::unordered_map<ExponentKey, bilvector<int>, ExponentKeyHash> coeffs_;
+};

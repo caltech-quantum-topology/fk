@@ -1,7 +1,6 @@
 #pragma once
 
 #include <flint/fmpz_poly.h>
-#include <string>
 #include <vector>
 
 /**
