@@ -294,34 +294,59 @@ private:
                                          const std::vector<double> &updated_degrees,
                                          const std::vector<std::array<int, 2>> &bounds_vector);
 
-  // Helper structures and functions for findValidCriteria refactoring
+  // Constants for criteria validation
+  static constexpr double COMBINATION_FACTOR = 0.5;
+
+  // Helper structures for criteria exploration
   struct CriteriaExplorationState {
     std::set<std::vector<std::vector<double>>> visited;
     std::queue<std::vector<std::vector<double>>> queue;
+
+    void markVisited(const std::vector<std::vector<double>>& criteria) {
+      visited.insert(criteria);
+    }
+
+    bool hasBeenVisited(const std::vector<std::vector<double>>& criteria) const {
+      return visited.find(criteria) != visited.end();
+    }
+
+    void addToQueue(std::vector<std::vector<double>> criteria) {
+      queue.push(std::move(criteria));
+    }
+
+    bool hasMoreToExplore() const {
+      return !queue.empty();
+    }
+
+    std::vector<std::vector<double>> getNextCriteria() {
+      auto result = std::move(queue.front());
+      queue.pop();
+      return result;
+    }
   };
 
-  ValidatedCriteria buildValidatedCriteriaFromValid(const std::vector<std::vector<double>> &criteria,
-                                                   int variable_count);
-
+  // Core helper functions for findValidCriteria
+  ValidatedCriteria tryInitialCriteria(int variable_count);
   ValidatedCriteria searchForValidCriteria(int variable_count);
+  ValidatedCriteria buildValidatedCriteriaFromValid(const std::vector<std::vector<double>>& criteria, int variable_count);
 
-  std::vector<std::vector<double>> combineInequalitiesAndCriteria();
-
+  // Criteria exploration helpers
   CriteriaExplorationState initializeCriteriaExploration();
-
-  ValidatedCriteria exploreCriteriaCombinations(const std::vector<std::vector<double>> &current_criteria,
-                                               const std::vector<std::vector<double>> &inequalities,
+  ValidatedCriteria exploreCriteriaCombinations(const std::vector<std::vector<double>>& current_criteria,
                                                int variable_count,
-                                               CriteriaExplorationState &state);
+                                               CriteriaExplorationState& state);
 
-  bool isPotentiallyBeneficial(const std::vector<double> &criterion,
-                              const std::vector<double> &inequality,
-                              int variable_count);
-
-  std::vector<std::vector<double>> createCombinedCriteria(const std::vector<std::vector<double>> &base_criteria,
-                                                         const std::vector<double> &inequality,
-                                                         int criterion_index,
-                                                         int variable_count);
+  // Criteria combination and validation helpers
+  std::vector<std::vector<double>> combineInequalitiesAndCriteria() const;
+  std::vector<std::vector<double>> createCombinedCriteria(const std::vector<std::vector<double>>& base_criteria,
+                                                         const std::vector<double>& inequality,
+                                                         int criterion_index) const;
+  bool isPotentiallyBeneficial(const std::vector<double>& criterion,
+                              const std::vector<double>& inequality) const;
+  bool shouldExploreCombination(const std::vector<std::vector<double>>& current_criteria,
+                               const std::vector<double>& inequality,
+                               int criterion_index,
+                               CriteriaExplorationState& state) const;
 };
 
 } // namespace fk

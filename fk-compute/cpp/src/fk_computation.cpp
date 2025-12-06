@@ -1060,17 +1060,25 @@ FKComputation::ValidatedCriteria FKComputation::findValidCriteria() {
 
   const int variable_count = config_.criteria[0].size();
 
-  // Check if initial criteria are already valid
-  if (validCriteria(config_.criteria, config_.inequalities, variable_count)) {
-    return buildValidatedCriteriaFromValid(config_.criteria, variable_count);
+  // Try initial criteria first (fast path)
+  auto initial_result = tryInitialCriteria(variable_count);
+  if (initial_result.is_valid) {
+    return initial_result;
   }
 
   // Search for valid criteria using breadth-first exploration
   return searchForValidCriteria(variable_count);
 }
 
+FKComputation::ValidatedCriteria FKComputation::tryInitialCriteria(int variable_count) {
+  if (validCriteria(config_.criteria, config_.inequalities, variable_count)) {
+    return buildValidatedCriteriaFromValid(config_.criteria, variable_count);
+  }
+  return ValidatedCriteria();
+}
+
 FKComputation::ValidatedCriteria FKComputation::buildValidatedCriteriaFromValid(
-    const std::vector<std::vector<double>> &criteria, int variable_count) {
+    const std::vector<std::vector<double>>& criteria, int variable_count) {
   ValidatedCriteria result;
   const auto bounded_info = identifyBoundedVariables(criteria, variable_count);
 
@@ -1080,87 +1088,71 @@ FKComputation::ValidatedCriteria FKComputation::buildValidatedCriteriaFromValid(
   result.initial_point = std::vector<int>(variable_count - 1, 0);
   result.is_valid = true;
 
-  auto all_original = config_.inequalities;
-  all_original.insert(all_original.end(), config_.criteria.begin(),
-                      config_.criteria.end());
-
+  // Find additional bounds if needed
   if (bounded_info.bounded_count < variable_count - 1) {
+    auto all_original = config_.inequalities;
+    all_original.insert(all_original.end(), config_.criteria.begin(), config_.criteria.end());
+
     auto bounded_v_copy = bounded_info.bounded_v;
     auto bounded_count_copy = bounded_info.bounded_count;
-    result.additional_bounds =
-        findAdditionalBounds(bounded_v_copy, bounded_count_copy, variable_count,
-                             all_original);//config_.inequalities);
+    result.additional_bounds = findAdditionalBounds(bounded_v_copy, bounded_count_copy,
+                                                   variable_count, all_original);
   }
 
   return result;
 }
 
-FKComputation::ValidatedCriteria
-FKComputation::searchForValidCriteria(int variable_count) {
-
-  const auto combined_inequalities = combineInequalitiesAndCriteria();
+FKComputation::ValidatedCriteria FKComputation::searchForValidCriteria(int variable_count) {
   auto criteria_explorer = initializeCriteriaExploration();
 
-  while (!criteria_explorer.queue.empty()) {
-    const auto current_criteria = std::move(criteria_explorer.queue.front());
-    criteria_explorer.queue.pop();
+  while (criteria_explorer.hasMoreToExplore()) {
+    const auto current_criteria = criteria_explorer.getNextCriteria();
 
-    const auto valid_result =
-        exploreCriteriaCombinations(current_criteria, combined_inequalities,
-                                    variable_count, criteria_explorer);
+    const auto valid_result = exploreCriteriaCombinations(current_criteria, variable_count, criteria_explorer);
     if (valid_result.is_valid) {
       return valid_result;
     }
   }
-
   return ValidatedCriteria();
 }
 
-std::vector<std::vector<double>>
-FKComputation::combineInequalitiesAndCriteria() {
+std::vector<std::vector<double>> FKComputation::combineInequalitiesAndCriteria() const {
   std::vector<std::vector<double>> combined = config_.inequalities;
-  combined.insert(combined.end(), config_.criteria.begin(),
-                  config_.criteria.end());
+  combined.insert(combined.end(), config_.criteria.begin(), config_.criteria.end());
   return combined;
 }
 
-FKComputation::CriteriaExplorationState
-FKComputation::initializeCriteriaExploration() {
+FKComputation::CriteriaExplorationState FKComputation::initializeCriteriaExploration() {
   CriteriaExplorationState state;
-  state.visited.insert(config_.criteria);
-  state.queue.push(config_.criteria);
+  state.markVisited(config_.criteria);
+  state.addToQueue(config_.criteria);
   return state;
 }
 
 FKComputation::ValidatedCriteria FKComputation::exploreCriteriaCombinations(
-    const std::vector<std::vector<double>> &current_criteria,
-    const std::vector<std::vector<double>> &inequalities, int variable_count,
-    CriteriaExplorationState &state) {
+    const std::vector<std::vector<double>>& current_criteria,
+    int variable_count,
+    CriteriaExplorationState& state) {
+
   const int criterion_count = config_.criteria.size();
-  auto all_original = config_.inequalities;
-  all_original.insert(all_original.end(), config_.criteria.begin(),
-                      config_.criteria.end());
-  for (int criterion_index = 0; criterion_index < criterion_count;
-       ++criterion_index) {
-    for (const auto &inequality : inequalities) {
-      if (!isPotentiallyBeneficial(current_criteria[criterion_index],
-                                   inequality, variable_count)) {
+  const auto combined_inequalities = combineInequalitiesAndCriteria();
+  const auto all_original = combineInequalitiesAndCriteria();
+
+  for (int criterion_index = 0; criterion_index < criterion_count; ++criterion_index) {
+    for (const auto& inequality : combined_inequalities) {
+
+      if (!shouldExploreCombination(current_criteria, inequality, criterion_index, state)) {
         continue;
       }
 
-      const auto new_criteria = createCombinedCriteria(
-          current_criteria, inequality, criterion_index, variable_count);
-      if (state.visited.find(new_criteria) != state.visited.end()) {
-        continue;
-      }
-
-      state.visited.insert(new_criteria);
+      const auto new_criteria = createCombinedCriteria(current_criteria, inequality, criterion_index);
+      state.markVisited(new_criteria);
 
       if (validCriteria(new_criteria, all_original, variable_count)) {
         return buildValidatedCriteriaFromValid(new_criteria, variable_count);
       }
 
-      state.queue.push(new_criteria);
+      state.addToQueue(new_criteria);
     }
   }
 
@@ -1168,9 +1160,9 @@ FKComputation::ValidatedCriteria FKComputation::exploreCriteriaCombinations(
 }
 
 bool FKComputation::isPotentiallyBeneficial(
-    const std::vector<double> &criterion, const std::vector<double> &inequality,
-    int variable_count) {
-  for (int var_index = 1; var_index < variable_count; ++var_index) {
+    const std::vector<double>& criterion, const std::vector<double>& inequality) const {
+  // Check if this combination could be beneficial (has opposing signs)
+  for (size_t var_index = 1; var_index < criterion.size(); ++var_index) {
     if (criterion[var_index] > 0 && inequality[var_index] < 0) {
       return true;
     }
@@ -1179,18 +1171,36 @@ bool FKComputation::isPotentiallyBeneficial(
 }
 
 std::vector<std::vector<double>> FKComputation::createCombinedCriteria(
-    const std::vector<std::vector<double>> &base_criteria,
-    const std::vector<double> &inequality, int criterion_index,
-    int variable_count) {
-  static const double COMBINATION_FACTOR = 0.5;
+    const std::vector<std::vector<double>>& base_criteria,
+    const std::vector<double>& inequality,
+    int criterion_index) const {
 
   auto combined_criteria = base_criteria;
-  for (int var_index = 0; var_index < variable_count; ++var_index) {
-    combined_criteria[criterion_index][var_index] +=
-        inequality[var_index] * COMBINATION_FACTOR;
+  for (size_t var_index = 0; var_index < inequality.size(); ++var_index) {
+    combined_criteria[criterion_index][var_index] += inequality[var_index] * COMBINATION_FACTOR;
   }
 
   return combined_criteria;
+}
+
+bool FKComputation::shouldExploreCombination(
+    const std::vector<std::vector<double>>& current_criteria,
+    const std::vector<double>& inequality,
+    int criterion_index,
+    CriteriaExplorationState& state) const {
+
+  // Check if this combination could be beneficial
+  if (!isPotentiallyBeneficial(current_criteria[criterion_index], inequality)) {
+    return false;
+  }
+
+  // Check if we've already seen this combination
+  const auto new_criteria = createCombinedCriteria(current_criteria, inequality, criterion_index);
+  if (state.hasBeenVisited(new_criteria)) {
+    return false;
+  }
+
+  return true;
 }
 
 void FKComputation::setupWorkStealingComputation(
