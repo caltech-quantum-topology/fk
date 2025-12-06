@@ -17,7 +17,7 @@
 
 // Configuration: Set to 0, 1, 2, 3, or 4 to choose polynomial implementation
 #ifndef POLYNOMIAL_TYPE
-#define POLYNOMIAL_TYPE 4  // Default to MultivariablePolynomial
+#define POLYNOMIAL_TYPE 0  // Default to MultivariablePolynomial
 #endif
 
 #if POLYNOMIAL_TYPE == 0
