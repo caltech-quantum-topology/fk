@@ -2,6 +2,65 @@
 #include "fk/linalg.hpp"
 #include <map>
 #include <stdexcept>
+#include <unordered_map>
+#include <shared_mutex>
+#include <mutex>
+#include <functional>
+
+namespace {
+  // Hash functions for cache keys
+  struct QBinomialKey {
+    int upper, lower;
+    bool operator==(const QBinomialKey& other) const {
+      return upper == other.upper && lower == other.lower;
+    }
+  };
+
+  struct QBinomialKeyHash {
+    std::size_t operator()(const QBinomialKey& k) const {
+      return std::hash<int>()(k.upper) ^ (std::hash<int>()(k.lower) << 1);
+    }
+  };
+
+  struct PochhammerKey {
+    int n, qpow;
+    bool operator==(const PochhammerKey& other) const {
+      return n == other.n && qpow == other.qpow;
+    }
+  };
+
+  struct PochhammerKeyHash {
+    std::size_t operator()(const PochhammerKey& k) const {
+      return std::hash<int>()(k.n) ^ (std::hash<int>()(k.qpow) << 1);
+    }
+  };
+
+  struct InversePochhammerKey {
+    int n, qpow, xMax;
+    bool operator==(const InversePochhammerKey& other) const {
+      return n == other.n && qpow == other.qpow && xMax == other.xMax;
+    }
+  };
+
+  struct InversePochhammerKeyHash {
+    std::size_t operator()(const InversePochhammerKey& k) const {
+      return std::hash<int>()(k.n) ^ (std::hash<int>()(k.qpow) << 1) ^ (std::hash<int>()(k.xMax) << 2);
+    }
+  };
+
+  // Thread-safe caches with shared_mutex for read-heavy access
+  std::unordered_map<QBinomialKey, QPolynomialType, QBinomialKeyHash> qbinomial_positive_cache;
+  std::shared_mutex qbinomial_positive_mutex;
+
+  std::unordered_map<QBinomialKey, QPolynomialType, QBinomialKeyHash> qbinomial_negative_cache;
+  std::shared_mutex qbinomial_negative_mutex;
+
+  std::unordered_map<PochhammerKey, PolynomialType, PochhammerKeyHash> pochhammer_cache;
+  std::shared_mutex pochhammer_mutex;
+
+  std::unordered_map<InversePochhammerKey, PolynomialType, InversePochhammerKeyHash> inverse_pochhammer_cache;
+  std::shared_mutex inverse_pochhammer_mutex;
+}
 
 void computePositiveQBinomialHelper(std::vector<int> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift) {
@@ -180,12 +239,30 @@ void computeXQInversePochhammer(std::vector<QPolynomialType> &polynomialTerms,
 }
 
 QPolynomialType QBinomialPositive(int upperLimit, int lowerLimit) {
+  QBinomialKey key{upperLimit, lowerLimit};
+
+  // Try to read from cache first
+  {
+    std::shared_lock<std::shared_mutex> lock(qbinomial_positive_mutex);
+    auto it = qbinomial_positive_cache.find(key);
+    if (it != qbinomial_positive_cache.end()) {
+      return it->second;
+    }
+  }
+
   int n = upperLimit;
   int k = lowerLimit;
 
   // Zero polynomial if out of range
   if (k < 0 || n < 0 || k > n) {
-    return QPolynomialType(); // zero polynomial
+    QPolynomialType result; // zero polynomial
+
+    // Cache the result
+    {
+      std::unique_lock<std::shared_mutex> lock(qbinomial_positive_mutex);
+      qbinomial_positive_cache.emplace(key, result);
+    }
+    return result;
   }
 
   auto makeConstOne = []() {
@@ -215,7 +292,15 @@ QPolynomialType QBinomialPositive(int upperLimit, int lowerLimit) {
     }
   }
 
-  return C[n][k];
+  QPolynomialType result = C[n][k];
+
+  // Cache the computed result
+  {
+    std::unique_lock<std::shared_mutex> lock(qbinomial_positive_mutex);
+    qbinomial_positive_cache.emplace(key, result);
+  }
+
+  return result;
 }
 
 /*
@@ -261,12 +346,30 @@ QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
 }*/
 
 QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
+  QBinomialKey key{upperLimit, lowerLimit};
+
+  // Try to read from cache first
+  {
+    std::shared_lock<std::shared_mutex> lock(qbinomial_negative_mutex);
+    auto it = qbinomial_negative_cache.find(key);
+    if (it != qbinomial_negative_cache.end()) {
+      return it->second;
+    }
+  }
+
   int k = lowerLimit;
   int u = upperLimit;
 
   // Handle nonsense k
   if (k < 0) {
-    return QPolynomialType(); // zero polynomial
+    QPolynomialType result; // zero polynomial
+
+    // Cache the result
+    {
+      std::unique_lock<std::shared_mutex> lock(qbinomial_negative_mutex);
+      qbinomial_negative_cache.emplace(key, result);
+    }
+    return result;
   }
 
   // If upperLimit >= 0, just reuse the positive version
@@ -298,6 +401,12 @@ QPolynomialType QBinomialNegative(int upperLimit, int lowerLimit) {
     }
   }
 
+  // Cache the computed result
+  {
+    std::unique_lock<std::shared_mutex> lock(qbinomial_negative_mutex);
+    qbinomial_negative_cache.emplace(key, result);
+  }
+
   return result;
 }
 
@@ -310,6 +419,17 @@ QPolynomialType QBinomial(int upperLimit, int lowerLimit) {
 // P(q, x) = ∏_{k=1}^n (1 - x q^{qpow + k})
 // Optimized using direct coefficient computation
 PolynomialType qpochhammer_xq_q(int n, int qpow) {
+  PochhammerKey key{n, qpow};
+
+  // Try to read from cache first
+  {
+    std::shared_lock<std::shared_mutex> lock(pochhammer_mutex);
+    auto it = pochhammer_cache.find(key);
+    if (it != pochhammer_cache.end()) {
+      return it->second;
+    }
+  }
+
   const int numXVars = 1;
   const int maxXDegree = n;
 
@@ -351,6 +471,12 @@ PolynomialType qpochhammer_xq_q(int n, int qpow) {
     }
   }
 
+  // Cache the computed result
+  {
+    std::unique_lock<std::shared_mutex> lock(pochhammer_mutex);
+    pochhammer_cache.emplace(key, result);
+  }
+
   return result;
 }
 
@@ -360,6 +486,17 @@ PolynomialType qpochhammer_xq_q(int n, int qpow) {
 
 
 PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
+  InversePochhammerKey key{n, qpow, xMax};
+
+  // Try to read from cache first
+  {
+    std::shared_lock<std::shared_mutex> lock(inverse_pochhammer_mutex);
+    auto it = inverse_pochhammer_cache.find(key);
+    if (it != inverse_pochhammer_cache.end()) {
+      return it->second;
+    }
+  }
+
   const int numXVars = 1;
 
   // Coefficients map: coeffs[x_degree][q_power] = coefficient
@@ -398,5 +535,12 @@ PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
       }
     }
   }
+
+  // Cache the computed result
+  {
+    std::unique_lock<std::shared_mutex> lock(inverse_pochhammer_mutex);
+    inverse_pochhammer_cache.emplace(key, result);
+  }
+
   return result;
 }

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <mutex>
 #include <queue>
 #include <set>
 #include <sstream>
@@ -409,6 +410,17 @@ std::vector<std::vector<int>> FKComputationEngine::computeNumericalAssignments(
 
 PolynomialType
 FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
+  // Check cache first
+  CrossingFactorKey key{numerical_assignments_, max_x_degrees};
+
+  {
+    std::shared_lock<std::shared_mutex> lock(crossing_factor_mutex_);
+    auto it = crossing_factor_cache_.find(key);
+    if (it != crossing_factor_cache_.end()) {
+      return it->second;
+    }
+  }
+
   PolynomialType result(config_.components, 0);
   result.setCoefficient(0, std::vector<int>(config_.components, 0), 1);
 
@@ -529,6 +541,13 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
   std::cout << "Angle result: ";
   (x_pow*result).print(100);
   */
+
+  // Cache the result
+  {
+    std::unique_lock<std::shared_mutex> lock(crossing_factor_mutex_);
+    crossing_factor_cache_.emplace(key, result);
+  }
+
   return result;
 }
 
@@ -572,6 +591,12 @@ void FKComputationEngine::reset() {
   result_ = PolynomialType(config_.components, config_.degree);
   for (auto &row : numerical_assignments_) {
     std::fill(row.begin(), row.end(), 0);
+  }
+
+  // Clear the crossingFactor cache
+  {
+    std::unique_lock<std::shared_mutex> lock(crossing_factor_mutex_);
+    crossing_factor_cache_.clear();
   }
 }
 

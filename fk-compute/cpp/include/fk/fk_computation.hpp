@@ -10,6 +10,8 @@
 #include <stack>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <shared_mutex>
 
 namespace fk {
 
@@ -94,6 +96,40 @@ private:
   PolynomialType result_;
   std::vector<int> accumulator_block_sizes_;
   std::vector<std::vector<int>> numerical_assignments_;
+
+  // Cache for crossingFactor results
+  struct CrossingFactorKey {
+    std::vector<std::vector<int>> numerical_assignments;
+    std::vector<int> max_x_degrees;
+
+    bool operator==(const CrossingFactorKey& other) const {
+      return numerical_assignments == other.numerical_assignments &&
+             max_x_degrees == other.max_x_degrees;
+    }
+  };
+
+  struct CrossingFactorKeyHash {
+    std::size_t operator()(const CrossingFactorKey& k) const {
+      std::size_t h1 = hash_vector(k.max_x_degrees);
+      std::size_t h2 = 0;
+      for (const auto& vec : k.numerical_assignments) {
+        h2 ^= hash_vector(vec) + 0x9e3779b9 + (h2 << 6) + (h2 >> 2);
+      }
+      return h1 ^ (h2 << 1);
+    }
+
+  private:
+    std::size_t hash_vector(const std::vector<int>& vec) const {
+      std::size_t seed = vec.size();
+      for(auto& i : vec) {
+        seed ^= std::hash<int>()(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      }
+      return seed;
+    }
+  };
+
+  mutable std::unordered_map<CrossingFactorKey, PolynomialType, CrossingFactorKeyHash> crossing_factor_cache_;
+  mutable std::shared_mutex crossing_factor_mutex_;
 
   void initializeAccumulatorBlockSizes();
   std::vector<std::vector<int>>
