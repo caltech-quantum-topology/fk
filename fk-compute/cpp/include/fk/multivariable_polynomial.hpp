@@ -102,6 +102,11 @@ public:
   std::vector<Term> getCoefficients() const override;
 
   /**
+   * Get number of x variables
+   */
+  int getNumXVariables() const {return numXVariables;}
+
+  /**
    * Clear all coefficients
    */
   void clear() override;
