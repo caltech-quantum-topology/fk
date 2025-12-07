@@ -24,6 +24,12 @@ set(FK_MAIN_SOURCES
   "cpp/main.cpp"
   "cpp/src/fk_computation.cpp"
   "cpp/src/multivariable_polynomial.cpp"
+  "cpp/src/fmpoly.cpp"
+  "cpp/src/qpolynomial.cpp"
+  "cpp/src/fmpoly_class.cpp"
+  "cpp/src/bmpoly.cpp"
+  "cpp/src/hmpoly.cpp"
+  "cpp/src/zmpoly.cpp"
   "cpp/src/qalg_links.cpp"
   "cpp/src/linalg.cpp"
   "cpp/src/string_to_int.cpp"
@@ -45,15 +51,35 @@ target_include_directories(fk_main PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/cpp/include
 )
 
-# ---- Linking (Threads, OpenMP, etc.) -------------------------------------------
+# ---- Linking (Threads, OpenMP, FLINT, etc.) -----------------------------------
 find_package(Threads REQUIRED)
 find_package(OpenMP)
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(fk_main PRIVATE Threads::Threads OpenMP::OpenMP_CXX)
+
+# Find FLINT library using pkg-config
+find_package(PkgConfig)
+if(PkgConfig_FOUND)
+    pkg_check_modules(FLINT flint)
+endif()
+
+# Link libraries (FLINT requires CBLAS which requires BLAS which requires gfortran)
+if(OpenMP_CXX_FOUND AND FLINT_FOUND)
+    target_link_libraries(fk_main PRIVATE Threads::Threads OpenMP::OpenMP_CXX ${FLINT_LIBRARIES} cblas blas gfortran)
+    target_include_directories(fk_main PRIVATE ${FLINT_INCLUDE_DIRS})
     message(STATUS "OpenMP found - parallel processing enabled")
-else()
-    target_link_libraries(fk_main PRIVATE Threads::Threads)
+    message(STATUS "FLINT found - using FLINT libraries")
+elseif(OpenMP_CXX_FOUND)
+    target_link_libraries(fk_main PRIVATE Threads::Threads OpenMP::OpenMP_CXX -lflint cblas blas gfortran)
+    message(STATUS "OpenMP found - parallel processing enabled")
+    message(WARNING "FLINT pkg-config not found - trying -lflint directly")
+elseif(FLINT_FOUND)
+    target_link_libraries(fk_main PRIVATE Threads::Threads ${FLINT_LIBRARIES} cblas blas gfortran)
+    target_include_directories(fk_main PRIVATE ${FLINT_INCLUDE_DIRS})
     message(WARNING "OpenMP not found - parallel processing disabled")
+    message(STATUS "FLINT found - using FLINT libraries")
+else()
+    target_link_libraries(fk_main PRIVATE Threads::Threads -lflint cblas blas gfortran)
+    message(WARNING "OpenMP not found - parallel processing disabled")
+    message(WARNING "FLINT pkg-config not found - trying -lflint directly")
 endif()
 
 # ---- Installation into the Python wheel ---------------------------------------
