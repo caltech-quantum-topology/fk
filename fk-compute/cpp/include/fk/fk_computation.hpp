@@ -276,6 +276,12 @@ private:
   std::vector<std::vector<int>>
   enumeratePoints(const AssignmentResult &assignment);
 
+  std::vector<std::vector<int>>
+  enumeratePointsFromValue(const AssignmentResult &assignment,
+                          const std::vector<std::array<int, 2>> &bounds_vec,
+                          int first_value,
+                          int first_index);
+
   std::vector<AssignmentResult>
   assignVariables(const ValidatedCriteria &valid_criteria);
 

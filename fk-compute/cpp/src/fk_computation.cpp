@@ -558,21 +558,70 @@ bool FKComputation::satisfiesConstraints(
 std::vector<std::vector<int>>
 FKComputation::enumeratePoints(const AssignmentResult &assignment) {
 
-  std::vector<std::vector<int>> valid_points;
-
   if (assignment.bounds.empty()) {
     // Base case: check constraints and add point if valid
     if (satisfiesConstraints(assignment.point,
                              assignment.supporting_inequalities) &&
         satisfiesConstraints(assignment.point, assignment.criteria)) {
-      valid_points.push_back(assignment.point);
+      return {assignment.point};
     }
-    return valid_points;
+    return {};
   }
 
   // Convert bounds list to vector for easier iteration
   std::vector<std::array<int, 2>> bounds_vec(assignment.bounds.begin(),
                                              assignment.bounds.end());
+
+  // Calculate upper bound for first variable to determine parallelization range
+  int first_index = bounds_vec[0][0];
+  int first_inequality = bounds_vec[0][1];
+  int first_upper =
+      static_cast<int>(assignment.supporting_inequalities[first_inequality][0]);
+  for (size_t i = 0; i < assignment.point.size(); i++) {
+    if (static_cast<int>(i) != first_index) {
+      first_upper += static_cast<int>(
+                   assignment.supporting_inequalities[first_inequality][1 + i]) *
+               assignment.point[i];
+    }
+  }
+  first_upper /= -static_cast<int>(
+      assignment.supporting_inequalities[first_inequality][1 + first_index]);
+
+  // Parallel region: process each value of the first variable in parallel
+  std::vector<std::vector<int>> valid_points;
+
+#ifdef _OPENMP
+  std::mutex points_mutex;
+
+  #pragma omp parallel for schedule(dynamic)
+  for (int first_value = 0; first_value <= first_upper; ++first_value) {
+    std::vector<std::vector<int>> local_points =
+        enumeratePointsFromValue(assignment, bounds_vec, first_value, first_index);
+
+    // Combine local results into global result
+    std::lock_guard<std::mutex> lock(points_mutex);
+    valid_points.insert(valid_points.end(), local_points.begin(), local_points.end());
+  }
+#else
+  // Sequential fallback
+  for (int first_value = 0; first_value <= first_upper; ++first_value) {
+    std::vector<std::vector<int>> local_points =
+        enumeratePointsFromValue(assignment, bounds_vec, first_value, first_index);
+    valid_points.insert(valid_points.end(), local_points.begin(), local_points.end());
+  }
+#endif
+
+  return valid_points;
+}
+
+std::vector<std::vector<int>>
+FKComputation::enumeratePointsFromValue(
+    const AssignmentResult &assignment,
+    const std::vector<std::array<int, 2>> &bounds_vec,
+    int first_value,
+    int first_index) {
+
+  std::vector<std::vector<int>> local_points;
 
   // Stack to manage iteration state
   struct IterationFrame {
@@ -584,27 +633,38 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
 
   std::stack<IterationFrame> stack;
 
-  // Initialize first frame
+  // Initialize first frame with the given first_value
   IterationFrame initial_frame;
   initial_frame.point = assignment.point;
-  initial_frame.bound_index = 0;
+  initial_frame.point[first_index] = first_value;
+  initial_frame.bound_index = 1; // Start from second variable since first is set
   initial_frame.current_value = 0;
 
-  // Calculate upper bound for first variable
-  int index = bounds_vec[0][0];
-  int inequality = bounds_vec[0][1];
-  int upper =
-      static_cast<int>(assignment.supporting_inequalities[inequality][0]);
-  for (size_t i = 0; i < assignment.point.size(); i++) {
-    if (static_cast<int>(i) != index) {
-      upper += static_cast<int>(
-                   assignment.supporting_inequalities[inequality][1 + i]) *
-               assignment.point[i];
+  // If there's only one variable, check and return
+  if (bounds_vec.size() == 1) {
+    if (satisfiesConstraints(initial_frame.point,
+                             assignment.supporting_inequalities) &&
+        satisfiesConstraints(initial_frame.point, assignment.criteria)) {
+      local_points.push_back(initial_frame.point);
+    }
+    return local_points;
+  }
+
+  // Calculate upper bound for second variable
+  int second_index = bounds_vec[1][0];
+  int second_inequality = bounds_vec[1][1];
+  int second_upper =
+      static_cast<int>(assignment.supporting_inequalities[second_inequality][0]);
+  for (size_t i = 0; i < initial_frame.point.size(); i++) {
+    if (static_cast<int>(i) != second_index) {
+      second_upper += static_cast<int>(
+                   assignment.supporting_inequalities[second_inequality][1 + i]) *
+               initial_frame.point[i];
     }
   }
-  upper /= -static_cast<int>(
-      assignment.supporting_inequalities[inequality][1 + index]);
-  initial_frame.upper_bound = upper;
+  second_upper /= -static_cast<int>(
+      assignment.supporting_inequalities[second_inequality][1 + second_index]);
+  initial_frame.upper_bound = second_upper;
 
   stack.push(initial_frame);
 
@@ -624,7 +684,7 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
       if (satisfiesConstraints(current.point,
                                assignment.supporting_inequalities) &&
           satisfiesConstraints(current.point, assignment.criteria)) {
-        valid_points.push_back(current.point);
+        local_points.push_back(current.point);
       }
       current.current_value++;
     } else {
@@ -656,7 +716,7 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
     }
   }
 
-  return valid_points;
+  return local_points;
 }
 
 std::vector<FKComputation::AssignmentResult>
