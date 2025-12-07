@@ -2,6 +2,7 @@
 #include "fk/linalg.hpp"
 #include "fk/qalg_links.hpp"
 #include "fk/string_to_int.hpp"
+#include "graph_search.h"
 
 #include <cmath>
 #include <fstream>
@@ -579,9 +580,10 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
       static_cast<int>(assignment.supporting_inequalities[first_inequality][0]);
   for (size_t i = 0; i < assignment.point.size(); i++) {
     if (static_cast<int>(i) != first_index) {
-      first_upper += static_cast<int>(
-                   assignment.supporting_inequalities[first_inequality][1 + i]) *
-               assignment.point[i];
+      first_upper +=
+          static_cast<int>(
+              assignment.supporting_inequalities[first_inequality][1 + i]) *
+          assignment.point[i];
     }
   }
   first_upper /= -static_cast<int>(
@@ -593,32 +595,32 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
 #ifdef _OPENMP
   std::mutex points_mutex;
 
-  #pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
   for (int first_value = 0; first_value <= first_upper; ++first_value) {
-    std::vector<std::vector<int>> local_points =
-        enumeratePointsFromValue(assignment, bounds_vec, first_value, first_index);
+    std::vector<std::vector<int>> local_points = enumeratePointsFromValue(
+        assignment, bounds_vec, first_value, first_index);
 
     // Combine local results into global result
     std::lock_guard<std::mutex> lock(points_mutex);
-    valid_points.insert(valid_points.end(), local_points.begin(), local_points.end());
+    valid_points.insert(valid_points.end(), local_points.begin(),
+                        local_points.end());
   }
 #else
   // Sequential fallback
   for (int first_value = 0; first_value <= first_upper; ++first_value) {
-    std::vector<std::vector<int>> local_points =
-        enumeratePointsFromValue(assignment, bounds_vec, first_value, first_index);
-    valid_points.insert(valid_points.end(), local_points.begin(), local_points.end());
+    std::vector<std::vector<int>> local_points = enumeratePointsFromValue(
+        assignment, bounds_vec, first_value, first_index);
+    valid_points.insert(valid_points.end(), local_points.begin(),
+                        local_points.end());
   }
 #endif
 
   return valid_points;
 }
 
-std::vector<std::vector<int>>
-FKComputation::enumeratePointsFromValue(
+std::vector<std::vector<int>> FKComputation::enumeratePointsFromValue(
     const AssignmentResult &assignment,
-    const std::vector<std::array<int, 2>> &bounds_vec,
-    int first_value,
+    const std::vector<std::array<int, 2>> &bounds_vec, int first_value,
     int first_index) {
 
   std::vector<std::vector<int>> local_points;
@@ -637,7 +639,8 @@ FKComputation::enumeratePointsFromValue(
   IterationFrame initial_frame;
   initial_frame.point = assignment.point;
   initial_frame.point[first_index] = first_value;
-  initial_frame.bound_index = 1; // Start from second variable since first is set
+  initial_frame.bound_index =
+      1; // Start from second variable since first is set
   initial_frame.current_value = 0;
 
   // If there's only one variable, check and return
@@ -653,13 +656,14 @@ FKComputation::enumeratePointsFromValue(
   // Calculate upper bound for second variable
   int second_index = bounds_vec[1][0];
   int second_inequality = bounds_vec[1][1];
-  int second_upper =
-      static_cast<int>(assignment.supporting_inequalities[second_inequality][0]);
+  int second_upper = static_cast<int>(
+      assignment.supporting_inequalities[second_inequality][0]);
   for (size_t i = 0; i < initial_frame.point.size(); i++) {
     if (static_cast<int>(i) != second_index) {
-      second_upper += static_cast<int>(
-                   assignment.supporting_inequalities[second_inequality][1 + i]) *
-               initial_frame.point[i];
+      second_upper +=
+          static_cast<int>(
+              assignment.supporting_inequalities[second_inequality][1 + i]) *
+          initial_frame.point[i];
     }
   }
   second_upper /= -static_cast<int>(
@@ -729,30 +733,51 @@ FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
   }
 
   const auto bounds_vector = convertBoundsToVector(valid_criteria.first_bounds);
-  auto stack = initializeAssignmentStack(valid_criteria, bounds_vector);
 
-  while (!stack.empty()) {
-    auto &current_state = stack.top();
+  using AssignmentNode = VariableAssignmentState;
 
-    if (isStateExhausted(current_state)) {
-      stack.pop();
-      continue;
-    }
+  graph_search::DepthFirstSearchWithVisited<AssignmentNode>::Config dfs_config;
 
-    processCurrentVariable(current_state, bounds_vector);
-    const auto updated_degrees =
-        calculateUpdatedDegrees(current_state, bounds_vector);
+  dfs_config.is_valid_goal = [this,
+                              &bounds_vector](const AssignmentNode &state) {
+    return isLastVariable(state, bounds_vector) && !isStateExhausted(state);
+  };
 
-    if (isLastVariable(current_state, bounds_vector)) {
-      assignments.push_back(createAssignmentResult(current_state));
-      current_state.current_value++;
-    } else {
-      auto next_state =
-          createNextState(current_state, updated_degrees, bounds_vector);
-      current_state.current_value++;
-      stack.push(next_state);
-    }
-  }
+  dfs_config.get_neighbors =
+      [this, &bounds_vector](const AssignmentNode &current_state) {
+        std::vector<AssignmentNode> neighbors;
+
+        for (int value = current_state.current_value;
+             value <= current_state.max_value; ++value) {
+          auto state_copy = current_state;
+          state_copy.current_value = value;
+          processCurrentVariable(state_copy, bounds_vector);
+          const auto updated_degrees =
+              calculateUpdatedDegrees(state_copy, bounds_vector);
+
+          if (!isLastVariable(state_copy, bounds_vector)) {
+            auto next_state =
+                createNextState(state_copy, updated_degrees, bounds_vector);
+            neighbors.push_back(next_state);
+          } else {
+            neighbors.push_back(state_copy);
+          }
+        }
+
+        return neighbors;
+      };
+
+  dfs_config.process_node = [&assignments,
+                             this](const AssignmentNode &final_state) {
+    assignments.push_back(createAssignmentResult(final_state));
+  };
+
+  graph_search::DepthFirstSearchWithVisited<AssignmentNode> dfs_search(
+      dfs_config);
+
+  auto initial_state =
+      createInitialAssignmentState(valid_criteria, bounds_vector);
+  dfs_search.search_all(initial_state);
 
   return assignments;
 }
@@ -770,6 +795,29 @@ FKComputation::createSingleAssignment(const ValidatedCriteria &valid_criteria) {
 std::vector<std::array<int, 2>> FKComputation::convertBoundsToVector(
     const std::list<std::array<int, 2>> &bounds) {
   return std::vector<std::array<int, 2>>(bounds.begin(), bounds.end());
+}
+
+FKComputation::VariableAssignmentState
+FKComputation::createInitialAssignmentState(
+    const ValidatedCriteria &valid_criteria,
+    const std::vector<std::array<int, 2>> &bounds_vector) {
+
+  VariableAssignmentState initial_state;
+  initial_state.new_criteria = valid_criteria.criteria;
+  initial_state.degrees = valid_criteria.degrees;
+  initial_state.criteria = valid_criteria.criteria;
+  initial_state.bounds = valid_criteria.additional_bounds;
+  auto all_original = config_.inequalities;
+  all_original.insert(all_original.end(), config_.criteria.begin(),
+                      config_.criteria.end());
+  initial_state.supporting_inequalities = all_original;
+  initial_state.point = valid_criteria.initial_point;
+  initial_state.current_var_index = 0;
+  initial_state.current_value = 0;
+  initial_state.max_value = calculateMaxValue(
+      valid_criteria.criteria, valid_criteria.degrees, bounds_vector[0]);
+
+  return initial_state;
 }
 
 std::stack<FKComputation::VariableAssignmentState>
@@ -1021,18 +1069,65 @@ FKComputation::ValidatedCriteria FKComputation::buildValidatedCriteriaFromValid(
 
 FKComputation::ValidatedCriteria
 FKComputation::searchForValidCriteria(int variable_count) {
-  auto criteria_explorer = initializeCriteriaExploration();
+  using CriteriaNode = std::vector<std::vector<double>>;
 
-  while (criteria_explorer.hasMoreToExplore()) {
-    const auto current_criteria = criteria_explorer.getNextCriteria();
+  // Set to track visited criteria combinations
+  std::set<CriteriaNode> visited;
 
-    const auto valid_result = exploreCriteriaCombinations(
-        current_criteria, variable_count, criteria_explorer);
-    if (valid_result.is_valid) {
-      return valid_result;
+  // Configure BFS search
+  graph_search::BreadthFirstSearch<CriteriaNode>::Config bfs_config;
+
+  bfs_config.is_valid_goal = [this,
+                              variable_count](const CriteriaNode &criteria) {
+    return validCriteria(criteria, combineInequalitiesAndCriteria(),
+                         variable_count);
+  };
+
+  bfs_config.get_neighbors =
+      [this, variable_count](const CriteriaNode &current_criteria) {
+        return generateCriteriaNeighbors(current_criteria, variable_count);
+      };
+
+  bfs_config.has_been_visited = [&visited](const CriteriaNode &criteria) {
+    return visited.find(criteria) != visited.end();
+  };
+
+  bfs_config.mark_visited = [&visited](const CriteriaNode &criteria) {
+    visited.insert(criteria);
+  };
+
+  graph_search::BreadthFirstSearch<CriteriaNode> bfs_search(bfs_config);
+
+  auto result = bfs_search.search(config_.criteria);
+  if (result.has_value()) {
+    return buildValidatedCriteriaFromValid(result.value(), variable_count);
+  }
+
+  return ValidatedCriteria();
+}
+
+std::vector<std::vector<std::vector<double>>>
+FKComputation::generateCriteriaNeighbors(
+    const std::vector<std::vector<double>> &current_criteria,
+    int /* variable_count */) {
+  std::vector<std::vector<std::vector<double>>> neighbors;
+
+  const int criterion_count = config_.criteria.size();
+  const auto combined_inequalities = combineInequalitiesAndCriteria();
+
+  for (int criterion_index = 0; criterion_index < criterion_count;
+       ++criterion_index) {
+    for (const auto &inequality : combined_inequalities) {
+      if (shouldExploreCombination(current_criteria, inequality,
+                                   criterion_index)) {
+        const auto new_criteria = createCombinedCriteria(
+            current_criteria, inequality, criterion_index);
+        neighbors.push_back(new_criteria);
+      }
     }
   }
-  return ValidatedCriteria();
+
+  return neighbors;
 }
 
 std::vector<std::vector<double>>
@@ -1041,46 +1136,6 @@ FKComputation::combineInequalitiesAndCriteria() const {
   combined.insert(combined.end(), config_.criteria.begin(),
                   config_.criteria.end());
   return combined;
-}
-
-FKComputation::CriteriaExplorationState
-FKComputation::initializeCriteriaExploration() {
-  CriteriaExplorationState state;
-  state.markVisited(config_.criteria);
-  state.addToQueue(config_.criteria);
-  return state;
-}
-
-FKComputation::ValidatedCriteria FKComputation::exploreCriteriaCombinations(
-    const std::vector<std::vector<double>> &current_criteria,
-    int variable_count, CriteriaExplorationState &state) {
-
-  const int criterion_count = config_.criteria.size();
-  const auto combined_inequalities = combineInequalitiesAndCriteria();
-  const auto all_original = combineInequalitiesAndCriteria();
-
-  for (int criterion_index = 0; criterion_index < criterion_count;
-       ++criterion_index) {
-    for (const auto &inequality : combined_inequalities) {
-
-      if (!shouldExploreCombination(current_criteria, inequality,
-                                    criterion_index, state)) {
-        continue;
-      }
-
-      const auto new_criteria =
-          createCombinedCriteria(current_criteria, inequality, criterion_index);
-      state.markVisited(new_criteria);
-
-      if (validCriteria(new_criteria, all_original, variable_count)) {
-        return buildValidatedCriteriaFromValid(new_criteria, variable_count);
-      }
-
-      state.addToQueue(new_criteria);
-    }
-  }
-
-  return ValidatedCriteria();
 }
 
 bool FKComputation::isPotentiallyBeneficial(
@@ -1110,22 +1165,10 @@ std::vector<std::vector<double>> FKComputation::createCombinedCriteria(
 
 bool FKComputation::shouldExploreCombination(
     const std::vector<std::vector<double>> &current_criteria,
-    const std::vector<double> &inequality, int criterion_index,
-    CriteriaExplorationState &state) const {
+    const std::vector<double> &inequality, int criterion_index) const {
 
   // Check if this combination could be beneficial
-  if (!isPotentiallyBeneficial(current_criteria[criterion_index], inequality)) {
-    return false;
-  }
-
-  // Check if we've already seen this combination
-  const auto new_criteria =
-      createCombinedCriteria(current_criteria, inequality, criterion_index);
-  if (state.hasBeenVisited(new_criteria)) {
-    return false;
-  }
-
-  return true;
+  return isPotentiallyBeneficial(current_criteria[criterion_index], inequality);
 }
 
 void FKComputation::setupWorkStealingComputation(

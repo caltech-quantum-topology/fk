@@ -51,7 +51,8 @@ SOURCES = $(SRC_DIR)/fk_segments_links.cpp \
           $(SRC_DIR)/linalg.cpp \
           $(SRC_DIR)/string_to_int.cpp \
           $(SRC_DIR)/inequality_solver.cpp \
-          $(SRC_DIR)/fk_computation.cpp
+          $(SRC_DIR)/fk_computation.cpp \
+          $(SRC_DIR)/graph_search.cpp
 
 # Object files (placed in build directory)
 OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
@@ -279,7 +280,8 @@ $(BUILD_DIR)/arithmetic_test.o: $(TEST_DIR)/arithmetic_test.cpp $(INCLUDE_DIR)/f
 $(BUILD_DIR)/example.o: $(EXAMPLE_DIR)/example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
 $(BUILD_DIR)/inequality_example.o: $(EXAMPLE_DIR)/inequality_example.cpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(INCLUDE_DIR)/fk/inequality_solver.hpp
 $(BUILD_DIR)/inequality_solver.o: $(SRC_DIR)/inequality_solver.cpp $(INCLUDE_DIR)/fk/inequality_solver.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
-$(BUILD_DIR)/fk_computation.o: $(SRC_DIR)/fk_computation.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp
+$(BUILD_DIR)/fk_computation.o: $(SRC_DIR)/fk_computation.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp $(INCLUDE_DIR)/fk/multivariable_polynomial.hpp $(SRC_DIR)/graph_search.h
+$(BUILD_DIR)/graph_search.o: $(SRC_DIR)/graph_search.cpp $(SRC_DIR)/graph_search.h
 $(BUILD_DIR)/fk_computation_test.o: $(EXAMPLE_DIR)/fk_computation_test.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/trefoil_fk_example.o: $(EXAMPLE_DIR)/trefoil_fk_example.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
 $(BUILD_DIR)/trefoil_simple_example.o: $(EXAMPLE_DIR)/trefoil_simple_example.cpp $(INCLUDE_DIR)/fk/fk_computation.hpp
