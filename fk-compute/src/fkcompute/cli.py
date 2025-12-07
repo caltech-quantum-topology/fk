@@ -230,6 +230,35 @@ For homogeneous braids, no additional data is needed.
         help="Output file to save symbolic relations (optional)"
     )
 
+    # Empty config command - show parameters and generate template
+    template_parser = subparsers.add_parser(
+        "template",
+        help="Show configuration parameters or generate template config file",
+        description="""
+Display all available configuration parameters and their meanings, or generate
+a blank configuration file template that you can fill in.
+
+MODES:
+  fk template --list                 # List all parameters with descriptions
+  fk template --generate config.yaml # Generate blank template file
+  fk template --generate config.json # Generate JSON template file
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Examples: fk template --list | fk template --generate my_config.yaml"
+    )
+    template_group = template_parser.add_mutually_exclusive_group(required=True)
+    template_group.add_argument(
+        "--list",
+        action="store_true",
+        help="List all available configuration parameters with descriptions"
+    )
+    template_group.add_argument(
+        "--generate",
+        type=str,
+        metavar="FILE",
+        help="Generate a template configuration file (supports .yaml, .yml, .json)"
+    )
+
     # Legacy compute command (backward compatibility)
     legacy_parser = subparsers.add_parser(
         "compute",
@@ -412,6 +441,263 @@ def handle_variables(args) -> None:
             raise ValueError("Invalid inversion data computed for this braid")
 
 
+def handle_template(args) -> None:
+    """Handle template command."""
+    if args.list:
+        _print_config_parameters()
+    elif args.generate:
+        _generate_config_template(args.generate)
+
+
+def _print_config_parameters() -> None:
+    """Print all available configuration parameters with descriptions."""
+    params = _get_config_parameter_docs()
+
+    print("=" * 80)
+    print("FK COMPUTATION CONFIGURATION PARAMETERS")
+    print("=" * 80)
+    print()
+
+    for category, items in params.items():
+        print(f"\n{category}")
+        print("-" * len(category))
+        for param_name, param_info in items.items():
+            print(f"\n  {param_name}:")
+            print(f"    Type:        {param_info['type']}")
+            if 'default' in param_info:
+                print(f"    Default:     {param_info['default']}")
+            if 'options' in param_info:
+                print(f"    Options:     {', '.join(str(o) for o in param_info['options'])}")
+            print(f"    Description: {param_info['description']}")
+
+    print("\n" + "=" * 80)
+    print("USAGE EXAMPLES:")
+    print("=" * 80)
+    print("""
+Minimal configuration (JSON):
+  {
+    "braid": [1, -2, 3],
+    "degree": 2
+  }
+
+With optional parameters (YAML):
+  braid: [1, -2, 3]
+  degree: 2
+  name: "my_knot"
+  max_workers: 4
+  save_data: true
+  verbose: true
+""")
+
+
+def _generate_config_template(filepath: str) -> None:
+    """Generate a blank configuration file template."""
+    is_yaml = filepath.endswith(('.yaml', '.yml'))
+    is_json = filepath.endswith('.json')
+
+    if not is_yaml and not is_json:
+        print(f"Error: File must have .yaml, .yml, or .json extension")
+        sys.exit(1)
+
+    if is_yaml:
+        try:
+            import yaml
+        except ImportError:
+            print("Error: PyYAML is required for YAML files. Install with: pip install PyYAML")
+            sys.exit(1)
+
+    template = _get_config_template(is_yaml)
+
+    try:
+        with open(filepath, 'w') as f:
+            f.write(template)
+        print(f"✓ Template configuration file created: {filepath}")
+        print(f"\nEdit this file and run:")
+        print(f"  fk config {filepath}")
+    except Exception as e:
+        print(f"Error writing template file: {e}")
+        sys.exit(1)
+
+
+def _get_config_parameter_docs() -> dict:
+    """Return structured documentation for all configuration parameters."""
+    return {
+        "REQUIRED PARAMETERS": {
+            "braid": {
+                "type": "list[int]",
+                "description": "Braid word as list of integers (e.g., [1, -2, 3])"
+            },
+            "degree": {
+                "type": "int",
+                "description": "Computation degree for FK invariant"
+            }
+        },
+        "PRE-COMPUTED DATA": {
+            "ilp": {
+                "type": "string",
+                "default": "None",
+                "description": "Pre-computed ILP data as raw string (advanced)"
+            },
+            "ilp_file": {
+                "type": "string",
+                "default": "None",
+                "description": "Path to pre-computed ILP file"
+            },
+            "inversion": {
+                "type": "dict",
+                "default": "None",
+                "description": "Pre-computed inversion data as dict mapping component indices to sign lists"
+            },
+            "inversion_file": {
+                "type": "string",
+                "default": "None",
+                "description": "Path to pre-computed inversion JSON file"
+            }
+        },
+        "COMPUTATION PARAMETERS": {
+            "partial_signs": {
+                "type": "list[int]",
+                "default": "None",
+                "description": "Optional partial sign assignments for inversion calculation"
+            },
+            "max_workers": {
+                "type": "int",
+                "default": "1",
+                "description": "Number of parallel workers for inversion calculation"
+            },
+            "chunk_size": {
+                "type": "int",
+                "default": "16384",
+                "description": "Chunk size for parallel task processing"
+            },
+            "include_flip": {
+                "type": "bool",
+                "default": "false",
+                "description": "Include flip symmetry in inversion computation"
+            },
+            "max_shifts": {
+                "type": "int",
+                "default": "None (unlimited)",
+                "description": "Maximum number of cyclic shifts to consider"
+            },
+            "threads": {
+                "type": "int",
+                "default": "1",
+                "description": "Number of threads for C++ FK computation engine"
+            }
+        },
+        "OUTPUT AND LOGGING": {
+            "verbose": {
+                "type": "bool",
+                "default": "false",
+                "description": "Enable verbose logging output"
+            },
+            "save_data": {
+                "type": "bool",
+                "default": "false",
+                "description": "Save intermediate files (inversion, ILP, results)"
+            },
+            "save_dir": {
+                "type": "string",
+                "default": "data",
+                "description": "Directory path for saved data files"
+            },
+            "link_name": {
+                "type": "string",
+                "default": "auto-generated",
+                "description": "Base name for output files (without extension)"
+            },
+            "symbolic": {
+                "type": "bool",
+                "default": "false",
+                "description": "Generate symbolic polynomial representation using SymPy"
+            },
+            "name": {
+                "type": "string",
+                "default": "None",
+                "description": "Name for this computation (used for file naming when save_data is enabled)"
+            }
+        }
+    }
+
+
+def _get_config_template(is_yaml: bool) -> str:
+    """Generate a template configuration file content."""
+    if is_yaml:
+        return """# FK Computation Configuration File (YAML)
+# ==========================================
+# This is a template configuration file for FK invariant computation.
+# Uncomment and modify the parameters you need.
+
+# =============================================================================
+# REQUIRED PARAMETERS
+# =============================================================================
+braid: [1, -2, 3]  # Braid word as list of integers
+degree: 2           # Computation degree
+
+# =============================================================================
+# OPTIONAL PARAMETERS
+# =============================================================================
+
+# Name for this computation (used for file naming when save_data is true)
+# name: "my_knot"
+
+# Pre-computed data (provide file path or data directly)
+# ilp_file: "path/to/precomputed.ilp"
+# inversion_file: "path/to/inversion.json"
+# inversion:
+#   0: [1, -1, 1]
+#   1: [-1, 1]
+
+# Computation parameters
+# max_workers: 1        # Number of parallel workers for inversion
+# chunk_size: 16384     # Chunk size for parallel processing
+# include_flip: false   # Include flip symmetry
+# max_shifts: null      # Maximum cyclic shifts (null = unlimited)
+# partial_signs: []     # Partial sign assignments
+# threads: 1            # Number of threads for C++ computation
+
+# Output and logging
+# verbose: false        # Enable verbose logging
+# save_data: false      # Save intermediate files
+# save_dir: "data"      # Directory for saved files
+# link_name: null       # Base name for output files
+# symbolic: false       # Generate symbolic representation (requires SymPy)
+"""
+    else:  # JSON
+        return """{
+  "_comment": "FK Computation Configuration File (JSON)",
+  "_comment2": "Remove all _comment fields before use",
+
+  "braid": [1, -2, 3],
+  "degree": 2,
+
+  "_optional": "Optional parameters below - uncomment as needed",
+  "name": "my_knot",
+
+  "_precomputed": "Optional pre-computed data",
+  "ilp_file": null,
+  "inversion_file": null,
+  "inversion": null,
+
+  "_computation": "Computation parameters",
+  "max_workers": 1,
+  "chunk_size": 16384,
+  "include_flip": false,
+  "max_shifts": null,
+  "partial_signs": null,
+  "threads": 1,
+
+  "_output": "Output and logging",
+  "verbose": false,
+  "save_data": false,
+  "save_dir": "data",
+  "link_name": null,
+  "symbolic": false
+}
+"""
+
+
 def handle_advanced(args) -> None:
     """Handle advanced/compute/legacy commands."""
     braid = _parse_int_list(args.braid)
@@ -453,7 +739,7 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     # Check if using help flag or subcommands
     has_help = len(argv) > 1 and argv[1] in ['-h', '--help']
-    has_subcommand = len(argv) > 1 and argv[1] in ['simple', 'preset', 'config', 'advanced', 'compute', 'variables']
+    has_subcommand = len(argv) > 1 and argv[1] in ['simple', 'preset', 'config', 'advanced', 'compute', 'variables', 'template']
 
     if has_help or has_subcommand:
         parser = build_parser()
@@ -467,6 +753,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             handle_config(args)
         elif args.command == 'variables':
             handle_variables(args)
+        elif args.command == 'template':
+            handle_template(args)
         elif args.command in ['advanced', 'compute']:
             handle_advanced(args)
         else:
