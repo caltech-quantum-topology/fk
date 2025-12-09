@@ -1,59 +1,26 @@
-.TH FK 1 "2024" "fkcompute 0.2.0" "User Commands"
+.TH FK 1 "2024" "fkcompute 0.2.15" "User Commands"
 .SH NAME
 fk \- compute the FK invariant for braids using inversion, ILP reduction, and compiled helper binary
 .SH SYNOPSIS
-.B fk
-.I simple
+.B fk simple
 .I BRAID DEGREE
+.RI [ \-\-symbolic ]
 .br
-.B fk
-.I preset
-.I BRAID DEGREE
-.RB [ \-\-preset
-.IR PRESET ]
-.br
-.B fk
-.I config
+.B fk config
 .I CONFIG_FILE
-.br
-.B fk
-.I advanced
-.I BRAID DEGREE
-.RI [ OPTIONS... ]
-.br
-.B fk
-.I BRAID DEGREE
-.RI [ OPTIONS... ]
 .SH DESCRIPTION
 .B fk
-computes the FK invariant of braids using a combination of inversion assignments, Integer Linear Programming (ILP) reduction, and optimized C++ computation. The program provides multiple interfaces ranging from simple one-line calls to advanced configuration with full parameter control.
+computes the FK invariant of braids using a combination of inversion assignments, Integer Linear Programming (ILP) reduction, and optimized C++ computation. The program provides two interfaces: a simple command-line interface for quick computations and a configuration file interface for complex or batch processing.
 
 The FK invariant is a mathematical object used in knot theory to distinguish different types of knots and links. This implementation uses parallel processing and optimization techniques to make the computation efficient for complex braids.
 
 .SH SUBCOMMANDS
 .TP
 .B simple
-Minimal interface with sensible defaults. Computes the FK invariant using quiet mode and default parameters. Best for quick calculations.
-.TP
-.B preset
-Uses predefined configuration sets optimized for different use cases. Available presets are:
-.RS
-.IP \(bu 2
-.B fast
-\- Single-threaded, limited shifts, no flip symmetry (fastest)
-.IP \(bu 2
-.B accurate
-\- Multi-core, unlimited shifts, no flip symmetry, saves data (most thorough)
-.IP \(bu 2
-.B parallel
-\- High parallelism, balanced settings, no flip symmetry (best for multi-core systems)
-.RE
+Minimal interface with sensible defaults. Computes the FK invariant using quiet mode and default parameters. Best for quick calculations. Optionally supports symbolic output with the \-\-symbolic flag.
 .TP
 .B config
 Loads all parameters from a JSON or YAML configuration file. Supports both single computations and batch processing of multiple braids with shared defaults.
-.TP
-.B advanced
-Full control over all computation parameters. Equivalent to the legacy interface without subcommands.
 .SH ARGUMENTS
 .TP
 .I BRAID
@@ -73,54 +40,12 @@ Degree of the invariant computation (positive integer).
 .I CONFIG_FILE
 Path to JSON or YAML configuration file containing braid, degree, and other parameters.
 .SH OPTIONS
-The following options are available for the
-.B advanced
-subcommand and legacy mode:
-.TP
-.BR \-\-preset\ \fIPRESET\fR
-Use predefined configuration. Choices: fast, accurate, parallel.
-.TP
-.BR \-\-ilp\-file\ \fIFILE\fR
-Path to a precomputed ILP file.
-.TP
-.BR \-\-ilp\ \fIDATA\fR
-ILP data as a raw string (advanced usage).
-.TP
-.BR \-\-inversion\-file\ \fIFILE\fR
-Path to precomputed inversion JSON file.
-.TP
-.BR \-\-partial\-signs\ \fISIGNS\fR
-Optional partial sign assignments. Same formats as BRAID.
-.TP
-.BR \-\-max\-workers\ \fIN\fR
-Number of parallel workers for inversion calculation (default: 1).
-.TP
-.BR \-\-chunk\-size\ \fIN\fR
-Chunk size for parallel tasks (default: 16384).
-.TP
-.BR \-\-max\-shifts\ \fIN\fR
-Maximum shifts considered in inversion calculation.
-.TP
-.BR \-\-verbose ", " \-\-no\-verbose
-Enable or disable verbose logging (default: disabled).
-.TP
-.BR \-\-include\-flip ", " \-\-no\-include\-flip
-Include or exclude flip symmetry in inversion (default: disabled).
-.TP
-.BR \-\-save\-data ", " \-\-no\-save\-data
-Save or don't save intermediate files (default: disabled).
-.TP
-.BR \-\-print\-result ", " \-\-no\-print\-result
-Print or suppress the result output (default: enabled).
+The following option is available for the
+.B simple
+subcommand:
 .TP
 .BR \-\-symbolic ", " \-\-no\-symbolic
 Output result as human-readable symbolic polynomial using SymPy (default: disabled). Requires SymPy to be installed.
-.TP
-.BR \-\-save\-dir\ \fIDIR\fR
-Directory to store data when \-\-save\-data is enabled (default: "data").
-.TP
-.BR \-\-link\-name\ \fINAME\fR
-Base name for output files without extension.
 .SH EXAMPLES
 .SS Simple Usage
 .nf
@@ -134,45 +59,35 @@ fk simple "[1, -2, -2, 3]" 3 --symbolic
 fk simple "1,-2,-2,3" 3
 fk simple "1 -2 -2 3" 3
 .fi
-.SS Preset Usage
-.nf
-# Fast computation (single-threaded, limited)
-fk preset "[1, -2, 3]" 2 --preset fast
-
-# Thorough computation (multi-core, saves data)
-fk preset "[1, -2, 3]" 2 --preset accurate
-
-# Parallel optimized with symbolic output
-fk preset "[1, -2, 3]" 2 --preset parallel --symbolic
-.fi
 .SS Configuration File
 .nf
 # Create config.yaml
 cat > config.yaml << EOF
 braid: [1, -2, -2, 3]
 degree: 3
-preset: accurate
 max_workers: 8
 symbolic: true
 verbose: true
+save_data: true
 EOF
 
 # Run from config
 fk config config.yaml
-.fi
-.SS Advanced Usage
-.nf
-# Full parameter control
-fk advanced "[1, -2, 3]" 2 \\
-  --max-workers 4 \\
-  --verbose \\
-  --save-data \\
-  --symbolic \\
-  --save-dir results \\
-  --link-name trefoil
 
-# Legacy mode (backward compatibility)
-fk "[1, -2, 3]" 2 --max-workers 4
+# Batch processing
+cat > batch.yaml << EOF
+max_workers: 4
+save_data: true
+computations:
+  - name: trefoil
+    braid: [1, 1, 1]
+    degree: 2
+  - name: figure_eight
+    braid: [1, -2, 1, -2]
+    degree: 3
+EOF
+
+fk config batch.yaml
 .fi
 .SH CONFIGURATION FILES
 Configuration files can be in JSON or YAML format. YAML requires PyYAML to be installed.
@@ -183,17 +98,17 @@ Supports both single computations and batch processing.
 {
   "braid": [1, -2, -2, 3],
   "degree": 3,
-  "preset": "accurate",
   "max_workers": 4,
-  "verbose": true
+  "verbose": true,
+  "save_data": true
 }
 .fi
 .SS Batch Processing (YAML)
 .nf
 # Global defaults applied to all computations
-preset: fast
 max_workers: 4
 save_data: true
+verbose: false
 
 computations:
   - name: trefoil
@@ -203,12 +118,12 @@ computations:
   - name: figure_eight
     braid: [1, -2, -1, 2]
     degree: 3
-    preset: accurate  # Override global preset
+    max_workers: 8  # Override global workers
 
   - name: hopf_link
     braid: [1, 1]
     degree: 2
-    max_workers: 8  # Override global workers
+    verbose: true  # Override global verbose setting
 .fi
 
 .SS Batch Processing Features

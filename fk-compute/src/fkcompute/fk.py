@@ -251,17 +251,15 @@ def fk(
 
     This function automatically detects the type of call and handles:
     1. Config file mode: fk("config.yaml") or fk(config="config.yaml")
-    2. Preset mode: fk([1,-2,3], 2, preset="fast")
-    3. Simple mode: fk([1,-2,3], 2)
-    4. Advanced mode: fk([1,-2,3], 2, max_workers=4, verbose=True, ...)
+    2. Simple mode: fk([1,-2,3], 2)
 
     Args:
         braid_or_config: Either a braid list [1,-2,3] OR config file path "config.yaml"
         degree: Computation degree (required unless using config file)
-        preset: Preset name ("fast", "accurate", "parallel") - all disable flip symmetry by default
+        preset: Preset name ("fast", "accurate", "parallel") - used internally by config files
         config: Config file path (alternative to passing as first argument)
 
-        # Advanced mode parameters:
+        # Configuration parameters (can be set via config files):
         ilp: Pre-computed ILP data as string
         ilp_file: Path to pre-computed ILP file
         inversion: Pre-computed inversion data dictionary
@@ -271,7 +269,7 @@ def fk(
         chunk_size: Chunk size for parallel processing (default: 16384)
         include_flip: Include flip symmetry in inversion (default: False)
         max_shifts: Maximum cyclic shifts to consider (default: None = unlimited)
-        verbose: Enable verbose logging (default: False for simple mode, True for others)
+        verbose: Enable verbose logging (default: False)
         save_data: Save intermediate files (inversion/ILP/JSON) (default: False)
         save_dir: Directory to store saved data (default: "data")
         link_name: Base name for output files (default: auto-generated)
@@ -297,17 +295,14 @@ def fk(
 
     Examples:
         fk([1,-2,3], 2)                              # Simple mode
-        fk([1,-2,3], 2, preset="fast")              # Fast preset (single-threaded)
-        fk([1,-2,3], 2, preset="accurate")          # Accurate preset (multi-core, saves data)
         fk([1,-2,3], 2, symbolic=True)              # With symbolic polynomial output
         fk("config.yaml")                            # From configuration file
-        fk([1,-2,3], 2, max_workers=4, verbose=True) # Advanced mode
 
     Note:
-        - All presets disable flip symmetry by default for improved performance
         - Symbolic output requires SymPy (install with: pip install sympy)
         - The "components" field indicates the number of strands in the braid
         - FK coefficients are organized by powers of topological variables (x, y, etc.) and q
+        - Advanced parameters like max_workers, verbose, etc. can be set via config files
     """
 
     # ========== INTERFACE DETECTION ==========
