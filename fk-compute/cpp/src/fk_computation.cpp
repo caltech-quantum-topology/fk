@@ -723,6 +723,85 @@ std::vector<std::vector<int>> FKComputation::enumeratePointsFromValue(
   return local_points;
 }
 
+
+
+std::vector<FKComputation::AssignmentResult>
+FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
+
+  std::vector<AssignmentResult> assignments;
+
+  if (valid_criteria.first_bounds.empty()) {
+    return {createSingleAssignment(valid_criteria)};
+  }
+
+  const auto bounds_vector = convertBoundsToVector(valid_criteria.first_bounds);
+
+  using AssignmentNode = VariableAssignmentState;
+
+  graph_search::DepthFirstSearchWithVisited<AssignmentNode>::Config dfs_config;
+
+  // We no longer use "goal nodes" to emit assignments. All work happens
+  // in get_neighbors, so we disable goal handling here.
+  dfs_config.is_valid_goal = [](const AssignmentNode &) {
+    return false;
+  };
+
+  dfs_config.get_neighbors =
+      [this, &bounds_vector, &assignments](const AssignmentNode &current_state) {
+        std::vector<AssignmentNode> neighbors;
+
+        // If this state is exhausted, it has no neighbors,
+        // mirroring the old "if (isStateExhausted) { continue; }" behavior.
+        if (isStateExhausted(current_state)) {
+          return neighbors;
+        }
+
+        // Enumerate all still-available values for the current variable.
+        for (int value = current_state.current_value;
+             value <= current_state.max_value; ++value) {
+          auto state_copy = current_state;
+          state_copy.current_value = value;
+
+          // This matches the old loop body:
+          //   processCurrentVariable(...)
+          //   updated_degrees = calculateUpdatedDegrees(...)
+          processCurrentVariable(state_copy, bounds_vector);
+          const auto updated_degrees =
+              calculateUpdatedDegrees(state_copy, bounds_vector);
+
+          if (!isLastVariable(state_copy, bounds_vector)) {
+            // Non-last variable: create the next state (next variable),
+            // as in the old createNextState(...) + stack.push(next_state).
+            auto next_state =
+                createNextState(state_copy, updated_degrees, bounds_vector);
+            neighbors.push_back(next_state);
+          } else {
+            // Last variable: instead of pushing a neighbor, we emit the
+            // assignment directly, just like the old
+            //   if (isLastVariable) { assignments.push_back(...); }
+            assignments.push_back(createAssignmentResult(state_copy));
+          }
+        }
+
+        return neighbors;
+      };
+
+  // No-op: all work is done in get_neighbors.
+  dfs_config.process_node =
+      [](const AssignmentNode &) {};
+
+  graph_search::DepthFirstSearchWithVisited<AssignmentNode> dfs_search(
+      dfs_config);
+
+  auto initial_state =
+      createInitialAssignmentState(valid_criteria, bounds_vector);
+  dfs_search.search_all(initial_state);
+
+  return assignments;
+}
+
+
+/*
 std::vector<FKComputation::AssignmentResult>
 FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
 
@@ -781,6 +860,7 @@ FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
 
   return assignments;
 }
+*/
 
 FKComputation::AssignmentResult
 FKComputation::createSingleAssignment(const ValidatedCriteria &valid_criteria) {
