@@ -2,6 +2,9 @@
 .SH NAME
 fk \- compute the FK invariant for braids using inversion, ILP reduction, and compiled helper binary
 .SH SYNOPSIS
+.B fk
+.RI [ interactive ]
+.br
 .B fk simple
 .I BRAID DEGREE
 .RI [ \-\-symbolic ]
@@ -10,11 +13,16 @@ fk \- compute the FK invariant for braids using inversion, ILP reduction, and co
 .I CONFIG_FILE
 .SH DESCRIPTION
 .B fk
-computes the FK invariant of braids using a combination of inversion assignments, Integer Linear Programming (ILP) reduction, and optimized C++ computation. The program provides two interfaces: a simple command-line interface for quick computations and a configuration file interface for complex or batch processing.
+computes the FK invariant of braids using a combination of inversion assignments, Integer Linear Programming (ILP) reduction, and optimized C++ computation. The program provides three interfaces: an interactive mode with guided prompts, a simple command-line interface for quick computations, and a configuration file interface for complex or batch processing.
 
 The FK invariant is a mathematical object used in knot theory to distinguish different types of knots and links. This implementation uses parallel processing and optimization techniques to make the computation efficient for complex braids.
 
 .SH SUBCOMMANDS
+.TP
+.B interactive
+Interactive mode with step-by-step prompts for all parameters. Guides the user through entering the braid, degree, optional thread count, computation name, and output format preferences. This is the default mode when running
+.B fk
+without any arguments.
 .TP
 .B simple
 Minimal interface with sensible defaults. Computes the FK invariant using quiet mode and default parameters. Best for quick calculations. Optionally supports symbolic output with the \-\-symbolic flag.
@@ -47,6 +55,21 @@ subcommand:
 .BR \-\-symbolic ", " \-\-no\-symbolic
 Output result as human-readable symbolic polynomial using SymPy (default: disabled). Requires SymPy to be installed.
 .SH EXAMPLES
+.SS Interactive Mode
+.nf
+# Start interactive mode (default when no arguments)
+fk
+
+# Or explicitly
+fk interactive
+
+# The program will prompt for:
+# - Braid word (supports multiple formats)
+# - Degree (positive integer)
+# - Number of threads (optional, press Enter for default)
+# - Computation name (optional, for file naming)
+# - Symbolic output preference (y/n)
+.fi
 .SS Simple Usage
 .nf
 # Basic computation with defaults

@@ -14,14 +14,14 @@ detects the type of call based on the arguments provided:
 2. **Config file mode**: `fk("config.yaml")` or `fk(config="config.yaml")`
    - Loads all parameters from JSON/YAML file
    - Supports batch processing of multiple braids
-   - Can include presets and advanced parameters in config files
+   - Can include presets and customized parameters in config files
 
 CLI Interface
 -------------
 The command-line tool `fk` provides two modes:
 
 - `fk simple "[1,-2,3]" 2` - Quick computation with defaults
-- `fk config myconfig.yaml` - Configuration file with advanced options
+- `fk config myconfig.yaml` - Configuration file with custom options
 
 Examples
 --------
@@ -31,7 +31,7 @@ Examples
 >>> result = fk([1, -2, -2, 3], 2)
 >>> # Returns: {"braid": [1,-2,-2,3], "inversion_data": {...}, "degree": 2, "fk": {...}}
 >>>
->>> # Config file - load from file (supports presets and advanced parameters)
+>>> # Config file - load from file (supports presets and custom parameters)
 >>> result = fk("myconfig.yaml")
 >>>
 >>> # Access FK coefficients

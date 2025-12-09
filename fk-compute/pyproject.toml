@@ -9,11 +9,12 @@ build-backend = "scikit_build_core.build"
 # System requirements (must be installed separately):
 # - FLINT library for arbitrary precision arithmetic
 # - OpenMP for parallel processing
+# - CBlas a family of routines for fundamental linear-algebra operations
 #
 # Installation:
-#   macOS:   brew install flint libomp
-#   Ubuntu:  sudo apt-get install libflint-dev libgomp1-dev
-#   RHEL:    sudo yum install flint-devel gcc-openmp
+#   macOS:   brew install flint libomp openblas
+#   Ubuntu:  sudo apt-get install libflint-dev libgomp1-dev libopenblas-dev
+#   RHEL:    sudo yum install flint-devel gcc-openmp openblas-devel
 
 [project]
 name = "fkcompute"

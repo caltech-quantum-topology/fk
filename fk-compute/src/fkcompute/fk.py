@@ -227,24 +227,11 @@ PRESETS = {
 def fk(
     braid_or_config: Union[List[int], str],
     degree: Optional[int] = None,
-    preset: Optional[str] = None,
     config: Optional[str] = None,
-    # Core computation parameters
-    ilp: Optional[str] = None,
-    ilp_file: Optional[str] = None,
-    inversion: Optional[Dict[str, Any]] = None,
-    inversion_file: Optional[str] = None,
-    partial_signs: Optional[List[int]] = None,
-    max_workers: int = 1,
-    chunk_size: int = 1 << 14,
-    include_flip: bool = False,
-    max_shifts: Optional[int] = None,
-    verbose: bool = False,
-    save_data: bool = False,
-    save_dir: str = "data",
-    link_name: Optional[str] = None,
     symbolic: bool = False,
-    threads: int = 1,
+    threads: Optional[int] = None,
+    name: Optional[str] = None,
+    **kwargs,
 ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
     """
     Unified FK invariant computation with intelligent interface detection.
@@ -256,25 +243,11 @@ def fk(
     Args:
         braid_or_config: Either a braid list [1,-2,3] OR config file path "config.yaml"
         degree: Computation degree (required unless using config file)
-        preset: Preset name ("fast", "accurate", "parallel") - used internally by config files
         config: Config file path (alternative to passing as first argument)
-
-        # Configuration parameters (can be set via config files):
-        ilp: Pre-computed ILP data as string
-        ilp_file: Path to pre-computed ILP file
-        inversion: Pre-computed inversion data dictionary
-        inversion_file: Path to pre-computed inversion JSON file
-        partial_signs: Optional partial sign assignments for inversion
-        max_workers: Number of parallel workers for computation (default: 1)
-        chunk_size: Chunk size for parallel processing (default: 16384)
-        include_flip: Include flip symmetry in inversion (default: False)
-        max_shifts: Maximum cyclic shifts to consider (default: None = unlimited)
-        verbose: Enable verbose logging (default: False)
-        save_data: Save intermediate files (inversion/ILP/JSON) (default: False)
-        save_dir: Directory to store saved data (default: "data")
-        link_name: Base name for output files (default: auto-generated)
         symbolic: Generate symbolic polynomial representation using SymPy (default: False)
         threads: Number of threads for C++ FK computation (default: 1)
+        name: Name for saved files when save_data is enabled (default: None)
+        **kwargs: Additional parameters passed to _fk_compute (verbose, max_workers, etc.)
 
     Returns:
         Dictionary containing comprehensive computation results:
@@ -296,13 +269,14 @@ def fk(
     Examples:
         fk([1,-2,3], 2)                              # Simple mode
         fk([1,-2,3], 2, symbolic=True)              # With symbolic polynomial output
+        fk([1,-2,3], 2, threads=4)                  # With 4 threads
         fk("config.yaml")                            # From configuration file
 
     Note:
         - Symbolic output requires SymPy (install with: pip install sympy)
         - The "components" field indicates the number of strands in the braid
         - FK coefficients are organized by powers of topological variables (x, y, etc.) and q
-        - Advanced parameters like max_workers, verbose, etc. can be set via config files
+        - All advanced parameters (max_workers, verbose, etc.) can be passed as kwargs or set via config files
     """
 
     # ========== INTERFACE DETECTION ==========
@@ -312,104 +286,36 @@ def fk(
         config_path = config or braid_or_config
         return _fk_from_config(config_path)
 
-    # 2. From here, braid_or_config must be a braid list
+    # 2. Simple mode - just braid and degree with defaults
     braid = braid_or_config
     if degree is None:
         raise ValueError("degree is required when providing a braid list")
 
-    # 3. Preset mode detection
-    if preset is not None:
-        return _fk_with_preset(braid, degree, preset, locals())
+    configure_logging(kwargs.get('verbose', False))  # Quiet by default for simple mode
 
-    # 4. Simple mode detection (only braid + degree provided)
-    call_locals = locals()
-    provided_advanced_params = [
-        k
-        for k in [
-            "ilp",
-            "ilp_file",
-            "inversion",
-            "inversion_file",
-            "partial_signs",
-            "max_shifts",
-            "link_name",
-        ]
-        if call_locals[k] is not None
-    ]
-    provided_settings = [
-        k
-        for k in [
-            "max_workers",
-            "chunk_size",
-            "include_flip",
-            "verbose",
-            "save_data",
-            "save_dir",
-            "symbolic",
-            "threads",
-        ]
-        if call_locals[k] != _get_default_value(k)
-    ]
-
-    if not provided_advanced_params and not provided_settings:
-        # Simple mode - just braid and degree with defaults
-        configure_logging(False)  # Quiet by default for simple mode
-        return _fk_compute(
-            braid,
-            degree,
-            verbose=False,
-            max_workers=1,
-            chunk_size=1 << 14,
-            include_flip=False,
-            max_shifts=None,
-            save_data=False,
-            save_dir="data",
-            link_name=None,
-            symbolic=symbolic,
-            threads=threads,
-            ilp=None,
-            ilp_file=None,
-            inversion=None,
-            inversion_file=None,
-            partial_signs=None,
-        )
-
-    # 5. Advanced mode - use all provided parameters
-    configure_logging(verbose)
-    return _fk_compute(
-        braid,
-        degree,
-        verbose,
-        max_workers,
-        chunk_size,
-        include_flip,
-        max_shifts,
-        save_data,
-        save_dir,
-        link_name,
-        symbolic,
-        threads,
-        ilp,
-        ilp_file,
-        inversion,
-        inversion_file,
-        partial_signs,
-    )
-
-
-def _get_default_value(param_name: str):
-    """Get default values for parameter detection."""
-    defaults = {
-        "max_workers": 1,
-        "chunk_size": 1 << 14,
-        "include_flip": False,
-        "verbose": False,
-        "save_data": False,
-        "save_dir": "data",
-        "symbolic": False,
-        "threads": 1,
+    # Build parameters with defaults and overrides
+    params = {
+        'verbose': False,
+        'max_workers': 1,
+        'chunk_size': 1 << 14,
+        'include_flip': False,
+        'max_shifts': None,
+        'save_data': False,
+        'save_dir': "data",
+        'link_name': name,
+        'symbolic': symbolic,
+        'threads': threads if threads is not None else 1,
+        'ilp': None,
+        'ilp_file': None,
+        'inversion': None,
+        'inversion_file': None,
+        'partial_signs': None,
     }
-    return defaults.get(param_name)
+
+    # Override with any provided kwargs
+    params.update(kwargs)
+
+    return _fk_compute(braid, degree, **params)
 
 
 def _fk_from_config(
@@ -661,48 +567,6 @@ def _fk_batch_from_config(
     return results
 
 
-def _fk_with_preset(
-    braid: List[int], degree: int, preset: str, call_locals: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Handle preset mode with parameter overrides."""
-    if preset not in PRESETS:
-        raise ValueError(
-            f"Unknown preset '{preset}'. Available: {list(PRESETS.keys())}"
-        )
-
-    preset_config = PRESETS[preset].copy()
-
-    # Override preset with any explicitly provided parameters
-    override_params = {}
-    param_names = [
-        "ilp",
-        "ilp_file",
-        "inversion",
-        "inversion_file",
-        "partial_signs",
-        "max_workers",
-        "chunk_size",
-        "include_flip",
-        "max_shifts",
-        "verbose",
-        "save_data",
-        "save_dir",
-        "link_name",
-        "symbolic",
-        "threads",
-    ]
-
-    for param in param_names:
-        if param in call_locals and call_locals[param] != _get_default_value(param):
-            override_params[param] = call_locals[param]
-
-    preset_config.update(override_params)
-    verbose = preset_config.get("verbose", False)
-    configure_logging(verbose)
-
-    return _fk_compute(braid, degree, **preset_config)
-
-
 # -------------------------------------------------------------------------
 # Core computation function (internal)
 # -------------------------------------------------------------------------
@@ -860,42 +724,10 @@ def _fk_compute(
 
     with open(link_name + ".json", "r") as f:
         fk_result = json.load(f)
-    
-    """
-    # Handle both old and new JSON formats
-    if "coefficient_q_powers" in fk_result:
-        # Old format
-        fk_coefficients = fk_result["coefficient_q_powers"]
-    elif "terms" in fk_result:
-        # New format - convert terms to coefficient matrix structure
-        metadata = fk_result.get("metadata", {})
-        max_x_degrees = metadata.get("max_x_degrees", [])
-
-        if max_x_degrees:
-            max_degree = max_x_degrees[0]
-        else:
-            # Find max x degree from terms
-            max_degree = max(term["x"][0] for term in fk_result["terms"]) + 1
-
-        fk_coefficients = [[] for _ in range(max_degree)]
-
-        for term in fk_result["terms"]:
-            x_degree = term["x"][0] if term["x"] else 0
-            q_power = term["q"]
-            coeff = term["c"]
-            fk_coefficients[x_degree].append([q_power, coeff])
-
-        # Sort by q_power for consistency
-        for q_poly in fk_coefficients:
-            q_poly.sort(key=lambda x: x[0])
-    else:
-        raise ValueError(
-            "FK result missing both 'terms' (new format) and 'coefficient_q_powers' (old format)"
-        )
-    """
 
     # Clean up intermediate files unless explicitly saving
     if not save_data:
+        _safe_unlink(f"{link_name}_inversion.csv")
         _safe_unlink(f"{link_name}_ilp.csv")
         _safe_unlink(f"{link_name}.json")
 
@@ -926,5 +758,10 @@ def _fk_compute(
             print(
                 "Warning: SymPy not available for symbolic output. Install with: pip install sympy"
             )
+
+    # Save updated metadata to file if save_data is enabled
+    if save_data:
+        with open(link_name + ".json", "w") as f:
+            json.dump(fk_result, f, indent="\t")
 
     return fk_result 
