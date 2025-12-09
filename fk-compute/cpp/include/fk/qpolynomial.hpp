@@ -69,6 +69,32 @@ public:
   void addToCoefficient(int power, int coeff);
 
   /**
+   * Internal methods for arbitrary precision (used by FMPoly)
+   * These work with fmpz_t directly to avoid truncation
+   */
+
+  /**
+   * Get coefficient for q^power as fmpz_t (arbitrary precision)
+   * @param coeff Output parameter to store coefficient
+   * @param power Power of q
+   */
+  void getCoefficientFmpz(fmpz_t coeff, int power) const;
+
+  /**
+   * Set coefficient for q^power from fmpz_t (arbitrary precision)
+   * @param power Power of q
+   * @param coeff Coefficient value as fmpz_t
+   */
+  void setCoefficientFmpz(int power, const fmpz_t coeff);
+
+  /**
+   * Add to coefficient for q^power from fmpz_t (arbitrary precision)
+   * @param power Power of q
+   * @param coeff Value to add as fmpz_t
+   */
+  void addToCoefficientFmpz(int power, const fmpz_t coeff);
+
+  /**
    * Get coefficients as vector
    * @return Vector where index i represents coefficient of q^(i + minPower)
    */

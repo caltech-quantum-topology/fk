@@ -101,6 +101,82 @@ void QPolynomial::addToCoefficient(int power, int coeff) {
   setCoefficient(power, currentCoeff + coeff);
 }
 
+// Internal methods for arbitrary precision (used by FMPoly)
+
+void QPolynomial::getCoefficientFmpz(fmpz_t coeff, int power) const {
+  int index = power - minPower;
+  if (index < 0 || index >= fmpz_poly_length(poly)) {
+    fmpz_zero(coeff);
+    return;
+  }
+
+  fmpz_poly_get_coeff_fmpz(coeff, poly, index);
+}
+
+void QPolynomial::setCoefficientFmpz(int power, const fmpz_t coeff) {
+  if (fmpz_is_zero(coeff)) {
+    // If setting to zero and polynomial is empty, just return
+    if (fmpz_poly_is_zero(poly))
+      return;
+
+    int index = power - minPower;
+    if (index >= 0 && index < fmpz_poly_length(poly)) {
+      fmpz_poly_set_coeff_fmpz(poly, index, coeff);
+    }
+    return;
+  }
+
+  // If polynomial is currently zero, initialize with this power
+  if (fmpz_poly_is_zero(poly)) {
+    minPower = power;
+    fmpz_poly_set_coeff_fmpz(poly, 0, coeff);
+    return;
+  }
+
+  int index = power - minPower;
+
+  if (index < 0) {
+    // Need to shift polynomial to accommodate negative index
+    int shift = -index;
+    fmpz_poly_t temp;
+    fmpz_poly_init(temp);
+
+    // Create polynomial with leading zeros
+    fmpz_poly_fit_length(temp, fmpz_poly_length(poly) + shift);
+
+    // Copy existing coefficients shifted right
+    for (slong i = 0; i < fmpz_poly_length(poly); i++) {
+      fmpz_t coeff_val;
+      fmpz_init(coeff_val);
+      fmpz_poly_get_coeff_fmpz(coeff_val, poly, i);
+      fmpz_poly_set_coeff_fmpz(temp, i + shift, coeff_val);
+      fmpz_clear(coeff_val);
+    }
+
+    // Set the new coefficient
+    fmpz_poly_set_coeff_fmpz(temp, 0, coeff);
+
+    fmpz_poly_swap(poly, temp);
+    fmpz_poly_clear(temp);
+
+    minPower = power;
+  } else {
+    fmpz_poly_set_coeff_fmpz(poly, index, coeff);
+  }
+}
+
+void QPolynomial::addToCoefficientFmpz(int power, const fmpz_t coeff) {
+  if (fmpz_is_zero(coeff))
+    return;
+
+  fmpz_t currentCoeff;
+  fmpz_init(currentCoeff);
+  getCoefficientFmpz(currentCoeff, power);
+  fmpz_add(currentCoeff, currentCoeff, coeff);
+  setCoefficientFmpz(power, currentCoeff);
+  fmpz_clear(currentCoeff);
+}
+
 
 void QPolynomial::setFromCoefficients(const std::vector<int> &coeffs,
                                       int minQPower) {
@@ -190,7 +266,6 @@ void QPolynomial::print() const {
     return;
   }
 
-  std::ostringstream oss;
   bool first = true;
   slong length = fmpz_poly_length(poly);
 
@@ -200,31 +275,43 @@ void QPolynomial::print() const {
     fmpz_poly_get_coeff_fmpz(coeff, poly, i);
 
     if (!fmpz_is_zero(coeff)) {
-      int c = fmpz_get_si(coeff);
       int power = minPower + i;
+      int sgn = fmpz_sgn(coeff);
 
-      if (!first && c > 0)
-        oss << " + ";
-      else if (c < 0)
-        oss << " - ";
+      // Print sign
+      if (!first && sgn > 0)
+        std::cout << " + ";
+      else if (sgn < 0)
+        std::cout << " - ";
 
-      if (abs(c) != 1 || power == 0) {
-        oss << abs(c);
+      // Get absolute value
+      fmpz_t absCoeff;
+      fmpz_init(absCoeff);
+      fmpz_abs(absCoeff, coeff);
+
+      // Print coefficient if not 1 or if constant term
+      bool coeffIsOne = fmpz_is_one(absCoeff);
+      if (!coeffIsOne || power == 0) {
+        char* coeffStr = fmpz_get_str(NULL, 10, absCoeff);
+        std::cout << coeffStr;
+        flint_free(coeffStr);
       }
 
+      // Print variable
       if (power != 0) {
-        oss << "q";
+        std::cout << "q";
         if (power != 1) {
-          oss << "^" << power;
+          std::cout << "^" << power;
         }
       }
 
       first = false;
+      fmpz_clear(absCoeff);
     }
     fmpz_clear(coeff);
   }
 
-  std::cout << oss.str() << std::endl;
+  std::cout << std::endl;
 }
 
 std::vector<int> QPolynomial::getCoefficients() const {

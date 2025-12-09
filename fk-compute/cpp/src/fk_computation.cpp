@@ -9,7 +9,6 @@
 #include <iostream>
 #include <list>
 #include <mutex>
-#include <queue>
 #include <set>
 #include <sstream>
 #include <stack>
