@@ -1,4 +1,4 @@
-.TH FK 1 "2024" "fkcompute 0.2.15" "User Commands"
+.TH FK 1 "2025" "fkcompute 0.2.16" "User Commands"
 .SH NAME
 fk \- compute the FK invariant for braids using inversion, ILP reduction, and compiled helper binary
 .SH SYNOPSIS
@@ -11,9 +11,14 @@ fk \- compute the FK invariant for braids using inversion, ILP reduction, and co
 .br
 .B fk config
 .I CONFIG_FILE
+.RI [ CONFIG_FILE... ]
+.br
+.B fk template create
+.RI [ OUTPUT_PATH ]
+.RI [ \-\-overwrite ]
 .SH DESCRIPTION
 .B fk
-computes the FK invariant of braids using a combination of inversion assignments, Integer Linear Programming (ILP) reduction, and optimized C++ computation. The program provides three interfaces: an interactive mode with guided prompts, a simple command-line interface for quick computations, and a configuration file interface for complex or batch processing.
+computes the FK invariant of braids using a combination of inversion assignments, Integer Linear Programming (ILP) reduction, and optimized C++ computation. The program provides four interfaces: an interactive mode with guided prompts, a simple command-line interface for quick computations, a configuration file interface for complex or batch processing, and a template creation tool for generating configuration files.
 
 The FK invariant is a mathematical object used in knot theory to distinguish different types of knots and links. This implementation uses parallel processing and optimization techniques to make the computation efficient for complex braids.
 
@@ -28,7 +33,14 @@ without any arguments.
 Minimal interface with sensible defaults. Computes the FK invariant using quiet mode and default parameters. Best for quick calculations. Optionally supports symbolic output with the \-\-symbolic flag.
 .TP
 .B config
-Loads all parameters from a JSON or YAML configuration file. Supports both single computations and batch processing of multiple braids with shared defaults.
+Loads all parameters from one or more JSON or YAML configuration files. Supports both single computations and batch processing of multiple braids with shared defaults. When multiple config files are provided, they are processed sequentially with progress tracking.
+.TP
+.B template
+Template management commands for creating configuration files.
+.RS
+.TP
+.B create
+Creates a blank YAML configuration template with all available options documented. The template includes examples and comments for all parameters, making it easy to customize for specific computations.
 .SH ARGUMENTS
 .TP
 .I BRAID
@@ -46,7 +58,10 @@ Space-separated: "1 -2 -3 1"
 Degree of the invariant computation (positive integer).
 .TP
 .I CONFIG_FILE
-Path to JSON or YAML configuration file containing braid, degree, and other parameters.
+Path to JSON or YAML configuration file containing braid, degree, and other parameters. Multiple files can be provided to process them in sequence.
+.TP
+.I OUTPUT_PATH
+Path for the template file to be created (default: fk_config.yaml).
 .SH OPTIONS
 The following option is available for the
 .B simple
@@ -54,6 +69,13 @@ subcommand:
 .TP
 .BR \-\-symbolic ", " \-\-no\-symbolic
 Output result as human-readable symbolic polynomial using SymPy (default: disabled). Requires SymPy to be installed.
+.PP
+The following option is available for the
+.B template create
+subcommand:
+.TP
+.BR \-\-overwrite
+Overwrite the output file if it already exists. Without this flag, the command will fail if the file exists.
 .SH EXAMPLES
 .SS Interactive Mode
 .nf
@@ -82,20 +104,30 @@ fk simple "[1, -2, -2, 3]" 3 --symbolic
 fk simple "1,-2,-2,3" 3
 fk simple "1 -2 -2 3" 3
 .fi
+.SS Template Creation
+.nf
+# Create a blank template
+fk template create
+
+# Create template with custom name
+fk template create my_knot.yaml
+
+# Overwrite existing template
+fk template create config.yaml --overwrite
+
+# The generated template includes all available options with documentation
+.fi
 .SS Configuration File
 .nf
-# Create config.yaml
-cat > config.yaml << EOF
-braid: [1, -2, -2, 3]
-degree: 3
-max_workers: 8
-symbolic: true
-verbose: true
-save_data: true
-EOF
+# Create config using template
+fk template create config.yaml
+# Edit config.yaml to set your parameters
 
 # Run from config
 fk config config.yaml
+
+# Process multiple configuration files
+fk config trefoil.yaml figure_eight.yaml hopf_link.json
 
 # Batch processing
 cat > batch.yaml << EOF

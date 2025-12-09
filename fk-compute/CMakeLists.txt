@@ -53,6 +53,25 @@ target_include_directories(fk_main PRIVATE
 
 # ---- Linking (Threads, OpenMP, FLINT, etc.) -----------------------------------
 find_package(Threads REQUIRED)
+
+# On macOS, help CMake find Homebrew's libomp if installed
+if(APPLE)
+    execute_process(
+        COMMAND brew --prefix libomp
+        OUTPUT_VARIABLE HOMEBREW_LIBOMP
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(HOMEBREW_LIBOMP)
+        set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I${HOMEBREW_LIBOMP}/include")
+        set(OpenMP_C_LIB_NAMES "omp")
+        set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I${HOMEBREW_LIBOMP}/include")
+        set(OpenMP_CXX_LIB_NAMES "omp")
+        set(OpenMP_omp_LIBRARY "${HOMEBREW_LIBOMP}/lib/libomp.dylib")
+        message(STATUS "Using Homebrew's libomp from: ${HOMEBREW_LIBOMP}")
+    endif()
+endif()
+
 find_package(OpenMP)
 
 # Find FLINT library using pkg-config
@@ -61,26 +80,72 @@ if(PkgConfig_FOUND)
     pkg_check_modules(FLINT flint)
 endif()
 
-# Link libraries (FLINT requires CBLAS which requires BLAS which requires gfortran)
-if(OpenMP_CXX_FOUND AND FLINT_FOUND)
-    target_link_libraries(fk_main PRIVATE Threads::Threads OpenMP::OpenMP_CXX ${FLINT_LIBRARIES} cblas blas gfortran)
-    target_include_directories(fk_main PRIVATE ${FLINT_INCLUDE_DIRS})
-    message(STATUS "OpenMP found - parallel processing enabled")
-    message(STATUS "FLINT found - using FLINT libraries")
-elseif(OpenMP_CXX_FOUND)
-    target_link_libraries(fk_main PRIVATE Threads::Threads OpenMP::OpenMP_CXX -lflint cblas blas gfortran)
-    message(STATUS "OpenMP found - parallel processing enabled")
-    message(WARNING "FLINT pkg-config not found - trying -lflint directly")
-elseif(FLINT_FOUND)
-    target_link_libraries(fk_main PRIVATE Threads::Threads ${FLINT_LIBRARIES} cblas blas gfortran)
-    target_include_directories(fk_main PRIVATE ${FLINT_INCLUDE_DIRS})
-    message(WARNING "OpenMP not found - parallel processing disabled")
-    message(STATUS "FLINT found - using FLINT libraries")
+# Detect platform and set appropriate library names
+set(BLAS_LIBRARIES "")
+set(FORTRAN_LIBRARIES "")
+
+if(APPLE)
+    # macOS: Use OpenBLAS from Homebrew if available
+    find_library(OPENBLAS_LIB openblas)
+    if(OPENBLAS_LIB)
+        set(BLAS_LIBRARIES ${OPENBLAS_LIB})
+        message(STATUS "Found OpenBLAS: ${OPENBLAS_LIB}")
+    else()
+        # Fall back to Accelerate framework (built-in macOS BLAS)
+        find_library(ACCELERATE_FRAMEWORK Accelerate)
+        if(ACCELERATE_FRAMEWORK)
+            set(BLAS_LIBRARIES ${ACCELERATE_FRAMEWORK})
+            message(STATUS "Using Accelerate framework for BLAS")
+        else()
+            message(WARNING "No BLAS library found on macOS")
+        endif()
+    endif()
+
+    # macOS may have gfortran from Homebrew or may not need it
+    find_library(GFORTRAN_LIB gfortran)
+    if(GFORTRAN_LIB)
+        set(FORTRAN_LIBRARIES ${GFORTRAN_LIB})
+        message(STATUS "Found gfortran: ${GFORTRAN_LIB}")
+    else()
+        message(STATUS "gfortran not found - will try to link without it")
+    endif()
 else()
-    target_link_libraries(fk_main PRIVATE Threads::Threads -lflint cblas blas gfortran)
+    # Linux: Use standard BLAS/CBLAS/gfortran
+    set(BLAS_LIBRARIES cblas blas)
+    set(FORTRAN_LIBRARIES gfortran)
+endif()
+
+# Link libraries (FLINT requires BLAS)
+set(LINK_LIBS Threads::Threads)
+
+if(OpenMP_CXX_FOUND)
+    list(APPEND LINK_LIBS OpenMP::OpenMP_CXX)
+    message(STATUS "OpenMP found - parallel processing enabled")
+else()
     message(WARNING "OpenMP not found - parallel processing disabled")
+    if(APPLE)
+        message(STATUS "  On macOS, install with: brew install libomp")
+    endif()
+endif()
+
+if(FLINT_FOUND)
+    list(APPEND LINK_LIBS ${FLINT_LIBRARIES})
+    target_include_directories(fk_main PRIVATE ${FLINT_INCLUDE_DIRS})
+    message(STATUS "FLINT found via pkg-config")
+else()
+    list(APPEND LINK_LIBS flint)
     message(WARNING "FLINT pkg-config not found - trying -lflint directly")
 endif()
+
+if(BLAS_LIBRARIES)
+    list(APPEND LINK_LIBS ${BLAS_LIBRARIES})
+endif()
+
+if(FORTRAN_LIBRARIES)
+    list(APPEND LINK_LIBS ${FORTRAN_LIBRARIES})
+endif()
+
+target_link_libraries(fk_main PRIVATE ${LINK_LIBS})
 
 # ---- Installation into the Python wheel ---------------------------------------
 include(GNUInstallDirs)
