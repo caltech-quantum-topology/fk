@@ -10,6 +10,7 @@
 #include <list>
 #include <mutex>
 #include <set>
+#include <shared_mutex>
 #include <sstream>
 #include <stack>
 #include <stdexcept>
@@ -337,6 +338,18 @@ void FKComputationEngine::computeNumericalAssignments(
 PolynomialType
 FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
 
+  // Create cache key
+  CrossingFactorKey cache_key{numerical_assignments_, max_x_degrees};
+
+  // Check cache (read lock)
+  {
+    std::shared_lock<std::shared_mutex> lock(crossing_factor_mutex_);
+    auto it = crossing_factor_cache_.find(cache_key);
+    if (it != crossing_factor_cache_.end()) {
+      return it->second;  // Cache hit
+    }
+  }
+
   PolynomialType result(config_.components, 0);
   result.setCoefficient(0, std::vector<int>(config_.components, 0), 1);
 
@@ -412,6 +425,21 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     }
     result *= factor;
     result = result.truncate(max_x_degrees);
+  }
+
+  // Store in cache (write lock) with size limit
+  {
+    std::unique_lock<std::shared_mutex> lock(crossing_factor_mutex_);
+
+    // Limit cache size to prevent unbounded memory growth for large degrees
+    // If cache is full, clear it (simple eviction strategy)
+    const size_t MAX_CACHE_SIZE = 10000;
+    if (crossing_factor_cache_.size() >= MAX_CACHE_SIZE) {
+      crossing_factor_cache_.clear();
+    }
+
+    // Use insert instead of [] to avoid needing a default constructor
+    crossing_factor_cache_.insert({cache_key, result});
   }
 
   return result;

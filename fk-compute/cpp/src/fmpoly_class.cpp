@@ -653,6 +653,13 @@ FMPoly FMPoly::truncate(const std::vector<int> &maxXdegrees) const {
     exp_ptrs[j] = &exps[j];
   }
 
+  // Pre-compute max stored values to avoid repeated additions in the loop
+  // stored_exp[j+1] = x_j - allGroundPowers[j+1], so max_stored = maxXdegrees[j] - allGroundPowers[j+1]
+  std::vector<long> max_stored_x(numXVariables);
+  for (int j = 0; j < numXVariables; ++j) {
+    max_stored_x[j] = maxXdegrees[j] - allGroundPowers[j + 1];
+  }
+
   for (slong i = 0; i < numTerms; ++i) {
     // Get coefficient of term i
     fmpz_mpoly_get_term_coeff_fmpz(coeff, poly, i, ctx);
@@ -663,13 +670,11 @@ FMPoly FMPoly::truncate(const std::vector<int> &maxXdegrees) const {
     // Get stored exponents of term i
     fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
 
-    // Check x-degree bounds using absolute exponents:
-    // stored_exp[j+1] = x_j - allGroundPowers[j+1]
+    // Fast bounds check with pre-computed limits
     bool include = true;
     for (int j = 0; j < numXVariables; ++j) {
-      long stored = fmpz_get_si(&exps[j + 1]); // NOTE: &exps[j+1]
-      long abs_x = stored + allGroundPowers[j + 1];
-      if (abs_x > maxXdegrees[j]) {
+      // Compare stored exponent directly against max_stored_x
+      if (fmpz_cmp_si(&exps[j + 1], max_stored_x[j]) > 0) {
         include = false;
         break;
       }
@@ -934,27 +939,27 @@ FMPoly::getCoefficients() const {
   // Number of terms in the FLINT multivariate polynomial
   slong numTerms = fmpz_mpoly_length(poly, ctx);
 
+  // Allocate buffers ONCE outside the loop
+  fmpz_t coeff;
+  fmpz_init(coeff);
+  fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
+  fmpz **exp_ptrs = (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+  for (int j = 0; j <= numXVariables; ++j) {
+    fmpz_init(&exps[j]);
+    exp_ptrs[j] = &exps[j];
+  }
+
+  // Loop through terms, reusing buffers
   for (slong i = 0; i < numTerms; ++i) {
     // Get coefficient of this term
-    fmpz_t coeff;
-    fmpz_init(coeff);
     fmpz_mpoly_get_term_coeff_fmpz(coeff, poly, i, ctx);
 
     // FLINT shouldn't store zero terms, but be defensive
     if (fmpz_is_zero(coeff)) {
-      fmpz_clear(coeff);
       continue;
     }
 
     // Get exponent vector for this term: [q, x1, ..., xn]
-    fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
-    fmpz **exp_ptrs =
-        (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
-    for (int j = 0; j <= numXVariables; ++j) {
-      fmpz_init(&exps[j]);
-      exp_ptrs[j] = &exps[j];
-    }
-
     fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
 
     // Convert FLINT exponents (with ground offsets) back to logical powers
@@ -965,15 +970,15 @@ FMPoly::getCoefficients() const {
     // Accumulate into the QPolynomial for this xPowers using fmpz directly
     QPolynomial &qp = xToQPoly[xPowers]; // default-constructs if not present
     qp.addToCoefficientFmpz(qPower, coeff);
-
-    // Clean up
-    fmpz_clear(coeff);
-    for (int j = 0; j <= numXVariables; ++j) {
-      fmpz_clear(&exps[j]);
-    }
-    flint_free(exp_ptrs);
-    flint_free(exps);
   }
+
+  // Clean up buffers ONCE after the loop
+  fmpz_clear(coeff);
+  for (int j = 0; j <= numXVariables; ++j) {
+    fmpz_clear(&exps[j]);
+  }
+  flint_free(exp_ptrs);
+  flint_free(exps);
 
   // Convert the map into the sparse vector of (xPowers, QPolynomial),
   // skipping any zero polynomials (to emulate BMPoly's behavior).
@@ -1011,10 +1016,11 @@ FMPoly &FMPoly::operator+=(const FMPoly &other) {
     }
   }
 
+  // Extract coefficients ONCE - this is expensive so we reuse it
+  auto otherTerms = other.getCoefficients();
+
   // Do a single adjustment if needed
   if (minPowers != allGroundPowers) {
-    // Find any term from other to trigger adjustment
-    auto otherTerms = other.getCoefficients();
     if (!otherTerms.empty()) {
       const auto &firstTerm = otherTerms.front();
       int minQPower = firstTerm.second.getMinPower();
@@ -1042,8 +1048,7 @@ FMPoly &FMPoly::operator+=(const FMPoly &other) {
     }
   }
 
-  // Now add all terms - adjustment should not be needed anymore
-  auto otherTerms = other.getCoefficients();
+  // Now add all terms - reusing otherTerms from above
   for (const auto &term : otherTerms) {
     addQPolynomial(term.first, term.second);
   }
