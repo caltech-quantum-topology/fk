@@ -354,9 +354,6 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
   result.setCoefficient(0, std::vector<int>(config_.components, 0), 1);
 
   // Single pass: process each crossing once with both binomial and Pochhammer
-  // Use lazy truncation: only truncate every N crossings to reduce overhead
-  const int TRUNCATE_INTERVAL = 3;  // Truncate every 3 crossings
-
   for (int crossing_index = 0; crossing_index < config_.crossings;
        ++crossing_index) {
     const auto &crossing_matrix = config_.crossing_matrices[crossing_index];
@@ -427,12 +424,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     }
     }
     result *= factor;
-
-    // Lazy truncation: only truncate every TRUNCATE_INTERVAL crossings or at the end
-    if ((crossing_index + 1) % TRUNCATE_INTERVAL == 0 ||
-        crossing_index == config_.crossings - 1) {
-      result = result.truncate(max_x_degrees);
-    }
+    result = result.truncate(max_x_degrees);
   }
 
   // Store in cache (write lock) with size limit
