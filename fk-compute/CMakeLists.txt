@@ -137,6 +137,9 @@ else()
     message(WARNING "FLINT pkg-config not found - trying -lflint directly")
 endif()
 
+list(APPEND LINK_LIBS gmp)
+message(STATUS "Added GMP library")
+
 if(BLAS_LIBRARIES)
     list(APPEND LINK_LIBS ${BLAS_LIBRARIES})
 endif()
