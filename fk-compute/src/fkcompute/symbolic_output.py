@@ -27,7 +27,7 @@ def check_sympy_available() -> None:
             "Install it with: pip install sympy"
         )
 
-def list_to_q_polynomial(q_polyL: List[List[int,int]]) -> sp.Expr:
+def list_to_q_polynomial(q_polyL: List[List[int,Union[int,str]]]) -> sp.Expr:
     """
     Convert FK coefficient data to SymPy polynomial expression in quantum parameter q.
 
@@ -37,9 +37,14 @@ def list_to_q_polynomial(q_polyL: List[List[int,int]]) -> sp.Expr:
     Args:
         q_polyL: List of [power, coefficient] pairs representing a polynomial in q
                  e.g., [[-2, -1], [-1, 3], [0, -1]] represents -q^(-2) + 3*q^(-1) - 1
+                 Coefficients can be integers or strings (for large integers)
 
     Returns:
         SymPy expression: Polynomial in the quantum parameter q
+
+    Raises:
+        ValueError: If coefficient string cannot be converted to integer or is too large
+                    for practical symbolic computation (>10000 digits)
 
     Example:
         >>> list_to_q_polynomial([[-2, -1], [-1, 3], [0, -1]])
@@ -48,6 +53,19 @@ def list_to_q_polynomial(q_polyL: List[List[int,int]]) -> sp.Expr:
     q = symbols("q")
     expr = 0
     for power, coeff in q_polyL:
+        # Convert coefficient to int if it's a string
+        if isinstance(coeff, str):
+            # Check if the string is too large for practical symbolic computation
+            # Limit to 10000 digits (very generous - most practical computations are much smaller)
+            if len(coeff.lstrip('-')) > 10000:
+                raise ValueError(
+                    f"Coefficient too large for symbolic computation: {len(coeff.lstrip('-'))} digits. "
+                    f"Symbolic output is not supported for coefficients exceeding 10000 digits."
+                )
+            try:
+                coeff = int(coeff)
+            except ValueError as e:
+                raise ValueError(f"Invalid coefficient string '{coeff}': {e}")
         expr += coeff * q**power
     return expr
 
