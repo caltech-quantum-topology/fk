@@ -348,7 +348,7 @@ private:
   AssignmentResult createAssignmentResult(const VariableAssignmentState &state);
 
   VariableAssignmentState createNextState(const VariableAssignmentState &current_state,
-                                         const std::vector<double> &updated_degrees,
+                                         std::vector<double> &&updated_degrees,
                                          const std::vector<std::array<int, 2>> &bounds_vector);
 
   // Constants for criteria validation

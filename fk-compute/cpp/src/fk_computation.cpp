@@ -776,6 +776,7 @@ FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
   dfs_config.get_neighbors =
       [this, &bounds_vector, &assignments](const AssignmentNode &current_state) {
         std::vector<AssignmentNode> neighbors;
+        neighbors.reserve(current_state.max_value - current_state.current_value + 1);
 
         // If this state is exhausted, it has no neighbors,
         // mirroring the old "if (isStateExhausted) { continue; }" behavior.
@@ -793,15 +794,15 @@ FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
           //   processCurrentVariable(...)
           //   updated_degrees = calculateUpdatedDegrees(...)
           processCurrentVariable(state_copy, bounds_vector);
-          const auto updated_degrees =
+          auto updated_degrees =
               calculateUpdatedDegrees(state_copy, bounds_vector);
 
           if (!isLastVariable(state_copy, bounds_vector)) {
             // Non-last variable: create the next state (next variable),
             // as in the old createNextState(...) + stack.push(next_state).
             auto next_state =
-                createNextState(state_copy, updated_degrees, bounds_vector);
-            neighbors.push_back(next_state);
+                createNextState(state_copy, std::move(updated_degrees), bounds_vector);
+            neighbors.push_back(std::move(next_state));
           } else {
             // Last variable: instead of pushing a neighbor, we emit the
             // assignment directly, just like the old
@@ -1004,11 +1005,11 @@ FKComputation::createAssignmentResult(const VariableAssignmentState &state) {
 
 FKComputation::VariableAssignmentState FKComputation::createNextState(
     const VariableAssignmentState &current_state,
-    const std::vector<double> &updated_degrees,
+    std::vector<double> &&updated_degrees,
     const std::vector<std::array<int, 2>> &bounds_vector) {
   VariableAssignmentState next_state;
   next_state.new_criteria = current_state.new_criteria;
-  next_state.degrees = updated_degrees;
+  next_state.degrees = std::move(updated_degrees);
   next_state.criteria = current_state.criteria;
   next_state.bounds = current_state.bounds;
   next_state.supporting_inequalities = current_state.supporting_inequalities;
@@ -1016,7 +1017,7 @@ FKComputation::VariableAssignmentState FKComputation::createNextState(
   next_state.current_var_index = current_state.current_var_index + 1;
   next_state.current_value = 0;
   next_state.max_value =
-      calculateMaxValue(next_state.new_criteria, updated_degrees,
+      calculateMaxValue(next_state.new_criteria, next_state.degrees,
                         bounds_vector[next_state.current_var_index]);
 
   return next_state;
