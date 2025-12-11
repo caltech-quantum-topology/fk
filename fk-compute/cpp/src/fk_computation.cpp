@@ -323,11 +323,12 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   poly *= crossingFactor(max_x_degrees);
   result_ += poly;
 
-  // Periodic truncation to prevent unbounded growth (every 1000 points)
+  // More aggressive periodic truncation to prevent unbounded growth
   static thread_local int points_processed = 0;
   points_processed++;
-  if (points_processed % 1000 == 0) {
-    result_ = result_.truncate(config_.degree * 4);  // Very conservative bound
+  if (points_processed % 100 == 0) {
+    // More aggressive bound: degree * 2 instead of degree * 4
+    result_ = result_.truncate(config_.degree * 2);
   }
 
   return result_;
@@ -531,37 +532,96 @@ void FKComputation::compute(const FKConfiguration &config,
     throw std::runtime_error("No valid criteria found");
   }
 
-  // Assign variables to get list of variable assignments
-  std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
-  std::cout << assignments.size() << " assignments found" << std::endl;
+  // Use a thread-safe queue for streaming assignments to worker threads
+  std::queue<AssignmentResult> assignment_queue;
+  std::mutex queue_mutex;
+  std::atomic<bool> generation_done{false};
+  std::atomic<size_t> assign_idx{0};
+  std::atomic<size_t> total_points{0};
 
-  // Process each assignment's points with callback-based streaming
-  // This eliminates point vector storage entirely
-  for (size_t assign_idx = 0; assign_idx < assignments.size(); ++assign_idx) {
-    const AssignmentResult &assignment = assignments[assign_idx];
-    std::cout << "Processing assignment " << (assign_idx + 1) << "/" << assignments.size() << std::endl;
+  auto enqueue_assignment = [&assignment_queue, &queue_mutex](const AssignmentResult& assignment) {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    assignment_queue.push(assignment);
+  };
+
+  std::cout << "Processing assignments and points..." << std::endl;
+
+#ifdef _OPENMP
+  // Launch parallel region with all threads
+  #pragma omp parallel num_threads(engines_.size())
+  {
+    int thread_id = omp_get_thread_num();
+
+    // Thread 0 generates assignments
+    if (thread_id == 0) {
+      assignVariablesWithCallback(valid_criteria, enqueue_assignment);
+      generation_done.store(true);
+    }
+
+    // All threads (including thread 0) process assignments
+    while (true) {
+      AssignmentResult assignment;
+      bool has_work = false;
+
+      // Try to get an assignment from the queue
+      {
+        std::lock_guard<std::mutex> lock(queue_mutex);
+        if (!assignment_queue.empty()) {
+          assignment = assignment_queue.front();
+          assignment_queue.pop();
+          has_work = true;
+        }
+      }
+
+      if (has_work) {
+        size_t current_idx = ++assign_idx;
+
+        // Progress reporting
+        static std::mutex progress_mutex;
+        if (current_idx % 1000 == 0) {
+          std::lock_guard<std::mutex> lock(progress_mutex);
+          std::cout << "Processing assignment " << current_idx << std::endl;
+        }
+
+        std::atomic<int> points_processed{0};
+
+        // Process each point
+        auto process_point = [this, &points_processed, thread_id](const std::vector<int>& point) {
+          engines_[thread_id]->computeForAngles(point);
+          ++points_processed;
+        };
+
+        enumeratePointsWithCallback(assignment, process_point);
+        total_points += points_processed.load();
+      } else if (generation_done.load()) {
+        // No more work and generation is done
+        break;
+      } else {
+        // Wait a bit for more assignments
+        #pragma omp taskyield
+      }
+    }
+  }
+#else
+  // Sequential fallback
+  assignVariablesWithCallback(valid_criteria, [this, &assign_idx, &total_points](const AssignmentResult& assignment) {
+    size_t current_idx = ++assign_idx;
+    if (current_idx % 1000 == 0) {
+      std::cout << "Processing assignment " << current_idx << std::endl;
+    }
 
     std::atomic<int> points_processed{0};
-
-    // Callback processes each point immediately as it's enumerated
     auto process_point = [this, &points_processed](const std::vector<int>& point) {
-#ifdef _OPENMP
-      int thread_id = omp_get_thread_num();
-#else
-      int thread_id = 0;
-#endif
-      engines_[thread_id]->computeForAngles(point);
-
-      // Progress tracking
-      int count = ++points_processed;
-      if (count % 1000 == 0 && thread_id == 0) {
-        std::cout << "  Processed " << count << " points" << std::endl;
-      }
+      engines_[0]->computeForAngles(point);
+      ++points_processed;
     };
 
     enumeratePointsWithCallback(assignment, process_point);
-    std::cout << "  Completed " << points_processed.load() << " points" << std::endl;
-  }
+    total_points += points_processed.load();
+  });
+#endif
+  std::cout << "Completed " << assign_idx.load() << " assignments with "
+            << total_points.load() << " total points" << std::endl;
 
   // Combine results and perform final computations
   PolynomialType result(config_.components, 0);
@@ -614,172 +674,7 @@ bool FKComputation::satisfiesConstraints(
   return true;
 }
 
-std::vector<std::vector<int>>
-FKComputation::enumeratePoints(const AssignmentResult &assignment) {
 
-  if (assignment.bounds.empty()) {
-    // Base case: check constraints and add point if valid
-    if (satisfiesConstraints(assignment.point,
-                             assignment.supporting_inequalities) &&
-        satisfiesConstraints(assignment.point, assignment.criteria)) {
-      return {assignment.point};
-    }
-    return {};
-  }
-
-  // Convert bounds list to vector for easier iteration
-  std::vector<std::array<int, 2>> bounds_vec(assignment.bounds.begin(),
-                                             assignment.bounds.end());
-
-  // Calculate upper bound for first variable to determine parallelization range
-  int first_index = bounds_vec[0][0];
-  int first_inequality = bounds_vec[0][1];
-  int first_upper =
-      static_cast<int>(assignment.supporting_inequalities[first_inequality][0]);
-  for (size_t i = 0; i < assignment.point.size(); i++) {
-    if (static_cast<int>(i) != first_index) {
-      first_upper +=
-          static_cast<int>(
-              assignment.supporting_inequalities[first_inequality][1 + i]) *
-          assignment.point[i];
-    }
-  }
-  first_upper /= -static_cast<int>(
-      assignment.supporting_inequalities[first_inequality][1 + first_index]);
-
-  // Parallel region: process each value of the first variable in parallel
-  std::vector<std::vector<int>> valid_points;
-
-#ifdef _OPENMP
-  std::mutex points_mutex;
-
-#pragma omp parallel for schedule(dynamic)
-  for (int first_value = 0; first_value <= first_upper; ++first_value) {
-    std::vector<std::vector<int>> local_points = enumeratePointsFromValue(
-        assignment, bounds_vec, first_value, first_index);
-
-    // Combine local results into global result
-    std::lock_guard<std::mutex> lock(points_mutex);
-    valid_points.insert(valid_points.end(), local_points.begin(),
-                        local_points.end());
-  }
-#else
-  // Sequential fallback
-  for (int first_value = 0; first_value <= first_upper; ++first_value) {
-    std::vector<std::vector<int>> local_points = enumeratePointsFromValue(
-        assignment, bounds_vec, first_value, first_index);
-    valid_points.insert(valid_points.end(), local_points.begin(),
-                        local_points.end());
-  }
-#endif
-
-  return valid_points;
-}
-
-std::vector<std::vector<int>> FKComputation::enumeratePointsFromValue(
-    const AssignmentResult &assignment,
-    const std::vector<std::array<int, 2>> &bounds_vec, int first_value,
-    int first_index) {
-
-  std::vector<std::vector<int>> local_points;
-
-  // Stack to manage iteration state
-  struct IterationFrame {
-    std::vector<int> point;
-    size_t bound_index;
-    int current_value;
-    int upper_bound;
-  };
-
-  std::stack<IterationFrame> stack;
-
-  // Initialize first frame with the given first_value
-  IterationFrame initial_frame;
-  initial_frame.point = assignment.point;
-  initial_frame.point[first_index] = first_value;
-  initial_frame.bound_index =
-      1; // Start from second variable since first is set
-  initial_frame.current_value = 0;
-
-  // If there's only one variable, check and return
-  if (bounds_vec.size() == 1) {
-    if (satisfiesConstraints(initial_frame.point,
-                             assignment.supporting_inequalities) &&
-        satisfiesConstraints(initial_frame.point, assignment.criteria)) {
-      local_points.push_back(initial_frame.point);
-    }
-    return local_points;
-  }
-
-  // Calculate upper bound for second variable
-  int second_index = bounds_vec[1][0];
-  int second_inequality = bounds_vec[1][1];
-  int second_upper = static_cast<int>(
-      assignment.supporting_inequalities[second_inequality][0]);
-  for (size_t i = 0; i < initial_frame.point.size(); i++) {
-    if (static_cast<int>(i) != second_index) {
-      second_upper +=
-          static_cast<int>(
-              assignment.supporting_inequalities[second_inequality][1 + i]) *
-          initial_frame.point[i];
-    }
-  }
-  second_upper /= -static_cast<int>(
-      assignment.supporting_inequalities[second_inequality][1 + second_index]);
-  initial_frame.upper_bound = second_upper;
-
-  stack.push(initial_frame);
-
-  while (!stack.empty()) {
-    IterationFrame &current = stack.top();
-
-    if (current.current_value > current.upper_bound) {
-      stack.pop();
-      continue;
-    }
-
-    // Set current variable value
-    current.point[bounds_vec[current.bound_index][0]] = current.current_value;
-
-    if (current.bound_index == bounds_vec.size() - 1) {
-      // Last variable - check constraints and add point if valid
-      if (satisfiesConstraints(current.point,
-                               assignment.supporting_inequalities) &&
-          satisfiesConstraints(current.point, assignment.criteria)) {
-        local_points.push_back(current.point);
-      }
-      current.current_value++;
-    } else {
-      // More variables to process
-      IterationFrame next_frame;
-      next_frame.point = current.point;
-      next_frame.bound_index = current.bound_index + 1;
-      next_frame.current_value = 0;
-
-      // Calculate upper bound for next variable
-      int next_index = bounds_vec[next_frame.bound_index][0];
-      int next_inequality = bounds_vec[next_frame.bound_index][1];
-      int next_upper = static_cast<int>(
-          assignment.supporting_inequalities[next_inequality][0]);
-      for (size_t i = 0; i < next_frame.point.size(); i++) {
-        if (static_cast<int>(i) != next_index) {
-          next_upper +=
-              static_cast<int>(
-                  assignment.supporting_inequalities[next_inequality][1 + i]) *
-              next_frame.point[i];
-        }
-      }
-      next_upper /= -static_cast<int>(
-          assignment.supporting_inequalities[next_inequality][1 + next_index]);
-      next_frame.upper_bound = next_upper;
-
-      current.current_value++;
-      stack.push(next_frame);
-    }
-  }
-
-  return local_points;
-}
 
 void FKComputation::enumeratePointsFromValueWithCallback(
     const AssignmentResult &assignment,
@@ -917,20 +812,83 @@ void FKComputation::enumeratePointsWithCallback(
   first_upper /= -static_cast<int>(
       assignment.supporting_inequalities[first_inequality][1 + first_index]);
 
-  // Parallel region: process each value of the first variable in parallel
-#ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic)
+  // Process sequentially since we parallelize at the assignment level
   for (int first_value = 0; first_value <= first_upper; ++first_value) {
     enumeratePointsFromValueWithCallback(assignment, bounds_vec, first_value,
                                         first_index, callback);
   }
-#else
-  // Sequential fallback
-  for (int first_value = 0; first_value <= first_upper; ++first_value) {
-    enumeratePointsFromValueWithCallback(assignment, bounds_vec, first_value,
-                                        first_index, callback);
+}
+
+// Callback-based assignment enumeration that streams assignments without storing them
+void FKComputation::assignVariablesWithCallback(
+    const ValidatedCriteria &valid_criteria,
+    const std::function<void(const AssignmentResult&)>& callback) {
+
+  if (valid_criteria.first_bounds.empty()) {
+    callback(createSingleAssignment(valid_criteria));
+    return;
   }
-#endif
+
+  const auto bounds_vector = convertBoundsToVector(valid_criteria.first_bounds);
+
+  using AssignmentNode = VariableAssignmentState;
+
+  graph_search::DepthFirstSearchWithVisited<AssignmentNode>::Config dfs_config;
+
+  // We no longer use "goal nodes" to emit assignments. All work happens
+  // in get_neighbors, so we disable goal handling here.
+  dfs_config.is_valid_goal = [](const AssignmentNode &) {
+    return false;
+  };
+
+  dfs_config.get_neighbors =
+      [this, &bounds_vector, &callback](const AssignmentNode &current_state) {
+        std::vector<AssignmentNode> neighbors;
+
+        // If this state is exhausted, it has no neighbors,
+        // mirroring the old "if (isStateExhausted) { continue; }" behavior.
+        if (isStateExhausted(current_state)) {
+          return neighbors;
+        }
+
+        // Enumerate all still-available values for the current variable.
+        for (int value = current_state.current_value;
+             value <= current_state.max_value; ++value) {
+          auto state_copy = current_state;
+          state_copy.current_value = value;
+
+          // This matches the old loop body:
+          //   processCurrentVariable(...)
+          //   updated_degrees = calculateUpdatedDegrees(...)
+          processCurrentVariable(state_copy, bounds_vector);
+          const auto updated_degrees =
+              calculateUpdatedDegrees(state_copy, bounds_vector);
+
+          if (!isLastVariable(state_copy, bounds_vector)) {
+            // Non-last variable: create the next state (next variable),
+            // as in the old createNextState(...) + stack.push(next_state).
+            auto next_state =
+                createNextState(state_copy, updated_degrees, bounds_vector);
+            neighbors.push_back(next_state);
+          } else {
+            // Last variable: invoke callback immediately instead of storing
+            callback(createAssignmentResult(state_copy));
+          }
+        }
+
+        return neighbors;
+      };
+
+  // No-op: all work is done in get_neighbors.
+  dfs_config.process_node =
+      [](const AssignmentNode &) {};
+
+  graph_search::DepthFirstSearchWithVisited<AssignmentNode> dfs_search(
+      dfs_config);
+
+  auto initial_state =
+      createInitialAssignmentState(valid_criteria, bounds_vector);
+  dfs_search.search_all(initial_state);
 }
 
 std::vector<FKComputation::AssignmentResult>
@@ -1459,45 +1417,6 @@ bool FKComputation::shouldExploreCombination(
   return isPotentiallyBeneficial(current_criteria[criterion_index], inequality);
 }
 
-void FKComputation::setupWorkStealingComputation(
-    const std::vector<std::vector<int>> &all_points) {
-  int total_points = all_points.size();
-
-#ifdef _OPENMP
-  int num_engines = engines_.size();
-  omp_set_num_threads(num_engines);
-  std::cout << "Processing " << total_points << " points with " << num_engines
-            << " threads using OpenMP" << std::endl;
-#else
-  std::cout << "Processing " << total_points
-            << " points sequentially (OpenMP not available)" << std::endl;
-#endif
-
-  // Use OpenMP parallel for to distribute work across threads
-#ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic)
-#endif
-  for (int i = 0; i < total_points; ++i) {
-#ifdef _OPENMP
-    int thread_id = omp_get_thread_num();
-    engines_[thread_id]->computeForAngles(all_points[i]);
-
-    // Print progress occasionally from thread 0 only to avoid race conditions
-    if (thread_id == 0 && i % 100 == 0) {
-      std::cout << "Processing point " << i << "/" << total_points << std::endl;
-    }
-#else
-    engines_[0]->computeForAngles(all_points[i]);
-
-    // Print progress for sequential execution
-    if (i % 100 == 0) {
-      std::cout << "Processing point " << i << "/" << total_points << std::endl;
-    }
-#endif
-  }
-
-  std::cout << "All points processed!" << std::endl;
-}
 
 void FKComputation::combineEngineResults() {
   int num_engines = engines_.size();

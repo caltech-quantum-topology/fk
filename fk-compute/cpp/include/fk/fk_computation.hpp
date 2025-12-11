@@ -240,7 +240,6 @@ private:
   FKResultWriter writer_;
 
   void initializeEngine(int num_threads);
-  void setupWorkStealingComputation(const std::vector<std::vector<int>> &all_points);
   void combineEngineResults();
   void performFinalOffsetComputation();
 
@@ -285,15 +284,6 @@ private:
   satisfiesConstraints(const std::vector<int> &point,
                        const std::vector<std::vector<double>> &constraints);
 
-  std::vector<std::vector<int>>
-  enumeratePoints(const AssignmentResult &assignment);
-
-  std::vector<std::vector<int>>
-  enumeratePointsFromValue(const AssignmentResult &assignment,
-                          const std::vector<std::array<int, 2>> &bounds_vec,
-                          int first_value,
-                          int first_index);
-
   // Callback-based streaming enumeration
   void enumeratePointsWithCallback(
       const AssignmentResult &assignment,
@@ -308,6 +298,11 @@ private:
 
   std::vector<AssignmentResult>
   assignVariables(const ValidatedCriteria &valid_criteria);
+
+  // Callback-based streaming version that doesn't store assignments
+  void assignVariablesWithCallback(
+      const ValidatedCriteria &valid_criteria,
+      const std::function<void(const AssignmentResult&)>& callback);
 
   BoundedVariables
   identifyBoundedVariables(const std::vector<std::vector<double>> &inequalities,
