@@ -4,6 +4,7 @@
 #include "fk/string_to_int.hpp"
 #include "graph_search.h"
 
+#include <atomic>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -321,6 +322,14 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
                       initial_coefficient);
   poly *= crossingFactor(max_x_degrees);
   result_ += poly;
+
+  // Periodic truncation to prevent unbounded growth (every 1000 points)
+  static thread_local int points_processed = 0;
+  points_processed++;
+  if (points_processed % 1000 == 0) {
+    result_ = result_.truncate(config_.degree * 4);  // Very conservative bound
+  }
+
   return result_;
 }
 
@@ -389,11 +398,13 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       // Binomial part
       auto binomial = QBinomial(param_i, param_jp);
 
-      // Pochhammer part
+      // Pochhammer part - limit q-power to reduce polynomial size
+      const int max_q_power = config_.degree * 2;  // More aggressive bound
       const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_jp - param_i,
                                    param_j - param_jp + param_i + 1,
-                                   max_x_degrees[bottom_comp]),
+                                   max_x_degrees[bottom_comp],
+                                   max_q_power),
           config_.components, bottom_comp);
       factor = poch * binomial;
       break;
@@ -402,11 +413,13 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       // Binomial part
       auto binomial = QBinomial(param_j, param_ip);
 
-      // Pochhammer part
+      // Pochhammer part - limit q-power to reduce polynomial size
+      const int max_q_power = config_.degree * 2;  // More aggressive bound
       const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_ip - param_j,
                                    param_i - param_ip + param_j + 1,
-                                   max_x_degrees[top_comp]),
+                                   max_x_degrees[top_comp],
+                                   max_q_power),
           config_.components, top_comp);
       factor = poch * binomial;
       break;
@@ -423,8 +436,8 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       break;
     }
     }
-    result *= factor;
-    result = result.truncate(max_x_degrees);
+    // Multiply and truncate in one pass to avoid intermediate polynomial growth
+    result = result.multiplyAndTruncate(factor, max_x_degrees);
   }
 
   // Store in cache (write lock) with size limit
@@ -521,16 +534,33 @@ void FKComputation::compute(const FKConfiguration &config,
   std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
   std::cout << assignments.size() << " assignments found" << std::endl;
 
-  // Collect all points from each variable assignment
-  std::vector<std::vector<int>> all_points;
+  // Process each assignment's points with callback-based streaming
+  // This eliminates point vector storage entirely
   for (size_t assign_idx = 0; assign_idx < assignments.size(); ++assign_idx) {
     const AssignmentResult &assignment = assignments[assign_idx];
-    auto points = enumeratePoints(assignment);
-    all_points.insert(all_points.end(), points.begin(), points.end());
-  }
+    std::cout << "Processing assignment " << (assign_idx + 1) << "/" << assignments.size() << std::endl;
 
-  // Execute work stealing computation
-  setupWorkStealingComputation(all_points);
+    std::atomic<int> points_processed{0};
+
+    // Callback processes each point immediately as it's enumerated
+    auto process_point = [this, &points_processed](const std::vector<int>& point) {
+#ifdef _OPENMP
+      int thread_id = omp_get_thread_num();
+#else
+      int thread_id = 0;
+#endif
+      engines_[thread_id]->computeForAngles(point);
+
+      // Progress tracking
+      int count = ++points_processed;
+      if (count % 1000 == 0 && thread_id == 0) {
+        std::cout << "  Processed " << count << " points" << std::endl;
+      }
+    };
+
+    enumeratePointsWithCallback(assignment, process_point);
+    std::cout << "  Completed " << points_processed.load() << " points" << std::endl;
+  }
 
   // Combine results and perform final computations
   PolynomialType result(config_.components, 0);
@@ -750,7 +780,157 @@ std::vector<std::vector<int>> FKComputation::enumeratePointsFromValue(
   return local_points;
 }
 
+void FKComputation::enumeratePointsFromValueWithCallback(
+    const AssignmentResult &assignment,
+    const std::vector<std::array<int, 2>> &bounds_vec, int first_value,
+    int first_index,
+    const std::function<void(const std::vector<int>&)>& callback) {
 
+  // Stack to manage iteration state
+  struct IterationFrame {
+    std::vector<int> point;
+    size_t bound_index;
+    int current_value;
+    int upper_bound;
+  };
+
+  std::stack<IterationFrame> stack;
+
+  // Initialize first frame with the given first_value
+  IterationFrame initial_frame;
+  initial_frame.point = assignment.point;
+  initial_frame.point[first_index] = first_value;
+  initial_frame.bound_index =
+      1; // Start from second variable since first is set
+  initial_frame.current_value = 0;
+
+  // If there's only one variable, check and invoke callback
+  if (bounds_vec.size() == 1) {
+    if (satisfiesConstraints(initial_frame.point,
+                             assignment.supporting_inequalities) &&
+        satisfiesConstraints(initial_frame.point, assignment.criteria)) {
+      callback(initial_frame.point);
+    }
+    return;
+  }
+
+  // Calculate upper bound for second variable
+  int second_index = bounds_vec[1][0];
+  int second_inequality = bounds_vec[1][1];
+  int second_upper = static_cast<int>(
+      assignment.supporting_inequalities[second_inequality][0]);
+  for (size_t i = 0; i < initial_frame.point.size(); i++) {
+    if (static_cast<int>(i) != second_index) {
+      second_upper +=
+          static_cast<int>(
+              assignment.supporting_inequalities[second_inequality][1 + i]) *
+          initial_frame.point[i];
+    }
+  }
+  second_upper /= -static_cast<int>(
+      assignment.supporting_inequalities[second_inequality][1 + second_index]);
+  initial_frame.upper_bound = second_upper;
+
+  stack.push(initial_frame);
+
+  while (!stack.empty()) {
+    IterationFrame &current = stack.top();
+
+    if (current.current_value > current.upper_bound) {
+      stack.pop();
+      continue;
+    }
+
+    // Set current variable value
+    current.point[bounds_vec[current.bound_index][0]] = current.current_value;
+
+    if (current.bound_index == bounds_vec.size() - 1) {
+      // Last variable - check constraints and invoke callback if valid
+      if (satisfiesConstraints(current.point,
+                               assignment.supporting_inequalities) &&
+          satisfiesConstraints(current.point, assignment.criteria)) {
+        callback(current.point);
+      }
+      current.current_value++;
+    } else {
+      // More variables to process
+      IterationFrame next_frame;
+      next_frame.point = current.point;
+      next_frame.bound_index = current.bound_index + 1;
+      next_frame.current_value = 0;
+
+      // Calculate upper bound for next variable
+      int next_index = bounds_vec[next_frame.bound_index][0];
+      int next_inequality = bounds_vec[next_frame.bound_index][1];
+      int next_upper = static_cast<int>(
+          assignment.supporting_inequalities[next_inequality][0]);
+      for (size_t i = 0; i < next_frame.point.size(); i++) {
+        if (static_cast<int>(i) != next_index) {
+          next_upper +=
+              static_cast<int>(
+                  assignment.supporting_inequalities[next_inequality][1 + i]) *
+              next_frame.point[i];
+        }
+      }
+      next_upper /= -static_cast<int>(
+          assignment.supporting_inequalities[next_inequality][1 + next_index]);
+      next_frame.upper_bound = next_upper;
+
+      current.current_value++;
+      stack.push(next_frame);
+    }
+  }
+}
+
+void FKComputation::enumeratePointsWithCallback(
+    const AssignmentResult &assignment,
+    const std::function<void(const std::vector<int>&)>& callback) {
+
+  if (assignment.bounds.empty()) {
+    // Base case: check constraints and invoke callback if valid
+    if (satisfiesConstraints(assignment.point,
+                             assignment.supporting_inequalities) &&
+        satisfiesConstraints(assignment.point, assignment.criteria)) {
+      callback(assignment.point);
+    }
+    return;
+  }
+
+  // Convert bounds list to vector for easier iteration
+  std::vector<std::array<int, 2>> bounds_vec(assignment.bounds.begin(),
+                                             assignment.bounds.end());
+
+  // Calculate upper bound for first variable to determine parallelization range
+  int first_index = bounds_vec[0][0];
+  int first_inequality = bounds_vec[0][1];
+  int first_upper =
+      static_cast<int>(assignment.supporting_inequalities[first_inequality][0]);
+  for (size_t i = 0; i < assignment.point.size(); i++) {
+    if (static_cast<int>(i) != first_index) {
+      first_upper +=
+          static_cast<int>(
+              assignment.supporting_inequalities[first_inequality][1 + i]) *
+          assignment.point[i];
+    }
+  }
+  first_upper /= -static_cast<int>(
+      assignment.supporting_inequalities[first_inequality][1 + first_index]);
+
+  // Parallel region: process each value of the first variable in parallel
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+  for (int first_value = 0; first_value <= first_upper; ++first_value) {
+    enumeratePointsFromValueWithCallback(assignment, bounds_vec, first_value,
+                                        first_index, callback);
+  }
+#else
+  // Sequential fallback
+  for (int first_value = 0; first_value <= first_upper; ++first_value) {
+    enumeratePointsFromValueWithCallback(assignment, bounds_vec, first_value,
+                                        first_index, callback);
+  }
+#endif
+}
 
 std::vector<FKComputation::AssignmentResult>
 FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {

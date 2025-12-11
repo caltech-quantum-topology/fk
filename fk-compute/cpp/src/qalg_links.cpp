@@ -485,7 +485,8 @@ PolynomialType qpochhammer_xq_q(int n, int qpow) {
 // Optimized using direct coefficient computation
 
 
-PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
+PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax,
+                                        int max_q_power) {
   InversePochhammerKey key{n, qpow, xMax};
 
   // Try to read from cache first
@@ -516,6 +517,12 @@ PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
           for (int m = 0; x_deg + m <= xMax; ++m) {
             const int new_x_deg = x_deg + m;
             const int new_q_pow = q_pow + m * q_base;
+
+            // Skip terms with excessive q-power to limit polynomial size
+            if (new_q_pow > max_q_power) {
+              break;  // All subsequent m will have even higher q-powers
+            }
+
             new_coeffs[new_x_deg][new_q_pow] += coeff;
           }
         }

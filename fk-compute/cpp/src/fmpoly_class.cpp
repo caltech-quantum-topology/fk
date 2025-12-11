@@ -705,6 +705,23 @@ FMPoly FMPoly::truncate(int maxDegree) const {
   return truncate(maxXdegrees);
 }
 
+FMPoly FMPoly::multiplyAndTruncate(const FMPoly& other,
+                                    const std::vector<int>& max_x_degrees) const {
+  checkCompatibility(other);
+
+  // Quick zero checks: 0 * anything = 0
+  if (isZero() || other.isZero()) {
+    return FMPoly(numXVariables, 0, max_x_degrees);
+  }
+
+  // Multiply the polynomials
+  FMPoly result = *this;
+  result *= other;
+
+  // Immediately truncate to prevent intermediate growth
+  return result.truncate(max_x_degrees);
+}
+
 int FMPoly::getNumXVariables() const { return numXVariables; }
 
 void FMPoly::clear() { fmpz_mpoly_zero(poly, ctx); }

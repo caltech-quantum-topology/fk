@@ -294,6 +294,18 @@ private:
                           int first_value,
                           int first_index);
 
+  // Callback-based streaming enumeration
+  void enumeratePointsWithCallback(
+      const AssignmentResult &assignment,
+      const std::function<void(const std::vector<int>&)>& callback);
+
+  void enumeratePointsFromValueWithCallback(
+      const AssignmentResult &assignment,
+      const std::vector<std::array<int, 2>> &bounds_vec,
+      int first_value,
+      int first_index,
+      const std::function<void(const std::vector<int>&)>& callback);
+
   std::vector<AssignmentResult>
   assignVariables(const ValidatedCriteria &valid_criteria);
 

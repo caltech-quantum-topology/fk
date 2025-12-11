@@ -145,6 +145,13 @@ public:
   FMPoly &operator*=(const FMPoly &other);
 
   /**
+   * Multiply and truncate in one pass to avoid intermediate polynomial growth
+   * Discards terms where x powers exceed max_x_degrees during multiplication
+   */
+  FMPoly multiplyAndTruncate(const FMPoly& other,
+                              const std::vector<int>& max_x_degrees) const;
+
+  /**
    * Multiply this polynomial by a q-polynomial (QPolynomial)
    * Each coefficient is multiplied by the QPolynomial
    */
