@@ -399,7 +399,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       auto binomial = QBinomial(param_i, param_jp);
 
       // Pochhammer part - limit q-power to reduce polynomial size
-      const int max_q_power = config_.degree * 2;  // More aggressive bound
+      const int max_q_power = static_cast<int>(config_.degree * 1.2);  // Very aggressive bound
       const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_jp - param_i,
                                    param_j - param_jp + param_i + 1,
@@ -414,7 +414,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       auto binomial = QBinomial(param_j, param_ip);
 
       // Pochhammer part - limit q-power to reduce polynomial size
-      const int max_q_power = config_.degree * 2;  // More aggressive bound
+      const int max_q_power = static_cast<int>(config_.degree * 1.2);  // Very aggressive bound
       const PolynomialType poch(
           inverse_qpochhammer_xq_q(param_ip - param_j,
                                    param_i - param_ip + param_j + 1,
@@ -446,7 +446,8 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
 
     // Limit cache size to prevent unbounded memory growth for large degrees
     // If cache is full, clear it (simple eviction strategy)
-    const size_t MAX_CACHE_SIZE = 10000;
+    // Increased from 10000 -> 100000 -> 1000000 to avoid cache thrashing
+    const size_t MAX_CACHE_SIZE = 1000000;
     if (crossing_factor_cache_.size() >= MAX_CACHE_SIZE) {
       crossing_factor_cache_.clear();
     }
