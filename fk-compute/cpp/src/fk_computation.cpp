@@ -911,14 +911,14 @@ FKComputation::createInitialAssignmentState(
     const std::vector<std::array<int, 2>> &bounds_vector) {
 
   VariableAssignmentState initial_state;
-  initial_state.new_criteria = valid_criteria.criteria;
+  initial_state.new_criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
   initial_state.degrees = valid_criteria.degrees;
-  initial_state.criteria = valid_criteria.criteria;
+  initial_state.criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
   initial_state.bounds = valid_criteria.additional_bounds;
   auto all_original = config_.inequalities;
   all_original.insert(all_original.end(), config_.criteria.begin(),
                       config_.criteria.end());
-  initial_state.supporting_inequalities = all_original;
+  initial_state.supporting_inequalities = std::make_shared<const std::vector<std::vector<double>>>(all_original);
   initial_state.point = valid_criteria.initial_point;
   initial_state.current_var_index = 0;
   initial_state.current_value = 0;
@@ -935,14 +935,14 @@ FKComputation::initializeAssignmentStack(
   std::stack<VariableAssignmentState> stack;
 
   VariableAssignmentState initial_state;
-  initial_state.new_criteria = valid_criteria.criteria;
+  initial_state.new_criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
   initial_state.degrees = valid_criteria.degrees;
-  initial_state.criteria = valid_criteria.criteria;
+  initial_state.criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
   initial_state.bounds = valid_criteria.additional_bounds;
   auto all_original = config_.inequalities;
   all_original.insert(all_original.end(), config_.criteria.begin(),
                       config_.criteria.end());
-  initial_state.supporting_inequalities = all_original;
+  initial_state.supporting_inequalities = std::make_shared<const std::vector<std::vector<double>>>(all_original);
   initial_state.point = valid_criteria.initial_point;
   initial_state.current_var_index = 0;
   initial_state.current_value = 0;
@@ -978,7 +978,7 @@ std::vector<double> FKComputation::calculateUpdatedDegrees(
     const std::vector<std::array<int, 2>> &bounds_vector) {
   const int var_index = bounds_vector[state.current_var_index][0];
   const int constraint_index = bounds_vector[state.current_var_index][1];
-  const double slope = -state.new_criteria[constraint_index][var_index];
+  const double slope = -(*state.new_criteria)[constraint_index][var_index];
 
   auto updated_degrees = state.degrees;
   updated_degrees[constraint_index] =
@@ -996,9 +996,9 @@ bool FKComputation::isLastVariable(
 FKComputation::AssignmentResult
 FKComputation::createAssignmentResult(const VariableAssignmentState &state) {
   AssignmentResult result;
-  result.criteria = state.criteria;
+  result.criteria = *state.criteria;
   result.bounds = state.bounds;
-  result.supporting_inequalities = state.supporting_inequalities;
+  result.supporting_inequalities = *state.supporting_inequalities;
   result.point = state.point;
   return result;
 }
@@ -1017,7 +1017,7 @@ FKComputation::VariableAssignmentState FKComputation::createNextState(
   next_state.current_var_index = current_state.current_var_index + 1;
   next_state.current_value = 0;
   next_state.max_value =
-      calculateMaxValue(next_state.new_criteria, next_state.degrees,
+      calculateMaxValue(*next_state.new_criteria, next_state.degrees,
                         bounds_vector[next_state.current_var_index]);
 
   return next_state;

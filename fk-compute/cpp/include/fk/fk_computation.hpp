@@ -256,12 +256,12 @@ private:
   };
 
   struct VariableAssignmentState {
-    std::vector<std::vector<double>> new_criteria;
+    std::shared_ptr<const std::vector<std::vector<double>>> new_criteria;
     std::vector<double> degrees;
-    std::vector<std::vector<double>> criteria;
+    std::shared_ptr<const std::vector<std::vector<double>>> criteria;
     std::list<std::array<int, 2>> first;
     std::list<std::array<int, 2>> bounds;
-    std::vector<std::vector<double>> supporting_inequalities;
+    std::shared_ptr<const std::vector<std::vector<double>>> supporting_inequalities;
     std::vector<int> point;
     size_t current_var_index;
     int current_value;
