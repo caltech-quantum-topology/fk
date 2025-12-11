@@ -529,6 +529,10 @@ void FKComputation::compute(const FKConfiguration &config,
     all_points.insert(all_points.end(), points.begin(), points.end());
   }
 
+  // Clear assignments to free memory (no longer needed)
+  assignments.clear();
+  assignments.shrink_to_fit();
+
   // Execute work stealing computation
   setupWorkStealingComputation(all_points);
 
