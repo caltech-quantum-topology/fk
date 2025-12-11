@@ -227,9 +227,9 @@ public:
   };
 
   struct AssignmentResult {
-    std::vector<std::vector<double>> criteria;
+    std::shared_ptr<const std::vector<std::vector<double>>> criteria;
     std::list<std::array<int, 2>> bounds;
-    std::vector<std::vector<double>> supporting_inequalities;
+    std::shared_ptr<const std::vector<std::vector<double>>> supporting_inequalities;
     std::vector<int> point;
   };
 
@@ -257,7 +257,7 @@ private:
 
   struct VariableAssignmentState {
     std::shared_ptr<const std::vector<std::vector<double>>> new_criteria;
-    std::vector<double> degrees;
+    std::shared_ptr<const std::vector<double>> degrees;
     std::shared_ptr<const std::vector<std::vector<double>>> criteria;
     std::list<std::array<int, 2>> first;
     std::list<std::array<int, 2>> bounds;

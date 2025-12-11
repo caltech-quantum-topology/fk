@@ -589,8 +589,8 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
   if (assignment.bounds.empty()) {
     // Base case: check constraints and add point if valid
     if (satisfiesConstraints(assignment.point,
-                             assignment.supporting_inequalities) &&
-        satisfiesConstraints(assignment.point, assignment.criteria)) {
+                             *assignment.supporting_inequalities) &&
+        satisfiesConstraints(assignment.point, *assignment.criteria)) {
       return {assignment.point};
     }
     return {};
@@ -604,17 +604,17 @@ FKComputation::enumeratePoints(const AssignmentResult &assignment) {
   int first_index = bounds_vec[0][0];
   int first_inequality = bounds_vec[0][1];
   int first_upper =
-      static_cast<int>(assignment.supporting_inequalities[first_inequality][0]);
+      static_cast<int>((*assignment.supporting_inequalities)[first_inequality][0]);
   for (size_t i = 0; i < assignment.point.size(); i++) {
     if (static_cast<int>(i) != first_index) {
       first_upper +=
           static_cast<int>(
-              assignment.supporting_inequalities[first_inequality][1 + i]) *
+              (*assignment.supporting_inequalities)[first_inequality][1 + i]) *
           assignment.point[i];
     }
   }
   first_upper /= -static_cast<int>(
-      assignment.supporting_inequalities[first_inequality][1 + first_index]);
+      (*assignment.supporting_inequalities)[first_inequality][1 + first_index]);
 
   // Parallel region: process each value of the first variable in parallel
   std::vector<std::vector<int>> valid_points;
@@ -673,8 +673,8 @@ std::vector<std::vector<int>> FKComputation::enumeratePointsFromValue(
   // If there's only one variable, check and return
   if (bounds_vec.size() == 1) {
     if (satisfiesConstraints(initial_frame.point,
-                             assignment.supporting_inequalities) &&
-        satisfiesConstraints(initial_frame.point, assignment.criteria)) {
+                             *assignment.supporting_inequalities) &&
+        satisfiesConstraints(initial_frame.point, *assignment.criteria)) {
       local_points.push_back(initial_frame.point);
     }
     return local_points;
@@ -684,17 +684,17 @@ std::vector<std::vector<int>> FKComputation::enumeratePointsFromValue(
   int second_index = bounds_vec[1][0];
   int second_inequality = bounds_vec[1][1];
   int second_upper = static_cast<int>(
-      assignment.supporting_inequalities[second_inequality][0]);
+      (*assignment.supporting_inequalities)[second_inequality][0]);
   for (size_t i = 0; i < initial_frame.point.size(); i++) {
     if (static_cast<int>(i) != second_index) {
       second_upper +=
           static_cast<int>(
-              assignment.supporting_inequalities[second_inequality][1 + i]) *
+              (*assignment.supporting_inequalities)[second_inequality][1 + i]) *
           initial_frame.point[i];
     }
   }
   second_upper /= -static_cast<int>(
-      assignment.supporting_inequalities[second_inequality][1 + second_index]);
+      (*assignment.supporting_inequalities)[second_inequality][1 + second_index]);
   initial_frame.upper_bound = second_upper;
 
   stack.push(initial_frame);
@@ -713,8 +713,8 @@ std::vector<std::vector<int>> FKComputation::enumeratePointsFromValue(
     if (current.bound_index == bounds_vec.size() - 1) {
       // Last variable - check constraints and add point if valid
       if (satisfiesConstraints(current.point,
-                               assignment.supporting_inequalities) &&
-          satisfiesConstraints(current.point, assignment.criteria)) {
+                               *assignment.supporting_inequalities) &&
+          satisfiesConstraints(current.point, *assignment.criteria)) {
         local_points.push_back(current.point);
       }
       current.current_value++;
@@ -729,17 +729,17 @@ std::vector<std::vector<int>> FKComputation::enumeratePointsFromValue(
       int next_index = bounds_vec[next_frame.bound_index][0];
       int next_inequality = bounds_vec[next_frame.bound_index][1];
       int next_upper = static_cast<int>(
-          assignment.supporting_inequalities[next_inequality][0]);
+          (*assignment.supporting_inequalities)[next_inequality][0]);
       for (size_t i = 0; i < next_frame.point.size(); i++) {
         if (static_cast<int>(i) != next_index) {
           next_upper +=
               static_cast<int>(
-                  assignment.supporting_inequalities[next_inequality][1 + i]) *
+                  (*assignment.supporting_inequalities)[next_inequality][1 + i]) *
               next_frame.point[i];
         }
       }
       next_upper /= -static_cast<int>(
-          assignment.supporting_inequalities[next_inequality][1 + next_index]);
+          (*assignment.supporting_inequalities)[next_inequality][1 + next_index]);
       next_frame.upper_bound = next_upper;
 
       current.current_value++;
@@ -893,9 +893,9 @@ FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
 FKComputation::AssignmentResult
 FKComputation::createSingleAssignment(const ValidatedCriteria &valid_criteria) {
   AssignmentResult result;
-  result.criteria = valid_criteria.criteria;
+  result.criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
   result.bounds = valid_criteria.additional_bounds;
-  result.supporting_inequalities = config_.inequalities;
+  result.supporting_inequalities = std::make_shared<const std::vector<std::vector<double>>>(config_.inequalities);
   result.point = valid_criteria.initial_point;
   return result;
 }
@@ -912,7 +912,7 @@ FKComputation::createInitialAssignmentState(
 
   VariableAssignmentState initial_state;
   initial_state.new_criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
-  initial_state.degrees = valid_criteria.degrees;
+  initial_state.degrees = std::make_shared<const std::vector<double>>(valid_criteria.degrees);
   initial_state.criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
   initial_state.bounds = valid_criteria.additional_bounds;
   auto all_original = config_.inequalities;
@@ -936,7 +936,7 @@ FKComputation::initializeAssignmentStack(
 
   VariableAssignmentState initial_state;
   initial_state.new_criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
-  initial_state.degrees = valid_criteria.degrees;
+  initial_state.degrees = std::make_shared<const std::vector<double>>(valid_criteria.degrees);
   initial_state.criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
   initial_state.bounds = valid_criteria.additional_bounds;
   auto all_original = config_.inequalities;
@@ -980,9 +980,9 @@ std::vector<double> FKComputation::calculateUpdatedDegrees(
   const int constraint_index = bounds_vector[state.current_var_index][1];
   const double slope = -(*state.new_criteria)[constraint_index][var_index];
 
-  auto updated_degrees = state.degrees;
+  auto updated_degrees = *state.degrees;
   updated_degrees[constraint_index] =
-      state.degrees[constraint_index] - state.current_value * slope;
+      (*state.degrees)[constraint_index] - state.current_value * slope;
 
   return updated_degrees;
 }
@@ -996,9 +996,9 @@ bool FKComputation::isLastVariable(
 FKComputation::AssignmentResult
 FKComputation::createAssignmentResult(const VariableAssignmentState &state) {
   AssignmentResult result;
-  result.criteria = *state.criteria;
+  result.criteria = state.criteria;
   result.bounds = state.bounds;
-  result.supporting_inequalities = *state.supporting_inequalities;
+  result.supporting_inequalities = state.supporting_inequalities;
   result.point = state.point;
   return result;
 }
@@ -1009,7 +1009,7 @@ FKComputation::VariableAssignmentState FKComputation::createNextState(
     const std::vector<std::array<int, 2>> &bounds_vector) {
   VariableAssignmentState next_state;
   next_state.new_criteria = current_state.new_criteria;
-  next_state.degrees = std::move(updated_degrees);
+  next_state.degrees = std::make_shared<const std::vector<double>>(std::move(updated_degrees));
   next_state.criteria = current_state.criteria;
   next_state.bounds = current_state.bounds;
   next_state.supporting_inequalities = current_state.supporting_inequalities;
@@ -1017,7 +1017,7 @@ FKComputation::VariableAssignmentState FKComputation::createNextState(
   next_state.current_var_index = current_state.current_var_index + 1;
   next_state.current_value = 0;
   next_state.max_value =
-      calculateMaxValue(*next_state.new_criteria, next_state.degrees,
+      calculateMaxValue(*next_state.new_criteria, *next_state.degrees,
                         bounds_vector[next_state.current_var_index]);
 
   return next_state;
