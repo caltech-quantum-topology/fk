@@ -423,6 +423,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
       break;
     }
     }
+    factor = factor.truncate(max_x_degrees);
     result *= factor;
     result = result.truncate(max_x_degrees);
   }
