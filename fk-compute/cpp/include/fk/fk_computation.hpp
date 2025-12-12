@@ -230,7 +230,31 @@ public:
     std::shared_ptr<const std::vector<std::vector<double>>> criteria;
     std::list<std::array<int, 2>> bounds;
     std::shared_ptr<const std::vector<std::vector<double>>> supporting_inequalities;
-    std::vector<int> point;
+    std::shared_ptr<std::vector<int>> point;
+  };
+
+  struct VariableAssignmentState {
+    std::shared_ptr<const std::vector<double>> degrees;
+    std::shared_ptr<const std::vector<std::vector<double>>> criteria;
+    std::list<std::array<int, 2>> first;
+    std::list<std::array<int, 2>> bounds;
+    std::shared_ptr<const std::vector<std::vector<double>>> supporting_inequalities;
+    std::shared_ptr<std::vector<int>> point;
+    size_t current_var_index;
+    int current_value;
+    int max_value;
+
+    bool operator<(const VariableAssignmentState& other) const {
+      if (*point != *other.point) return *point < *other.point;
+      if (current_var_index != other.current_var_index) return current_var_index < other.current_var_index;
+      return current_value < other.current_value;
+    }
+
+    bool operator==(const VariableAssignmentState& other) const {
+      return *point == *other.point &&
+             current_var_index == other.current_var_index &&
+             current_value == other.current_value;
+    }
   };
 
 private:
@@ -255,31 +279,6 @@ private:
     int upper_bound;
   };
 
-  struct VariableAssignmentState {
-    std::shared_ptr<const std::vector<std::vector<double>>> new_criteria;
-    std::shared_ptr<const std::vector<double>> degrees;
-    std::shared_ptr<const std::vector<std::vector<double>>> criteria;
-    std::list<std::array<int, 2>> first;
-    std::list<std::array<int, 2>> bounds;
-    std::shared_ptr<const std::vector<std::vector<double>>> supporting_inequalities;
-    std::vector<int> point;
-    size_t current_var_index;
-    int current_value;
-    int max_value;
-
-    bool operator<(const VariableAssignmentState& other) const {
-      if (point != other.point) return point < other.point;
-      if (current_var_index != other.current_var_index) return current_var_index < other.current_var_index;
-      return current_value < other.current_value;
-    }
-
-    bool operator==(const VariableAssignmentState& other) const {
-      return point == other.point &&
-             current_var_index == other.current_var_index &&
-             current_value == other.current_value;
-    }
-  };
-
   // Private pooling methods
   bool
   satisfiesConstraints(const std::vector<int> &point,
@@ -294,8 +293,9 @@ private:
                           int first_value,
                           int first_index);
 
-  std::vector<AssignmentResult>
-  assignVariables(const ValidatedCriteria &valid_criteria);
+  void
+  assignVariables(const ValidatedCriteria &valid_criteria,
+                  const std::function<void(const AssignmentResult&)>& callback);
 
   BoundedVariables
   identifyBoundedVariables(const std::vector<std::vector<double>> &inequalities,
@@ -377,3 +377,19 @@ private:
 };
 
 } // namespace fk
+
+// Hash specialization for VariableAssignmentState to enable unordered_set
+namespace std {
+template<>
+struct hash<fk::FKComputation::VariableAssignmentState> {
+  size_t operator()(const fk::FKComputation::VariableAssignmentState& s) const {
+    size_t h = std::hash<size_t>()(s.current_var_index);
+    h ^= std::hash<int>()(s.current_value) << 1;
+    // Hash the point vector (dereference shared_ptr)
+    for (const auto& val : *s.point) {
+      h ^= std::hash<int>()(val) + 0x9e3779b9 + (h << 6) + (h >> 2);
+    }
+    return h;
+  }
+};
+}

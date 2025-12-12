@@ -2,6 +2,7 @@
 
 #include <queue>
 #include <set>
+#include <unordered_set>
 #include <stack>
 #include <vector>
 #include <functional>
@@ -198,7 +199,7 @@ public:
     std::vector<Node> search_all(const Node& start_node) {
         std::vector<Node> results;
         std::stack<Node> stack;
-        std::set<Node> visited;
+        std::unordered_set<Node> visited;
 
         visited.insert(start_node);
         stack.push(start_node);
@@ -228,7 +229,7 @@ public:
 
     std::optional<Node> search_first(const Node& start_node) {
         std::stack<Node> stack;
-        std::set<Node> visited;
+        std::unordered_set<Node> visited;
 
         visited.insert(start_node);
         stack.push(start_node);
