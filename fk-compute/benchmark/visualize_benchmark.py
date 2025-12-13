@@ -146,7 +146,7 @@ ax_time_max = axes[0, 1]
 ax_time_total = axes[0, 2]
 ax_mem_mean = axes[1, 0]
 ax_mem_max = axes[1, 1]
-ax_mem_total = axes[1, 2]
+ax_time_total_poly = axes[1, 2]
 fig3.suptitle("Computational Growth Analysis by Degree", fontsize=16, fontweight="bold")
 
 
@@ -252,6 +252,37 @@ ax_time_mean.set_title("Mean Computation Time Growth", fontsize=13, fontweight="
 ax_time_mean.legend()
 ax_time_mean.grid(True, alpha=0.3)
 
+
+# ---- Time Mean Plot ----
+ax_time_mean.scatter(
+    degrees_array,
+    time_means,
+    label="Mean Time",
+    s=100,
+    alpha=0.7,
+    color="blue",
+    zorder=3,
+)
+fit_func, pred_vals, fit_name = fit_and_predict(
+    degrees_array, time_means, pred_degrees, ["exponential", "polynomial", "power"]
+)
+if fit_func is not None:
+    ax_time_mean.plot(
+        pred_degrees,
+        pred_vals,
+        "--",
+        label=fit_name,
+        linewidth=2,
+        color="darkblue",
+        alpha=0.8,
+    )
+ax_time_mean.axvline(max_degree, color="gray", linestyle=":", alpha=0.5, linewidth=1.5)
+ax_time_mean.set_xlabel("Degree", fontsize=12)
+ax_time_mean.set_ylabel("Mean Time (seconds)", fontsize=12)
+ax_time_mean.set_title("Mean Computation Time Growth", fontsize=13, fontweight="bold")
+ax_time_mean.legend()
+ax_time_mean.grid(True, alpha=0.3)
+
 # ---- Time Max Plot ----
 ax_time_max.scatter(
     degrees_array, time_maxs, label="Max Time", s=100, alpha=0.7, color="red", zorder=3
@@ -300,11 +331,42 @@ if fit_func is not None:
         alpha=0.8,
     )
 ax_time_total.axvline(max_degree, color="gray", linestyle=":", alpha=0.5, linewidth=1.5)
+ax_time_total.set_yscale("log")
 ax_time_total.set_xlabel("Degree", fontsize=12)
 ax_time_total.set_ylabel("Total Time (seconds)", fontsize=12)
 ax_time_total.set_title("Total Computation Time Growth", fontsize=13, fontweight="bold")
 ax_time_total.legend()
 ax_time_total.grid(True, alpha=0.3)
+
+# ---- Time Total Plot Polynomial ----
+ax_time_total_poly.scatter(
+    degrees_array,
+    time_totals,
+    label="Total Time",
+    s=100,
+    alpha=0.7,
+    color="purple",
+    zorder=3,
+)
+fit_func, pred_vals, fit_name = fit_and_predict(
+    degrees_array, time_totals, pred_degrees, ["polynomial"]
+)
+if fit_func is not None:
+    ax_time_total_poly.plot(
+        pred_degrees,
+        pred_vals,
+        "--",
+        label=fit_name,
+        linewidth=2,
+        color="indigo",
+        alpha=0.8,
+    )
+ax_time_total_poly.axvline(max_degree, color="gray", linestyle=":", alpha=0.5, linewidth=1.5)
+ax_time_total_poly.set_xlabel("Degree", fontsize=12)
+ax_time_total_poly.set_ylabel("Total Time (seconds)", fontsize=12)
+ax_time_total_poly.set_title("Total Computation Time Growth", fontsize=13, fontweight="bold")
+ax_time_total_poly.legend()
+ax_time_total_poly.grid(True, alpha=0.3)
 
 # ---- Memory Mean Plot ----
 ax_mem_mean.scatter(
@@ -365,9 +427,6 @@ ax_mem_max.set_ylabel("Max Memory (MB)", fontsize=12)
 ax_mem_max.set_title("Maximum Memory Usage Growth", fontsize=13, fontweight="bold")
 ax_mem_max.legend()
 ax_mem_max.grid(True, alpha=0.3)
-
-# Hide the unused memory total subplot (total memory doesn't make sense as a metric)
-ax_mem_total.set_visible(False)
 
 plt.tight_layout()
 fig3.savefig("growth_analysis.png", dpi=300, bbox_inches="tight")
