@@ -19,7 +19,7 @@ def measure_fk_computation(knot, knot_config, degree):
         braid = knot_config.get("braid")
         inversion = {"inversion_data": knot_config.get("inversion"), "braid": braid}
         threads = mp.cpu_count()
-        save_data = False
+        save_data = True
 
         # Call fkcompute.fk() with individual parameters using the crossing number as degree
         fkcompute.fk(
@@ -153,8 +153,8 @@ def print_summary(results):
 
 
 def main():
-    degrees = [15]
-    output = "benchmark_results.csv"
+    degrees = [10]
+    output = None #"benchmark_results.csv"
     print(f"Benchmarking FK computations for degrees: {degrees}")
 
     results = run_benchmark(
