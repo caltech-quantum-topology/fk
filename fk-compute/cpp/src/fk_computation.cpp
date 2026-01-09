@@ -312,7 +312,7 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   for (int n = 0; n < config_.components; n++) {
     x_power_accumulator[n] =
         static_cast<int>(std::floor(x_power_accumulator_double[n]));
-    max_x_degrees[n] = config_.degree - x_power_accumulator[n];
+    max_x_degrees[n] = std::max(0, config_.degree - x_power_accumulator[n]);
   }
 
   // Accumulate result

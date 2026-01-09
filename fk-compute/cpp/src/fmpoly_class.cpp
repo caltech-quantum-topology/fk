@@ -110,20 +110,13 @@ FMPoly &FMPoly::operator=(const FMPoly &other) {
 
 FMPoly::~FMPoly() {
   fmpz_mpoly_clear(poly, ctx);
-  // fmpz_mpoly_ctx_clear(ctx);
+  fmpz_mpoly_ctx_clear(ctx);
 }
 
 void FMPoly::setupContext() {
-  // Initialize the global context once
-  if (!g_ctx_initialized) {
-    fmpz_mpoly_ctx_init(g_ctx, numXVariables + 1, ORD_LEX);
-    g_ctx_initialized = true;
-  }
-
-  // Copy the global context into this->ctx (cheap struct copy, no new init)
-  ctx[0] = g_ctx[0];
-
-  // Initialize the polynomial using this context
+  // Initialize FLINT context with numXVariables + 1 variables (q, x1, x2, ..., xn)
+  // Each FMPoly must have its own context properly initialized for its number of variables
+  fmpz_mpoly_ctx_init(ctx, numXVariables + 1, ORD_LEX);
   fmpz_mpoly_init(poly, ctx);
 }
 
