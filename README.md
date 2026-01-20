@@ -378,7 +378,7 @@ If you use this tool in your research, please cite:
   title={fk: FK Invariant Computation Tool},
   author={Toby and Paul and Lara and Josef and Davide},
   year={2025},
-  url={https://github.com/caltech-quantum-topology/fk}
+  url={https://github.com/yourusername/fk-compute}
 }
 ```
 
