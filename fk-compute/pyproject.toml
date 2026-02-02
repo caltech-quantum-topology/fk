@@ -34,16 +34,18 @@ classifiers = [
 dependencies = [
   "numpy>=1.20",
   "gurobipy>=9.5",
-  "jupyter",
-  "sympy>=1.10",
   "typer>=0.9.0",
 ]
 
 [project.optional-dependencies]
-viz = ["ipython>=8"]
+symbolic = ["sympy>=1.10"]
+interactive = ["rich>=13"]
+yaml = ["PyYAML>=6"]
+viz = ["ipython>=8", "jupyter"]
+full = ["sympy>=1.10", "rich>=13", "PyYAML>=6", "ipython>=8", "jupyter"]
 
 [project.scripts]
-fk = "fkcompute.cli:main"
+fk = "fkcompute.cli.app:main"
 fk-install-man = "fkcompute.install_man:main"
 
 [tool.scikit-build]

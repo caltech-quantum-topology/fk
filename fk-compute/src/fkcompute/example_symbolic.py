@@ -3,8 +3,9 @@
 Example usage of print_symbolic_relations function
 """
 
-from fkcompute.braidstates_links import BraidStates
-from fkcompute.relations_links import full_reduce, print_symbolic_relations
+from fkcompute.domain.braid.states import BraidStates
+from fkcompute.domain.constraints.reduction import full_reduce
+from fkcompute.solver.ilp import print_symbolic_relations
 
 # Example: Fibered knot with inversion data
 braid = [-1, -2, -2, -2, -1, 2, 2, 2]

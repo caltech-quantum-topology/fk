@@ -377,7 +377,7 @@ class SessionManager:
         except (FileNotFoundError, json.JSONDecodeError):
             # Create default preferences
             defaults = {
-                'default_preset': 'accurate',
+                'default_preset': 'single thread',
                 'default_threads': 1,
                 'auto_save': False,
                 'theme': 'default',

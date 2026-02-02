@@ -204,12 +204,11 @@ fk simple "1 -2 3 1" 2
 
 Three built-in presets for common use cases:
 
-- **fast**: Quick computations with minimal parallelism
-- **accurate**: Balanced performance with more thorough computation
-- **parallel**: High parallelism for complex computations
+- **single thread**: Quick computations with minimal parallelism
+- **parallel**: High-performance parallel processing (auto-detects CPU cores)
 
 ```yaml
-preset: accurate
+preset: single thread
 ```
 
 ### Available Parameters
@@ -219,7 +218,7 @@ preset: accurate
 | `braid` | list[int] | Braid word (required) |
 | `degree` | int | Computation degree (required) |
 | `name` | str | Computation name (for file naming) |
-| `preset` | str | Preset configuration (fast/accurate/parallel) |
+| `preset` | str | Preset configuration (single thread/parallel) |
 | `max_workers` | int | Number of parallel workers |
 | `chunk_size` | int | Chunk size for parallel processing |
 | `threads` | int | Number of C++ threads |

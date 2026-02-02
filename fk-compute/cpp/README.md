@@ -22,7 +22,7 @@ This package bundles both Python logic and C++ executables to make the computati
 ### Command-Line Interface
 - **Multiple Usage Modes**:
   - `fk simple` - Quick computations with minimal options
-  - `fk preset` - Predefined configurations (fast, accurate, parallel)
+  - `fk preset` - Predefined configurations (single thread, parallel)
   - `fk config` - Configuration file support (JSON/YAML)
   - `fk advanced` - Full parameter control
 - **Batch Processing**: Process multiple braids from configuration files
@@ -36,9 +36,8 @@ This package bundles both Python logic and C++ executables to make the computati
 
 ### Configuration & Presets
 - **Preset Configurations**:
-  - `fast` - Single-threaded, optimized for speed
-  - `accurate` - Multi-core, comprehensive computation with data saving
-  - `parallel` - High parallelism for multi-core systems
+  - `single thread` - Single-threaded, optimized for speed
+  - `parallel` - High-performance parallel processing (auto-detects CPU cores)
 - **Flexible Config Files**: JSON/YAML support with global defaults and per-computation overrides
 - **Advanced Parameters**: Fine control over ILP, inversion, workers, and more
 
@@ -91,11 +90,8 @@ fk simple "[1,-2,3]" 2 --symbolic
 
 ### Preset Usage
 ```bash
-# Fast computation (single-threaded)
-fk preset "[1,-2,1,-2]" 3 --preset fast
-
-# Accurate computation (multi-core, saves data)
-fk preset "[1,-2,1,-2]" 3 --preset accurate --symbolic
+# Single thread computation
+fk preset "[1,-2,1,-2]" 3 --preset "single thread"
 
 # Parallel optimized computation
 fk preset "[1,-2,1,-2]" 3 --preset parallel
@@ -107,7 +103,7 @@ Create a configuration file `example.json`:
 {
   "braid": [1, -2, 3],
   "degree": 2,
-  "preset": "accurate",
+  "preset": "single thread",
   "max_workers": 8,
   "symbolic": true
 }
@@ -121,7 +117,7 @@ fk config example.json
 ### Batch Processing
 Create a batch configuration `batch.yaml`:
 ```yaml
-preset: fast
+preset: "single thread"
 max_workers: 4
 computations:
   - name: trefoil
@@ -130,7 +126,7 @@ computations:
   - name: figure_eight
     braid: [1, -2, 1, -2]
     degree: 3
-    preset: accurate
+    preset: single thread
 ```
 
 Run the batch:

@@ -5,13 +5,15 @@ from typing import Dict, Any, Optional, List
 from rich.console import Console
 from rich.prompt import Confirm
 
-from ..fk import fk, _parse_int_list
+from ..api.compute import fk
+from ..infra.config import parse_int_list
 from .ui import StatusMessage, ComputationSummary, ValidatedInput
 from .progress import FKProgressTracker
 from .history import ComputationHistory, SessionManager
 from .prompts import show_main_menu, get_computation_parameters, show_help_menu, show_settings_menu, show_search_interface
 
 console = Console()
+quit_commands = ["exit", "Exit", "quit", "Quit", "q"]
 
 
 class FKWizard:
@@ -118,7 +120,7 @@ class FKWizard:
         try:
             # Parse braid
             if isinstance(params['braid'], str):
-                braid = _parse_int_list(params['braid'])
+                braid = parse_int_list(params['braid'])
             else:
                 braid = params['braid']
             
@@ -198,7 +200,7 @@ class FKWizard:
         console.print()
         
         # Show actual results using existing print function
-        from ..cli import _print_result
+        from ..cli.commands import _print_result
         _print_result(result, params.get('symbolic', False))
 
 
@@ -245,7 +247,7 @@ class QuickWizard:
             
             # Display results
             console.print("\n[bold green]✅ Results:[/bold green]")
-            from ..cli import _print_result
+            from ..cli.commands import _print_result
             _print_result(result, symbolic)
             
             console.print(f"\n[dim]Completed in {computation_time:.1f} seconds[/dim]")

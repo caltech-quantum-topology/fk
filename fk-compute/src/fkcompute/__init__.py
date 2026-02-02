@@ -1,6 +1,6 @@
 """
-fk-compute
-============
+fkcompute
+=========
 
 A package for computing the FK invariant of braids via inversion,
 ILP reduction, and a compiled helper binary.
@@ -42,9 +42,50 @@ Examples
 >>> inversion = result["inversion_data"]
 """
 
-from .fk import fk, PRESETS
-from .cli import main
+# Public API imports
+from .api.compute import fk
+from .api.presets import PRESETS
+from .api.batch import fk_from_config, fk_batch_from_config
 
-__all__ = ["fk", "PRESETS", "main"]
+# Domain types (commonly used)
+from .domain.braid.states import BraidStates
+from .domain.braid.types import StateLiteral, ZERO_STATE, NUNITY_STATE
+from .domain.braid.word import is_positive_braid, is_homogeneous_braid
 
-__version__ = "0.1.0"
+# Constraint classes
+from .domain.constraints.relations import Leq, Less, Zero, Nunity, Alias, Conservation
+
+# Output formatting
+from .output.symbolic import format_symbolic_output, SYMPY_AVAILABLE
+
+# CLI entry point
+from .cli.app import main
+
+__all__ = [
+    # Main API
+    "fk",
+    "PRESETS",
+    "fk_from_config",
+    "fk_batch_from_config",
+    # Domain types
+    "BraidStates",
+    "StateLiteral",
+    "ZERO_STATE",
+    "NUNITY_STATE",
+    "is_positive_braid",
+    "is_homogeneous_braid",
+    # Constraints
+    "Leq",
+    "Less",
+    "Zero",
+    "Nunity",
+    "Alias",
+    "Conservation",
+    # Output
+    "format_symbolic_output",
+    "SYMPY_AVAILABLE",
+    # CLI
+    "main",
+]
+
+__version__ = "0.2.18"

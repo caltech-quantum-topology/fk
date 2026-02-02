@@ -112,6 +112,7 @@ class ValidatedInput:
         """Get and validate degree with smart suggestions."""
         while True:
             with BorderedSection("Degree Selection", color="green"):
+                """
                 if braid:
                     # Provide degree suggestions based on braid complexity
                     crossings = len(braid)
@@ -127,6 +128,7 @@ class ValidatedInput:
                     for deg, desc in suggestions:
                         console.print(f"  • {deg} - {desc}")
                     console.print()
+                """
                 
                 degree_input = console.input(f"[bold]{prompt}:[/] ").strip()
                 
@@ -135,12 +137,14 @@ class ValidatedInput:
                     if degree <= 0:
                         StatusMessage.error("Degree must be a positive integer")
                         continue
-                    
+
+                    """ 
                     # Warn about high degrees
                     if degree > 4:
                         StatusMessage.warning(f"Degree {degree} may take significant time to compute")
                         if not Confirm.ask("Continue anyway?"):
                             continue
+                    """
                     
                     return degree
                     
@@ -150,7 +154,7 @@ class ValidatedInput:
     @staticmethod
     def get_preset() -> Optional[str]:
         """Let user select from available presets."""
-        from ..fk import PRESETS
+        from ..api.presets import PRESETS
         
         presets = list(PRESETS.keys())
         
@@ -172,9 +176,8 @@ class ValidatedInput:
                     str(preset.get('max_workers', 'N/A')),
                     str(preset.get('threads', 'N/A')),
                     {
-                        'fast': 'Quick computation, minimal resources',
-                        'accurate': 'Thorough computation, saves data',
-                        'parallel': 'High-performance parallel processing'
+                        'single thread': 'Quick computation, minimal resources',
+                        'parallel': 'High-performance parallel processing (auto-detects CPU)'
                     }.get(preset_name, 'Custom settings')
                 )
             
@@ -188,7 +191,7 @@ class ValidatedInput:
             choice = Prompt.ask(
                 "Select preset",
                 choices=presets + ["0", "custom"],
-                default="accurate"
+                default="single thread"
             )
             
             if choice in ["0", "custom"]:
@@ -250,7 +253,7 @@ class ValidatedInput:
         with BorderedSection("Thread Configuration", color="green"):
             preset_threads = 1
             if preset:
-                from ..fk import PRESETS
+                from ..api.presets import PRESETS
                 preset_threads = PRESETS[preset].get('threads', 1)
                 console.print(f"Preset '{preset}' suggests {preset_threads} threads", style="dim")
                 console.print()
@@ -329,8 +332,8 @@ class ValidatedInput:
     def _analyze_braid(braid: List[int]):
         """Analyze and display information about the braid."""
         try:
-            from ..braids import is_homogeneous_braid
-            from ..braidstates_links import BraidStates
+            from ..domain.braid.word import is_homogeneous_braid
+            from ..domain.braid.states import BraidStates
             
             # Basic statistics
             crossings = len(braid)
