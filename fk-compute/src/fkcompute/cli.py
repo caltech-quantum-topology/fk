@@ -1,9 +1,9 @@
 # src/fk-compute/cli.py
 from __future__ import annotations
 import sys
-import argparse
 import json
 from typing import Optional, List
+from pathlib import Path
 
 # Import all functionality from fk module
 from .fk import fk, PRESETS, _parse_int_list, _parse_bool, configure_logging
@@ -11,14 +11,20 @@ from .fk import fk, PRESETS, _parse_int_list, _parse_bool, configure_logging
 # Import symbolic functionality
 from .symbolic_output import print_symbolic_result, SYMPY_AVAILABLE
 
+# Import typer
+try:
+    import typer
+except ImportError:
+    # Fallback to argparse if typer is not available
+    print("Error: typer is required. Please install it with: pip install typer")
+    sys.exit(1)
+
 
 # -------------------------------------------------------------------------
-# CLI Parser
+# Typer App
 # -------------------------------------------------------------------------
-def build_parser() -> argparse.ArgumentParser:
-    """Build the main argument parser with subcommands."""
-    p = argparse.ArgumentParser(
-        description="""
+app = typer.Typer(
+    help="""
 Compute the FK invariant for braids using inversion, ILP reduction, and compiled helper binary.
 
 The FK invariant is a mathematical object used in knot theory to distinguish different
@@ -47,170 +53,337 @@ BRAID FORMATS:
 
 For detailed documentation, run 'man fk' (after running 'fk-install-man').
 """,
-        prog="fk",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-EXAMPLES:
-  # Interactive - guided prompts
-  fk
-  fk interactive
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
 
-  # Simple - just the essentials
-  fk simple "[1,-2,3]" 2
+template_app = typer.Typer(help="Template management commands")
+history_app = typer.Typer(help="History and session management commands")
 
-  # Template - create configuration file
-  fk template create my_config.yaml
-  # Edit my_config.yaml, then run:
-  fk config my_config.yaml
+app.add_typer(template_app, name="template")
+app.add_typer(history_app, name="history")
 
-  # Config - single computation
-  echo '{"braid": [1,-2,3], "degree": 2, "name": "my_knot", "save_data": true}' > single.json
-  fk config single.json
 
-  # Config - multiple files
-  fk config config1.yaml config2.yaml config3.json
+# -------------------------------------------------------------------------
+# Interactive mode command
+# -------------------------------------------------------------------------
+@app.command("interactive", deprecated=False)
+def interactive_command(
+    enhanced: bool = typer.Option(False, "--enhanced", help="Use enhanced interactive wizard with progress tracking"),
+    quick: bool = typer.Option(False, "--quick", help="Use quick interactive mode with minimal prompts"),
+) -> None:
+    """Interactive mode with guided prompts."""
+    try:
+        if enhanced:
+            # Import and run enhanced mode
+            from .interactive import run_enhanced_interactive
+            run_enhanced_interactive()
+        elif quick:
+            # Import and run quick mode
+            from .interactive import run_quick_interactive
+            run_quick_interactive()
+        else:
+            # Try enhanced mode by default, fallback to basic if import fails
+            try:
+                from .interactive import run_enhanced_interactive
+                run_enhanced_interactive()
+            except ImportError:
+                handle_basic_interactive()
+    except ImportError as e:
+        # Fallback to basic interactive mode if enhanced components not available
+        typer.echo("Enhanced interactive mode not available. Using basic mode.")
+        typer.echo(f"Error: {e}")
+        handle_basic_interactive()
 
-  # Config - batch processing
-  cat > batch.yaml << 'EOF'
-  max_workers: 4
-  save_data: true
-  computations:
-    - name: trefoil
-      braid: [1, 1, 1]
-      degree: 2
-    - name: figure_eight
-      braid: [1, -2, 1, -2]
-      degree: 3
-  EOF
-  fk config batch.yaml
 
-For more examples and detailed parameter descriptions, see 'man fk'.
-""",
-    )
+# -------------------------------------------------------------------------
+# Simple compute command
+# -------------------------------------------------------------------------
+@app.command("simple")
+def simple_command(
+    braid: str = typer.Argument(..., help='Braid word. Examples: "[1,-2,3]", "1,-2,3", or "1 -2 3"'),
+    degree: int = typer.Argument(..., help="Computation degree"),
+    symbolic: bool = typer.Option(False, "--symbolic", help="Print result in human-readable symbolic form using SymPy"),
+) -> None:
+    """Simple FK computation with minimal options."""
+    braid_list = _parse_int_list(braid)
+    if not braid_list:
+        raise typer.BadParameter("Could not parse braid into a non-empty list of integers")
 
-    # Add subcommands
-    subparsers = p.add_subparsers(dest="command", help="Available commands")
+    result = fk(braid_list, degree, symbolic=symbolic)  # Simple mode auto-detected
+    _print_result(result, symbolic)
 
-    # Interactive mode command
-    interactive_parser = subparsers.add_parser(
-        "interactive",
-        help="Interactive mode with guided prompts",
-        description="Interactive mode that prompts you for all required parameters step by step.",
-        epilog="Example: fk interactive",
-    )
 
-    # Simple compute command
-    simple_parser = subparsers.add_parser(
-        "simple",
-        help="Simple FK computation with minimal options",
-        description="Simple interface with sensible defaults. Uses quiet mode and standard parameters for quick computations.",
-        epilog='Example: fk simple "[1,-2,3]" 2',
-    )
-    simple_parser.add_argument(
-        "braid",
-        type=str,
-        help='Braid word. Examples: "[1,-2,3]", "1,-2,3", or "1 -2 3"',
-    )
-    simple_parser.add_argument("degree", type=int, help="Computation degree")
-    add_symbolic_simple = _parse_bool(default_true=False)
-    add_symbolic_simple(
-        simple_parser,
-        "symbolic",
-        "Print result in human-readable symbolic form using SymPy",
-    )
+# -------------------------------------------------------------------------
+# Config file command
+# -------------------------------------------------------------------------
+@app.command("config")
+def config_command(
+    config_paths: List[str] = typer.Argument(..., help="Path(s) to JSON or YAML configuration file(s)")
+) -> None:
+    """FK computation from configuration file(s).
 
-    # Config file command
-    config_parser = subparsers.add_parser(
-        "config",
-        help="FK computation from configuration file(s)",
-        description="""
-Load computation parameters from JSON or YAML configuration file(s).
-Supports both single computations and batch processing of multiple braids.
+    Supports both single computation and batch processing of multiple braids.
 
-MULTIPLE CONFIG FILES:
-  Process multiple configuration files in sequence:
-  fk config config1.yaml config2.yaml config3.json
+    MULTIPLE CONFIG FILES:
+      Process multiple configuration files in sequence:
+      fk config config1.yaml config2.yaml config3.json
 
-SINGLE COMPUTATION:
-  {
-    "braid": [1, -2, 3],
-    "degree": 2,
-    "name": "my_knot",
-    "preset": "accurate",
-    "max_workers": 8,
-    "save_data": true,
-    "ilp_file": "path/to/precomputed.ilp"
-  }
-
-BATCH PROCESSING:
-  {
-    "preset": "fast",
-    "max_workers": 4,
-    "save_data": true,
-    "computations": [
+    SINGLE COMPUTATION:
       {
-        "name": "trefoil",
-        "braid": [1, 1, 1],
-        "degree": 2
-      },
-      {
-        "name": "figure_eight",
-        "braid": [1, -2, 1, -2],
-        "degree": 3,
-        "preset": "accurate"
+        "braid": [1, -2, 3],
+        "degree": 2,
+        "name": "my_knot",
+        "preset": "accurate",
+        "max_workers": 8,
+        "save_data": true,
+        "ilp_file": "path/to/precomputed.ilp"
       }
-    ]
-  }
 
-Batch mode supports:
-• Global defaults (applied to all computations)
-• Individual computation overrides
-• Named computations for organized results
-• Progress tracking and error handling
-• File naming based on computation 'name' when 'save_data' is enabled
-""",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Examples: fk config single.yaml | fk config batch.json | fk config config1.yaml config2.yaml",
-    )
-    config_parser.add_argument(
-        "config_paths", type=str, nargs="+", help="Path(s) to JSON or YAML configuration file(s)"
-    )
+    BATCH PROCESSING:
+      {
+        "preset": "fast",
+        "max_workers": 4,
+        "save_data": true,
+        "computations": [
+          {
+            "name": "trefoil",
+            "braid": [1, 1, 1],
+            "degree": 2
+          },
+          {
+            "name": "figure_eight",
+            "braid": [1, -2, 1, -2],
+            "degree": 3,
+            "preset": "accurate"
+          }
+        ]
+      }
 
-    # Template command
-    template_parser = subparsers.add_parser(
-        "template",
-        help="Template management commands",
-        description="Create and manage FK computation configuration templates."
-    )
-    template_subparsers = template_parser.add_subparsers(dest="template_command", help="Template commands")
+    Batch mode supports:
+    • Global defaults (applied to all computations)
+    • Individual computation overrides
+    • Named computations for organized results
+    • Progress tracking and error handling
+    • File naming based on computation 'name' when 'save_data' is enabled
+    """
+    # If only one config file, process normally
+    if len(config_paths) == 1:
+        result = fk(config_paths[0])  # Config mode auto-detected
+        _print_result(result, False)
+        return
 
-    # Template create subcommand
-    template_create_parser = template_subparsers.add_parser(
-        "create",
-        help="Create a blank YAML template configuration file",
-        description="""
-Create a blank YAML template for FK computation configuration.
+    # Multiple config files - process each one
+    typer.echo(f"\nProcessing {len(config_paths)} configuration files...\n")
+    typer.echo("=" * 60)
 
-This generates a commented template file with examples for single
-computation with all available options documented.
-""",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Example: fk template create my_config.yaml",
-    )
-    template_create_parser.add_argument(
-        "output_path",
-        type=str,
-        nargs="?",
-        default="fk_config.yaml",
+    results = {}
+    for i, config_path in enumerate(config_paths, 1):
+        typer.echo(f"\n[{i}/{len(config_paths)}] Processing: {config_path}")
+        typer.echo("-" * 60)
+
+        try:
+            result = fk(config_path)
+            results[config_path] = result
+
+            # Print result for this config
+            _print_result(result, False)
+            typer.echo()
+
+        except Exception as e:
+            typer.echo(f"Error processing {config_path}: {e}", err=True)
+            results[config_path] = {"error": str(e)}
+            continue
+
+    typer.echo("=" * 60)
+    typer.echo(f"\nCompleted processing {len(config_paths)} configuration files.")
+
+    # Summary
+    successful = sum(1 for r in results.values() if "error" not in r)
+    failed = len(results) - successful
+    typer.echo(f"Successful: {successful}, Failed: {failed}")
+
+
+# -------------------------------------------------------------------------
+# Template create subcommand
+# -------------------------------------------------------------------------
+@template_app.command("create")
+def template_create_command(
+    output_path: str = typer.Argument(
+        "fk_config.yaml",
         help="Output path for template file (default: fk_config.yaml)"
-    )
-    template_create_parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Overwrite existing file if it exists"
-    )
+    ),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing file if it exists")
+) -> None:
+    """Create a blank YAML template configuration file.
 
-    return p
+    This generates a commented template file with examples for single
+    computation with all available options documented.
+    """
+    output_file = Path(output_path)
+
+    # Check if file exists and overwrite not specified
+    if output_file.exists() and not overwrite:
+        typer.echo(f"Error: File '{output_path}' already exists. Use --overwrite to replace it.", err=True)
+        raise typer.Exit(1)
+
+    # Generate template content
+    template_content = """# FK Computation Configuration Template
+# This is a YAML configuration file for computing FK invariants
+
+# Required: Braid word as a list of integers
+# Examples: [1, -2, 3], [1, 1, 1] (trefoil), [1, -2, 1, -2] (figure eight)
+braid: [1, -2, 3]
+
+# Required: Computation degree (positive integer)
+degree: 2
+
+# Optional: Name for this computation (used for output files if save_data is true)
+# name: my_knot
+
+# Optional: Preset configuration (fast, accurate, or parallel)
+# Presets provide sensible defaults for different use cases
+# preset: accurate
+
+# Optional: Maximum number of worker processes for parallel computation
+# max_workers: 4
+
+# Optional: Chunk size for parallel processing
+# chunk_size: 65536
+
+# Optional: Number of threads for C++ computation
+# threads: 1
+
+# Optional: Include flip symmetry in computation
+# include_flip: false
+
+# Optional: Maximum number of shifts to consider
+# max_shifts: null
+
+# Optional: Enable verbose logging
+# verbose: false
+
+# Optional: Save computation data to files
+# save_data: false
+
+# Optional: Path to precomputed ILP file (advanced usage)
+# ilp_file: path/to/precomputed.ilp
+
+# Optional: Precomputed inversion data (advanced usage)
+# Provide component->signs mapping
+# inversion:
+#   0: [1, -1, 1]
+#   1: [-1, 1]
+"""
+
+    # Write template to file
+    output_file.write_text(template_content)
+
+    typer.echo(f"Template created: {output_path}")
+    typer.echo(f"\nEdit the file to configure your computation, then run:")
+    typer.echo(f"  fk config {output_path}")
+
+
+# -------------------------------------------------------------------------
+# History management commands
+# -------------------------------------------------------------------------
+@history_app.command("show")
+def history_show(
+    limit: int = typer.Option(10, "--limit", "-l", help="Number of recent computations to show"),
+    all: bool = typer.Option(False, "--all", "-a", help="Show all computations")
+) -> None:
+    """Show computation history."""
+    try:
+        from .interactive import ComputationHistory
+        history = ComputationHistory()
+        
+        if all:
+            limit = 100  # Show more than default
+        elif limit <= 0:
+            raise typer.BadParameter("Limit must be a positive integer")
+        
+        history.display_recent(limit=limit)
+    except ImportError as e:
+        typer.echo(f"History management not available: {e}")
+
+
+@history_app.command("search")
+def history_search(
+    query: str = typer.Argument(..., help="Search query for computation history")
+) -> None:
+    """Search computation history."""
+    try:
+        from .interactive import ComputationHistory
+        history = ComputationHistory()
+        history.display_search_results(query)
+        
+        # Ask if user wants to reuse a computation
+        if typer.confirm("Select a computation from results?", default=False):
+            params = history.interactive_select()
+            if params:
+                typer.echo(f"Selected computation: {params}")
+                # Run computation
+                braid = _parse_int_list(params["braid"]) if isinstance(params["braid"], str) else params["braid"]
+                if braid is not None:
+                    result = fk(braid, params["degree"], **params)
+                    _print_result(result, params.get("symbolic", False))
+                else:
+                    typer.echo("Error: Invalid braid data")
+    except ImportError as e:
+        typer.echo(f"History management not available: {e}")
+
+
+@history_app.command("clear")
+def history_clear(
+    confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation prompt")
+) -> None:
+    """Clear computation history."""
+    if not confirm:
+        if not typer.confirm("Clear all computation history? This cannot be undone.", default=False):
+            typer.echo("History clearing cancelled.")
+            return
+    
+    try:
+        from .interactive import ComputationHistory
+        history = ComputationHistory()
+        if history.clear_history():
+            typer.echo("✅ History cleared successfully")
+        else:
+            typer.echo("❌ Failed to clear history")
+    except ImportError as e:
+        typer.echo(f"History management not available: {e}")
+
+
+@history_app.command("export")
+def history_export(
+    filepath: str = typer.Argument(..., help="File path to export history to")
+) -> None:
+    """Export computation history to a file."""
+    try:
+        from .interactive import ComputationHistory
+        history = ComputationHistory()
+        if history.export_history(filepath):
+            typer.echo(f"✅ History exported to {filepath}")
+        else:
+            typer.echo("❌ Failed to export history")
+    except ImportError as e:
+        typer.echo(f"History management not available: {e}")
+
+
+@history_app.command("import")
+def history_import(
+    filepath: str = typer.Argument(..., help="File path to import history from")
+) -> None:
+    """Import computation history from a file."""
+    try:
+        from .interactive import ComputationHistory
+        history = ComputationHistory()
+        if history.import_history(filepath):
+            typer.echo(f"✅ History imported from {filepath}")
+        else:
+            typer.echo("❌ Failed to import history")
+    except ImportError as e:
+        typer.echo(f"History management not available: {e}")
 
 
 # -------------------------------------------------------------------------
@@ -306,63 +479,23 @@ def _print_result(result: dict, symbolic: bool = False) -> None:
 
 
 # -------------------------------------------------------------------------
-# Command handlers
+# Enhanced interactive mode functions
 # -------------------------------------------------------------------------
-def handle_simple(args) -> None:
-    """Handle simple command."""
-    braid = _parse_int_list(args.braid)
-    if not braid:
-        raise ValueError("Could not parse braid into a non-empty list of integers")
-
-    result = fk(
-        braid, args.degree, symbolic=getattr(args, "symbolic", False)
-    )  # Simple mode auto-detected
-    _print_result(result, getattr(args, "symbolic", False))
-
-
-def handle_config(args) -> None:
-    """Handle config command."""
-    config_paths = args.config_paths
-
-    # If only one config file, process normally
-    if len(config_paths) == 1:
-        result = fk(config_paths[0])  # Config mode auto-detected
-        _print_result(result, False)
-        return
-
-    # Multiple config files - process each one
-    print(f"\nProcessing {len(config_paths)} configuration files...\n")
-    print("=" * 60)
-
-    results = {}
-    for i, config_path in enumerate(config_paths, 1):
-        print(f"\n[{i}/{len(config_paths)}] Processing: {config_path}")
-        print("-" * 60)
-
-        try:
-            result = fk(config_path)
-            results[config_path] = result
-
-            # Print result for this config
-            _print_result(result, False)
-            print()
-
-        except Exception as e:
-            print(f"Error processing {config_path}: {e}")
-            results[config_path] = {"error": str(e)}
-            continue
-
-    print("=" * 60)
-    print(f"\nCompleted processing {len(config_paths)} configuration files.")
-
-    # Summary
-    successful = sum(1 for r in results.values() if "error" not in r)
-    failed = len(results) - successful
-    print(f"Successful: {successful}, Failed: {failed}")
+def handle_interactive() -> None:
+    """Handle enhanced interactive mode when called directly."""
+    try:
+        # Try to import enhanced interactive components
+        from .interactive import run_enhanced_interactive
+        run_enhanced_interactive()
+    except ImportError as e:
+        # Fallback to basic interactive mode if enhanced components not available
+        typer.echo("Enhanced interactive mode not available. Using basic mode.")
+        typer.echo(f"Error: {e}")
+        handle_basic_interactive()
 
 
-def handle_interactive(args) -> None:
-    """Handle interactive command."""
+def handle_basic_interactive() -> None:
+    """Handle basic interactive mode (fallback)."""
     params = _prompt_interactive()
 
     # Parse braid
@@ -385,123 +518,39 @@ def handle_interactive(args) -> None:
     _print_result(result, params["symbolic"])
 
 
-def handle_template_create(args) -> None:
-    """Handle template create command."""
-    import os
-
-    output_path = args.output_path
-
-    # Check if file exists and overwrite not specified
-    if os.path.exists(output_path) and not args.overwrite:
-        print(f"Error: File '{output_path}' already exists. Use --overwrite to replace it.")
-        sys.exit(1)
-
-    # Generate template content
-    template_content = """# FK Computation Configuration Template
-# This is a YAML configuration file for computing FK invariants
-
-# Required: Braid word as a list of integers
-# Examples: [1, -2, 3], [1, 1, 1] (trefoil), [1, -2, 1, -2] (figure eight)
-braid: [1, -2, 3]
-
-# Required: Computation degree (positive integer)
-degree: 2
-
-# Optional: Name for this computation (used for output files if save_data is true)
-# name: my_knot
-
-# Optional: Preset configuration (fast, accurate, or parallel)
-# Presets provide sensible defaults for different use cases
-# preset: accurate
-
-# Optional: Maximum number of worker processes for parallel computation
-# max_workers: 4
-
-# Optional: Chunk size for parallel processing
-# chunk_size: 65536
-
-# Optional: Number of threads for C++ computation
-# threads: 1
-
-# Optional: Include flip symmetry in computation
-# include_flip: false
-
-# Optional: Maximum number of shifts to consider
-# max_shifts: null
-
-# Optional: Enable verbose logging
-# verbose: false
-
-# Optional: Save computation data to files
-# save_data: false
-
-# Optional: Path to precomputed ILP file (advanced usage)
-# ilp_file: path/to/precomputed.ilp
-
-# Optional: Precomputed inversion data (advanced usage)
-# Provide component->signs mapping
-# inversion:
-#   0: [1, -1, 1]
-#   1: [-1, 1]
-"""
-
-    # Write template to file
-    with open(output_path, 'w') as f:
-        f.write(template_content)
-
-    print(f"Template created: {output_path}")
-    print(f"\nEdit the file to configure your computation, then run:")
-    print(f"  fk config {output_path}")
-
-
 # -------------------------------------------------------------------------
-# Main entry point
+# Main entry point with legacy argument handling
 # -------------------------------------------------------------------------
 def main(argv: Optional[List[str]] = None) -> None:
     """Main entry point for the fk CLI tool."""
     if argv is None:
         argv = sys.argv
 
-    parser = build_parser()
-
-    # Check if no arguments provided - default to interactive mode
-    if len(argv) == 1:
-        argv = argv[:1] + ["interactive"]
-
-    # Check if user is passing braid and degree without explicit "simple" subcommand
-    # e.g., fk "[1,-2,3]" 2 instead of fk simple "[1,-2,3]" 2
+    # Handle legacy simple mode: fk "[1,-2,3]" 2 -> fk simple "[1,-2,3]" 2
     if len(argv) >= 3 and argv[1] not in [
-        "simple",
-        "config",
-        "interactive",
-        "-h",
-        "--help",
+        "simple", "config", "interactive", "template", "-h", "--help", "--version"
     ]:
-        # Try to detect if first arg looks like a braid and second like a degree
         try:
             # Check if second argument is an integer (degree)
             int(argv[2])
-            # If so, insert "simple" as the subcommand
-            argv = argv[:1] + ["simple"] + argv[1:]
+            # If so, inject "simple" as the subcommand
+            new_argv = [argv[0], "simple"] + argv[1:]
+            # Update sys.argv for typer
+            original_argv = sys.argv[:]
+            sys.argv = new_argv
+            try:
+                app()
+            finally:
+                sys.argv = original_argv
+            return
         except (ValueError, IndexError):
             # Not a simple mode pattern, proceed normally
             pass
 
-    args = parser.parse_args(argv[1:])
+    # Check if no arguments provided - default to interactive mode
+    if len(argv) == 1:
+        handle_interactive()
+        return
 
-    # Route to appropriate handler based on subcommand
-    if args.command == "simple":
-        handle_simple(args)
-    elif args.command == "config":
-        handle_config(args)
-    elif args.command == "interactive":
-        handle_interactive(args)
-    elif args.command == "template":
-        if args.template_command == "create":
-            handle_template_create(args)
-        else:
-            # Show template subcommand help
-            parser.parse_args(["template", "-h"])
-    else:
-        # No valid subcommand provided - show help
-        parser.print_help()
+    # Run typer normally
+    app()

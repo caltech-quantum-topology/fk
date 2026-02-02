@@ -10,9 +10,9 @@ from typing import Optional, Dict, Any, List, Union
 import argparse
 from importlib import resources
 
+HAS_YAML = False
 try:
     import yaml
-
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
@@ -142,45 +142,25 @@ def _load_config_file(config_path: str) -> Dict[str, Any]:
                 raise ImportError(
                     "PyYAML is required for YAML config files. Install with: pip install PyYAML"
                 )
+            import yaml
             return yaml.safe_load(f)
         else:
             return json.load(f)
 
 
-def _parse_bool(default_true: bool):
-    """Return a function that adds --foo / --no-foo toggle flags for a bool."""
-
-    def add(parser: argparse.ArgumentParser, name: str, help_text: str):
-        dest = name.replace("-", "_")
-        group = parser.add_mutually_exclusive_group()
-        if default_true:
-            group.add_argument(
-                f"--{name}",
-                dest=dest,
-                action="store_true",
-                help=f"{help_text} (default)",
-            )
-            group.add_argument(
-                f"--no-{name}",
-                dest=dest,
-                action="store_false",
-                help=f"Disable {help_text}",
-            )
-            parser.set_defaults(**{dest: True})
-        else:
-            group.add_argument(
-                f"--{name}", dest=dest, action="store_true", help=f"Enable {help_text}"
-            )
-            group.add_argument(
-                f"--no-{name}",
-                dest=dest,
-                action="store_false",
-                help=f"{help_text} (default)",
-            )
-            parser.set_defaults(**{dest: False})
-        return group
-
-    return add
+def _parse_bool(default_true: bool = False):
+    """Legacy function for backward compatibility.
+    
+    Note: This function was used for argparse. With typer, boolean flags
+    are handled directly by typer.Option, so this function is kept only
+    for backward compatibility but should be replaced in new code.
+    """
+    # For typer, boolean flags are handled directly in function signatures
+    # This function exists only for backward compatibility
+    if default_true:
+        return lambda parser, name, help_text: None
+    else:
+        return lambda parser, name, help_text: None
 
 
 # -------------------------------------------------------------------------
@@ -284,6 +264,8 @@ def fk(
     # 1. Config file mode detection
     if isinstance(braid_or_config, str) or config is not None:
         config_path = config or braid_or_config
+        if not isinstance(config_path, str):
+            raise TypeError("Config path must be a string")
         return _fk_from_config(config_path)
 
     # 2. Simple mode - just braid and degree with defaults
@@ -588,6 +570,7 @@ def _fk_compute(
     inversion: Optional[Dict[str, Any]] = None,
     inversion_file: Optional[str] = None,
     partial_signs: Optional[List[int]] = None,
+    _progress_callback: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Internal FK computation function performing the complete FK invariant calculation.
@@ -655,6 +638,11 @@ def _fk_compute(
     # --- Step 1: Inversion data ---
     if ilp is None and ilp_file is None:
         logger.debug("No ilp data provided, I need to calculate it")
+        
+        # Start progress tracking if callback provided
+        inversion_task = None
+        if _progress_callback:
+            inversion_task = _progress_callback.start_inversion(braid, degree)
 
         if inversion is not None and inversion_file is not None:
             logger.error(
@@ -667,9 +655,9 @@ def _fk_compute(
 
         if inversion is None and inversion_file is None:
             logger.debug("Calculating inversion data")
-            inversion= get_sign_assignment_parallel(
+            inversion = get_sign_assignment_parallel(
                 braid,
-                partial_signs=partial_signs,
+                partial_signs=partial_signs,  # type: ignore
                 degree=degree,
                 verbose=verbose,
                 max_workers=max_workers,
@@ -679,7 +667,15 @@ def _fk_compute(
             )
             logger.debug("Inversion data calculated")
 
-        _assess_inversion(inversion)
+        if inversion is not None:
+            _assess_inversion(inversion)
+            
+            # Complete inversion progress if tracking
+            if _progress_callback and inversion_task is not None:
+                if 'metadata' in inversion and 'components' in inversion['metadata']:
+                    _progress_callback.complete_inversion(inversion['metadata']['components'])
+                else:
+                    _progress_callback.complete_inversion(len(braid))
 
     if save_data:
         with open(link_name + "_inversion.json", "w") as f:
@@ -691,12 +687,19 @@ def _fk_compute(
             "Both ilp data and ilp file are passed through. Pass one or the other"
         )
 
+    # Start ILP progress if tracking
+    ilp_task = None
+    if _progress_callback:
+        ilp_task = _progress_callback.start_ilp_generation()
+
     if ilp is None and ilp_file is not None:
         logger.debug("Loading ILP from file")
         ilp = _load_ilp_file(ilp_file)
 
     if ilp is None and ilp_file is None:
         logger.debug("Calculating ILP data")
+        if inversion is None:
+            raise ValueError("Inversion data is required for ILP calculation")
         ilp = fk_ilp(
             braid,
             degree=degree,
@@ -704,6 +707,12 @@ def _fk_compute(
             outfile=link_name + "_ilp.csv",
         )
         logger.debug("ILP data calculated")
+        
+        # Complete ILP progress if tracking
+        if _progress_callback and ilp_task is not None:
+            # Estimate constraints (this is approximate)
+            estimated_constraints = len(braid) * degree * 10  # Rough estimate
+            _progress_callback.complete_ilp_generation(estimated_constraints)
 
     # --- Step 3: FK invariant computation ---
     bin_path = _binary_path("fk_main")
@@ -711,6 +720,15 @@ def _fk_compute(
         ilp_file = f"{link_name}_ilp"
     else:
         ilp_file = ilp_file[:ilp_file.index(".")]
+    
+    # Estimate total points for progress tracking
+    estimated_points = len(braid) * degree * 50  # Rough estimate
+    
+    # Start FK computation progress if tracking
+    fk_task = None
+    if _progress_callback:
+        fk_task = _progress_callback.start_fk_computation(threads, estimated_points)
+    
     cmd = [bin_path, ilp_file, f"{link_name}", "--threads", str(threads)]
     if verbose:
         subprocess.run(cmd, check=True)
@@ -721,6 +739,18 @@ def _fk_compute(
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+    
+    # Complete FK progress if tracking
+    if _progress_callback and fk_task is not None:
+        _progress_callback.update_fk_progress(estimated_points, estimated_points)  # Mark as complete
+        # Get actual term count from result file for accurate completion
+        try:
+            with open(link_name + ".json", "r") as f:
+                result_data = json.load(f)
+                terms_count = len(result_data.get("terms", []))
+                _progress_callback.complete_fk_computation(terms_count)
+        except:
+            _progress_callback.complete_fk_computation(0)  # Fallback
 
     with open(link_name + ".json", "r") as f:
         fk_result = json.load(f)
@@ -734,22 +764,27 @@ def _fk_compute(
     # Get the braid that was actually used (may be modified during inversion computation)
     # If inversion was computed, the braid might have been canonicalized
     # If no inversion was computed (e.g., when ILP file provided), use original braid
-    computed_braid = inversion["braid"] if inversion else braid
+    computed_braid = inversion["braid"] if inversion and "braid" in inversion else braid
 
     # Extract number of components (strands) from the braid
     braid_states = BraidStates(computed_braid)
     components = braid_states.n_components
 
     # Prepare result dictionary
+    if "metadata" not in fk_result:
+        fk_result["metadata"] = {}
     fk_result["metadata"]["braid"] = computed_braid
     fk_result["metadata"]["inversion"] = inversion["inversion_data"] if inversion else None
     fk_result["metadata"]["components"] = components
 
-    # Add symbolic representation if requested and SymPy is available
+    # Add symbolic representation if requested and Sympy is available
     if symbolic and SYMPY_AVAILABLE:
         try:
             symbolic_repr = format_symbolic_output(fk_result, "pretty")
-            fk_result["symbolic"] = symbolic_repr
+            if "metadata" in fk_result:
+                fk_result["metadata"]["symbolic"] = symbolic_repr
+            else:
+                fk_result["symbolic"] = symbolic_repr
         except Exception as e:
             if verbose:
                 print(f"Warning: Could not generate symbolic representation: {e}")
