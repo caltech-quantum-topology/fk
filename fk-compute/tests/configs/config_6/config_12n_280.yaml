@@ -1,0 +1,5 @@
+name: 12n_280
+braid: [-1, 2, 3, 4, -1, 2, -3, 2, -3, 4, 3, 2]
+degree: 6
+save_data: true
+threads: 24
