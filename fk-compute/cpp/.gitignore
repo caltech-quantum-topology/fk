@@ -8,6 +8,34 @@ build/
 *.out
 *.exe
 
+# Executables built in this directory
+/fk_main
+/fk_segments_links
+/fk_computation_refactored
+/polynomial_example
+/fmpoly_example
+/fmpoly_compatibility_test
+/performance_comparison_test
+/test_getQPolynomial
+/debug_fmpoly
+/arithmetic_test
+/example
+/inequality_example
+/fk_computation_test
+/trefoil_fk_example
+/trefoil_simple_example
+/trefoil_demo
+/trefoil_complete_example
+/parser_comparison_test
+/testing
+/bilvector_operations
+/new_qbinomials
+/xq_poch_example
+/random_fmpoly
+/bmpoly_test
+/inverse_qpochhammer_test
+/benchmark_poly
+
 # Compilation database
 compile_commands.json
 
