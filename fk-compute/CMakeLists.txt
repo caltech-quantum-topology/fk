@@ -150,6 +150,20 @@ endif()
 
 target_link_libraries(fk_main PRIVATE ${LINK_LIBS})
 
+# ---- Post-build: Copy executable to local src/fkcompute/_bin directory ----
+# Ensure the local _bin directory exists
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/fkcompute/_bin")
+
+# Add custom command to copy the executable after it's built
+add_custom_command(
+    TARGET fk_main POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "$<TARGET_FILE:fk_main>"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/fkcompute/_bin/fk_main"
+    COMMENT "Copying fk_main executable to src/fkcompute/_bin/"
+    VERBATIM
+)
+
 # ---- Installation into the Python wheel ---------------------------------------
 include(GNUInstallDirs)
 install(TARGETS fk_main

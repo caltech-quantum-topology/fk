@@ -129,13 +129,16 @@ def template_create_command(
 # This is a YAML configuration file for computing FK invariants
 
 # Required: Braid word as a list of integers
-braid: [1, -2, 3]
+braid: [1, -2, 1, -2]
 
 # Required: Computation degree (positive integer)
-degree: 2
+degree: 15 
 
 # Optional: Name for this computation (used for output files if save_data is true)
 # name: my_knot
+
+# Optional: Inversion data
+# inversion: {0: [1, 1, -1, 1, 1, 1, -1, 1]}
 
 # Optional: Preset configuration (single thread, or parallel)
 # preset: single thread

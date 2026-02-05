@@ -63,6 +63,77 @@ Then access documentation with:
 man fk
 ```
 
+## Mathematica (Wolfram Language) Wrapper: `FkCompute`
+
+This repo ships a small Wolfram Language wrapper (Paclet) that lets you call the
+`fkcompute` Python API from inside Mathematica.
+
+### Prerequisites
+
+- Mathematica 12.0 or later
+- Python 3.9+ with `fkcompute` package installed (see Python installation above)
+
+### Install
+
+**1. Install the Python package:**
+```bash
+pip install .
+```
+
+**2. Install the Mathematica paclet:**
+```wl
+PacletInstall[Directory["/path/to/fk-compute/mathematica/FkCompute"]]
+```
+
+Replace `/path/to/fk-compute` with the absolute path to this repository on your system.
+
+This permanently installs the paclet, so you can use `Needs["FkCompute"]` in any future Mathematica session.
+
+### Load and Test
+
+```wl
+Needs["FkCompute`"]
+FkComputeVersion[]
+```
+
+If successful, `FkComputeVersion[]` will return version information for both Python and the `fkcompute` package.
+
+### Usage
+
+Compute from a braid word + degree:
+
+```wl
+res = FkCompute[{1, 1, 1}, 2, "Symbolic" -> True, "Threads" -> 4];
+res["metadata", "symbolic"]
+```
+
+Run from a YAML/JSON config file (same format as the `fk config ...` CLI):
+
+```wl
+res = FkCompute["config.yaml"];
+```
+
+### Selecting Python
+
+By default the wrapper calls `python3`. To use a specific interpreter:
+
+```wl
+$FkComputePythonExecutable = "/full/path/to/python";
+(* or per-call *)
+FkCompute[{1, 1, 1}, 2, "PythonExecutable" -> "/full/path/to/python"]
+```
+
+### Development (Optional)
+
+For development work, you can load the paclet directly from the source directory without copying:
+
+```wl
+PacletDirectoryLoad["/path/to/fk-compute/mathematica"]
+Needs["FkCompute`"]
+```
+
+Note: This only loads the paclet for the current Mathematica session.
+
 ## Quick Start
 
 ### Interactive Mode
