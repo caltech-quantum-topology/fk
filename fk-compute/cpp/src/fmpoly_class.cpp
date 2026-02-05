@@ -8,20 +8,6 @@
 #include <sstream>
 #include <stdexcept>
 
-namespace {
-fmpz_mpoly_ctx_t g_ctx;
-bool g_ctx_initialized = false;
-} // namespace
-
-struct FMPolyCtxGuard {
-  ~FMPolyCtxGuard() {
-    if (g_ctx_initialized) {
-      fmpz_mpoly_ctx_clear(g_ctx);
-    }
-  }
-};
-
-static FMPolyCtxGuard g_ctx_guard;
 
 FMPoly::FMPoly(int numVariables, int degree, const std::vector<int> &maxDegrees)
     : numXVariables(numVariables), allGroundPowers(numVariables + 1, 0) {
@@ -75,10 +61,58 @@ FMPoly::FMPoly(const FMPoly &source, int newNumVariables,
 
   setupContext();
 
-  // Copy terms from source, mapping the single variable to targetVariableIndex
-  // This is a simplified implementation - in practice, we'd iterate through
-  // the source polynomial's terms and map them appropriately
-  fmpz_mpoly_set(poly, source.poly, ctx);
+  // Copy terms from source, mapping the single x-variable to targetVariableIndex
+  // Source has 2 FLINT vars: [q, x0]
+  // Destination has numXVariables+1 FLINT vars: [q, x0, x1, ..., x_{n-1}]
+  slong numTerms = fmpz_mpoly_length(source.poly, source.ctx);
+
+  // Allocate source exponent pointers (2 vars: q and x0)
+  fmpz *src_exps = (fmpz *)flint_malloc(2 * sizeof(fmpz));
+  for (int i = 0; i < 2; i++) {
+    fmpz_init(&src_exps[i]);
+  }
+
+  // Allocate destination exponent pointers (numXVariables+1 vars)
+  int dst_nvars = numXVariables + 1;
+  fmpz *dst_exps = (fmpz *)flint_malloc(dst_nvars * sizeof(fmpz));
+  fmpz **dst_exp_ptrs = (fmpz **)flint_malloc(dst_nvars * sizeof(fmpz *));
+  for (int i = 0; i < dst_nvars; i++) {
+    fmpz_init(&dst_exps[i]);
+    dst_exp_ptrs[i] = &dst_exps[i];
+  }
+
+  fmpz_t coeff;
+  fmpz_init(coeff);
+
+  for (slong t = 0; t < numTerms; t++) {
+    // Get coefficient and exponents from source
+    fmpz_mpoly_get_term_coeff_fmpz(coeff, source.poly, t, source.ctx);
+
+    fmpz *src_exp_ptrs[2] = {&src_exps[0], &src_exps[1]};
+    fmpz_mpoly_get_term_exp_fmpz(src_exp_ptrs, source.poly, t, source.ctx);
+
+    // Map exponents: q stays at index 0, x0 maps to targetVariableIndex+1
+    for (int i = 0; i < dst_nvars; i++) {
+      fmpz_zero(&dst_exps[i]);
+    }
+    fmpz_set(&dst_exps[0], &src_exps[0]);  // q exponent
+    fmpz_set(&dst_exps[targetVariableIndex + 1], &src_exps[1]);  // x exponent
+
+    // Set in destination polynomial
+    fmpz_mpoly_set_coeff_fmpz_fmpz(poly, coeff, dst_exp_ptrs, ctx);
+  }
+
+  // Cleanup
+  fmpz_clear(coeff);
+  for (int i = 0; i < 2; i++) {
+    fmpz_clear(&src_exps[i]);
+  }
+  flint_free(src_exps);
+  for (int i = 0; i < dst_nvars; i++) {
+    fmpz_clear(&dst_exps[i]);
+  }
+  flint_free(dst_exps);
+  flint_free(dst_exp_ptrs);
 }
 
 FMPoly::FMPoly(const FMPoly &other)
@@ -110,31 +144,16 @@ FMPoly &FMPoly::operator=(const FMPoly &other) {
 
 FMPoly::~FMPoly() {
   fmpz_mpoly_clear(poly, ctx);
-  // fmpz_mpoly_ctx_clear(ctx);
+  fmpz_mpoly_ctx_clear(ctx);
 }
 
-void FMPoly::setupContext() {
-  // Initialize the global context once
-  if (!g_ctx_initialized) {
-    fmpz_mpoly_ctx_init(g_ctx, numXVariables + 1, ORD_LEX);
-    g_ctx_initialized = true;
-  }
-
-  // Copy the global context into this->ctx (cheap struct copy, no new init)
-  ctx[0] = g_ctx[0];
-
-  // Initialize the polynomial using this context
-  fmpz_mpoly_init(poly, ctx);
-}
-
-/*
 void FMPoly::setupContext() {
   // Initialize FLINT context with numXVariables + 1 variables (q, x1, x2, ...,
-  // xn)
+  // xn). Each instance needs its own context since different FMPoly objects
+  // can have different numbers of variables.
   fmpz_mpoly_ctx_init(ctx, numXVariables + 1, ORD_LEX);
   fmpz_mpoly_init(poly, ctx);
 }
-*/
 
 void FMPoly::convertExponents(int qPower, const std::vector<int> &xPowers,
                               fmpz **exps, slong *exp_bits) const {
