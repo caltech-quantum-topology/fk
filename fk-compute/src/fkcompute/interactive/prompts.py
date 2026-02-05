@@ -95,8 +95,10 @@ def get_computation_parameters(
     if name:
         params["name"] = name
 
-    symbolic = ValidatedInput.get_symbolic()
+    symbolic_opts = ValidatedInput.get_symbolic()
+    symbolic = symbolic_opts["symbolic"]
     params["symbolic"] = symbolic
+    params["format_type"] = symbolic_opts["format_type"]
 
     save_data = ValidatedInput.get_save_preference()
     params["save_data"] = save_data

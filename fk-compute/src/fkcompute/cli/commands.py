@@ -54,14 +54,22 @@ def simple_command(
     braid: str = typer.Argument(..., help='Braid word. Examples: "[1,-2,3]", "1,-2,3", or "1 -2 3"'),
     degree: int = typer.Argument(..., help="Computation degree"),
     symbolic: bool = typer.Option(False, "--symbolic", help="Print result in human-readable symbolic form using SymPy"),
+    format_type: str = typer.Option(
+        "pretty", "--format", "-f",
+        help="Symbolic output format: pretty, inline, mathematica, latex"
+    ),
 ) -> None:
     """Simple FK computation with minimal options."""
     braid_list = parse_int_list(braid)
     if not braid_list:
         raise typer.BadParameter("Could not parse braid into a non-empty list of integers")
 
+    # If --format is explicitly passed (not default), auto-enable symbolic
+    if format_type != "pretty":
+        symbolic = True
+
     result = fk(braid_list, degree, symbolic=symbolic)
-    _print_result(result, symbolic)
+    _print_result(result, symbolic, format_type=format_type)
 
 
 # -------------------------------------------------------------------------
@@ -314,6 +322,13 @@ def _prompt_interactive() -> dict:
     symbolic_input = input("Symbolic: ").strip().lower()
     symbolic = symbolic_input in ["y", "yes", "true", "1"]
 
+    format_type = "pretty"
+    if symbolic:
+        print("\nChoose symbolic format (pretty, inline, latex, mathematica):")
+        format_input = input("Format [pretty]: ").strip().lower()
+        if format_input in ("pretty", "inline", "latex", "mathematica"):
+            format_type = format_input
+
     print("\nSave the output?")
     save_input = input("Save: ").strip().lower()
     save = save_input in ["y", "yes", "true", "1"]
@@ -328,15 +343,16 @@ def _prompt_interactive() -> dict:
         "threads": threads,
         "name": name,
         "symbolic": symbolic,
+        "format_type": format_type,
         "save_data": save
     }
 
 
-def _print_result(result: dict, symbolic: bool = False) -> None:
+def _print_result(result: dict, symbolic: bool = False, format_type: str = "pretty") -> None:
     """Helper function to print result in requested format."""
     if symbolic:
         if SYMPY_AVAILABLE:
-            print_symbolic_result(result, format_type="pretty", show_matrix=False)
+            print_symbolic_result(result, format_type=format_type, show_matrix=False)
         else:
             print("Error: SymPy is required for symbolic output. Install with: pip install sympy")
             print("Falling back to JSON output:")
@@ -374,4 +390,4 @@ def handle_basic_interactive() -> None:
         kwargs["name"] = params["name"]
 
     result = fk(braid, params["degree"], **kwargs)
-    _print_result(result, params["symbolic"])
+    _print_result(result, params["symbolic"], format_type=params.get("format_type", "pretty"))

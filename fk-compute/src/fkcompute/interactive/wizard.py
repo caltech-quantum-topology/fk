@@ -130,8 +130,9 @@ class FKWizard:
             # Run computation without debug output
 
             # Extract degree before removing from params to avoid passing it twice
+            # Also strip format_type which is a display concern, not a compute param
             degree = params['degree']
-            clean_params = {k: v for k, v in params.items() if k not in ('degree', 'braid')}
+            clean_params = {k: v for k, v in params.items() if k not in ('degree', 'braid', 'format_type')}
 
             # Start progress tracking
             with FKProgressTracker() as progress:
@@ -201,7 +202,11 @@ class FKWizard:
         
         # Show actual results using existing print function
         from ..cli.commands import _print_result
-        _print_result(result, params.get('symbolic', False))
+        _print_result(
+            result,
+            params.get('symbolic', False),
+            format_type=params.get('format_type', 'pretty'),
+        )
 
 
 class QuickWizard:
@@ -218,37 +223,43 @@ class QuickWizard:
             # Get essential parameters only
             braid = ValidatedInput.get_braid()
             degree = ValidatedInput.get_degree(braid=braid)
-            symbolic = Confirm.ask("Generate symbolic output?", default=False)
-            
+            symbolic_opts = ValidatedInput.get_symbolic()
+            symbolic = symbolic_opts["symbolic"]
+            format_type = symbolic_opts["format_type"]
+
             # Basic parameters
             params = {
                 'braid': braid,
                 'degree': degree,
                 'symbolic': symbolic,
+                'format_type': format_type,
                 'threads': 1,
                 'save_data': False
             }
-            
+
             # Show quick summary
             console.print("\n[bold]Quick Summary:[/bold]")
             console.print(f"  Braid: {braid}")
             console.print(f"  Degree: {degree}")
-            console.print(f"  Symbolic: {'Yes' if symbolic else 'No'}")
+            if symbolic:
+                console.print(f"  Symbolic: Yes ({format_type})")
+            else:
+                console.print(f"  Symbolic: No")
             console.print()
-            
+
             if not Confirm.ask("Proceed?", default=True):
                 console.print("Cancelled.")
                 return
-            
+
             # Run computation with basic progress
             start_time = time.time()
             result = fk(braid_or_config=braid, degree=degree, symbolic=symbolic)
             computation_time = time.time() - start_time
-            
+
             # Display results
             console.print("\n[bold green]✅ Results:[/bold green]")
             from ..cli.commands import _print_result
-            _print_result(result, symbolic)
+            _print_result(result, symbolic, format_type=format_type)
             
             console.print(f"\n[dim]Completed in {computation_time:.1f} seconds[/dim]")
             

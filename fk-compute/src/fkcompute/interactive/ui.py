@@ -280,18 +280,40 @@ class ValidatedInput:
             return name if name else None
     
     @staticmethod
-    def get_symbolic() -> bool:
-        """Get symbolic output preference."""
+    def get_symbolic() -> Dict[str, Any]:
+        """Get symbolic output preference and format type.
+
+        Returns a dict with keys ``"symbolic"`` (bool) and
+        ``"format_type"`` (str, one of pretty/inline/latex/mathematica).
+        """
         with BorderedSection("Output Format", color="purple"):
             console.print("Choose output format:", style="dim")
             console.print("  • JSON - Machine-readable, standard format")
             console.print("  • Symbolic - Human-readable polynomial format (requires SymPy)")
             console.print()
-            
-            return Confirm.ask(
+
+            symbolic = Confirm.ask(
                 "Generate symbolic output",
-                default=False
+                default=False,
             )
+
+            format_type = "pretty"
+            if symbolic:
+                console.print()
+                console.print("Choose symbolic format:", style="dim")
+                console.print("  • [cyan]pretty[/cyan]       — Unicode pretty-print (default)")
+                console.print("  • [cyan]inline[/cyan]       — Compact one-line string")
+                console.print("  • [cyan]latex[/cyan]        — LaTeX expression")
+                console.print("  • [cyan]mathematica[/cyan]  — Wolfram Language / Mathematica")
+                console.print()
+
+                format_type = Prompt.ask(
+                    "Symbolic format",
+                    choices=["pretty", "inline", "latex", "mathematica"],
+                    default="pretty",
+                )
+
+            return {"symbolic": symbolic, "format_type": format_type}
     
     @staticmethod
     def get_save_preference() -> bool:
@@ -411,7 +433,11 @@ class ComputationSummary:
             if params.get('name'):
                 table.add_row("Name", params['name'])
             
-            table.add_row("Symbolic", "Yes" if params.get('symbolic') else "No")
+            if params.get('symbolic'):
+                fmt = params.get('format_type', 'pretty')
+                table.add_row("Symbolic", f"Yes ({fmt})")
+            else:
+                table.add_row("Symbolic", "No")
             table.add_row("Save data", "Yes" if params.get('save_data') else "No")
             
             console.print(table)

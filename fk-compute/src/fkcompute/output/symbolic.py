@@ -110,9 +110,10 @@ def matrix_to_polynomial(fk_result: Dict) -> 'sp.Expr':
     return fk_polynomial
 
 
-def collect_by_x_powers(polynomial: 'sp.Expr') -> 'sp.Expr':
+def collect_by_variables(polynomial: 'sp.Expr') -> 'sp.Expr':
     """
-    Reorganize polynomial by collecting terms with common powers of x variable.
+    Reorganize polynomial by collecting terms with common powers of all
+    topological variables (everything except q).
 
     Parameters
     ----------
@@ -122,23 +123,24 @@ def collect_by_x_powers(polynomial: 'sp.Expr') -> 'sp.Expr':
     Returns
     -------
     sympy.Expr
-        Polynomial with terms collected by powers of x.
+        Polynomial with terms collected by all non-q variables.
     """
     check_sympy_available()
 
     symbols_in_poly = polynomial.free_symbols
-    x_symbol = None
+    collect_vars = []
+    for sym in sorted(symbols_in_poly, key=str):
+        if str(sym) != 'q':
+            collect_vars.append(sym)
 
-    for sym in symbols_in_poly:
-        if str(sym) == 'x':
-            x_symbol = sym
-            break
-
-    if x_symbol is None:
+    if not collect_vars:
         return polynomial
 
-    collected = sp.collect(polynomial, x_symbol, evaluate=True)
-    return collected
+    return sp.collect(polynomial, collect_vars, evaluate=True)
+
+
+# Backward-compatible alias
+collect_by_x_powers = collect_by_variables
 
 
 def format_symbolic_output(
@@ -154,7 +156,7 @@ def format_symbolic_output(
     fk_result
         FK computation result dictionary.
     format_type
-        Output format - "pretty", "latex", or "str".
+        Output format - "pretty", "latex", "inline", "mathematica", or "str".
     max_degree
         Maximum degree to display (if None, shows all terms).
 
@@ -165,18 +167,22 @@ def format_symbolic_output(
     """
     check_sympy_available()
 
-    if format_type not in ["pretty", "latex", "str"]:
-        raise ValueError(f"Unsupported format_type: {format_type}")
+    valid_formats = ("pretty", "latex", "str", "inline", "mathematica")
+    if format_type not in valid_formats:
+        raise ValueError(f"Unsupported format_type: {format_type}. Choose from: {', '.join(valid_formats)}")
 
     try:
         fk_polynomial = matrix_to_polynomial(fk_result)
-        fk_polynomial_collected = collect_by_x_powers(fk_polynomial)
+        fk_polynomial_collected = collect_by_variables(fk_polynomial)
 
         if format_type == "pretty":
             return sp.pretty(fk_polynomial_collected, use_unicode=True)
         elif format_type == "latex":
             return latex(fk_polynomial_collected)
-        else:
+        elif format_type == "mathematica":
+            from sympy.printing.mathematica import mathematica_code
+            return mathematica_code(fk_polynomial_collected)
+        else:  # "inline" or "str"
             return str(fk_polynomial_collected)
 
     except Exception as e:
@@ -197,7 +203,7 @@ def print_symbolic_result(
     fk_result
         FK computation result dictionary.
     format_type
-        Output format - "pretty", "latex", or "str".
+        Output format - "pretty", "latex", "inline", "mathematica", or "str".
     max_degree
         Maximum degree to display.
     show_matrix

@@ -10,6 +10,7 @@ from .symbolic import (
     print_symbolic_result,
     matrix_to_polynomial,
     list_to_q_polynomial,
+    collect_by_variables,
     collect_by_x_powers,
     SYMPY_AVAILABLE,
 )
@@ -19,6 +20,7 @@ __all__ = [
     "print_symbolic_result",
     "matrix_to_polynomial",
     "list_to_q_polynomial",
+    "collect_by_variables",
     "collect_by_x_powers",
     "SYMPY_AVAILABLE",
 ]
