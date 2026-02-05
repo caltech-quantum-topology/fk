@@ -24,7 +24,13 @@ else
     OPENMP_LIBS = -fopenmp
 endif
 
-CXXFLAGS = -std=c++17 -Wall -Wextra -O3 -march=native -DNDEBUG $(OPENMP_FLAGS) -Iinclude $(shell pkg-config --cflags flint 2>/dev/null)
+ifeq ($(UNAME_S),Darwin)
+    OS_FLAGS =
+else
+    OS_FLAGS = -march=native
+endif
+
+CXXFLAGS = -std=c++17 -Wall -Wextra -O3 $(OS_FLAGS) -DNDEBUG $(OPENMP_FLAGS) -Iinclude $(shell pkg-config --cflags flint 2>/dev/null)
 DEBUG_FLAGS = -g -DDEBUG -O0
 PROFILE_FLAGS = -g -pg -fno-omit-frame-pointer -O2 -DNDEBUG
 FLINT_LIBS = $(shell pkg-config --libs flint 2>/dev/null || echo "-lflint") -lgmp
