@@ -65,15 +65,15 @@ man fk
 
 ## Mathematica (Wolfram Language) Wrapper: `FkCompute`
 
-This repo ships a small Wolfram Language wrapper (Paclet) that lets you call the
-`fkcompute` Python API from inside Mathematica.
+This repository includes a comprehensive Wolfram Language wrapper (Paclet) that provides seamless integration between Mathematica and the `fkcompute` Python package. The wrapper supports all core functionality including symbolic computation, batch processing, and configuration file execution.
 
 ### Prerequisites
 
 - Mathematica 12.0 or later
 - Python 3.9+ with `fkcompute` package installed (see Python installation above)
+- SymPy 1.10+ (for symbolic output functionality)
 
-### Install
+### Installation
 
 **1. Install the Python package:**
 ```bash
@@ -87,7 +87,7 @@ PacletInstall[Directory["/path/to/fk-compute/mathematica/FkCompute"]]
 
 Replace `/path/to/fk-compute` with the absolute path to this repository on your system.
 
-This permanently installs the paclet, so you can use `Needs["FkCompute"]` in any future Mathematica session.
+This permanently installs the paclet, enabling `Needs["FkCompute"]` in any future Mathematica session.
 
 ### Load and Test
 
@@ -96,43 +96,101 @@ Needs["FkCompute`"]
 FkComputeVersion[]
 ```
 
-If successful, `FkComputeVersion[]` will return version information for both Python and the `fkcompute` package.
+If successful, `FkComputeVersion[]` returns version information for both Python and the `fkcompute` package.
 
-### Usage
+### Usage Examples
 
-Compute from a braid word + degree:
-
+**Basic Computation:**
 ```wl
-res = FkCompute[{1, 1, 1}, 2, "Symbolic" -> True, "Threads" -> 4];
+res = FkCompute[{1, 1, 1}, 2];
 res["metadata", "symbolic"]
 ```
 
-Run from a YAML/JSON config file (same format as the `fk config ...` CLI):
+**Symbolic Computation:**
+```wl
+res = FkCompute[{1, 1, 1}, 2, "Symbolic" -> True, "Threads" -> 4];
+res["metadata", "symbolic"]
+(* Output: q - q^3 + x^2*(-q^2 + q^6) *)
+```
 
+**Configuration File Execution:**
 ```wl
 res = FkCompute["config.yaml"];
 ```
 
-### Selecting Python
-
-By default the wrapper calls `python3`. To use a specific interpreter:
-
+**Advanced Options:**
 ```wl
-$FkComputePythonExecutable = "/full/path/to/python";
-(* or per-call *)
-FkCompute[{1, 1, 1}, 2, "PythonExecutable" -> "/full/path/to/python"]
+res = FkCompute[{1, -2, 1, -2}, 3, 
+  "Symbolic" -> True,
+  "Threads" -> 8,
+  "Verbose" -> True,
+  "MaxWorkers" -> 4,
+  "Preset" -> "parallel"
+];
+```
+
+### Available Options
+
+The `FkCompute` function supports all parameters available in the Python API:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `"PythonExecutable"` | String | `Automatic` | Path to Python executable |
+| `"Symbolic"` | Boolean | `False` | Generate symbolic polynomial output |
+| `"Threads"` | Integer | `Automatic` | Number of C++ computation threads |
+| `"Verbose"` | Boolean | `False` | Enable verbose logging |
+| `"MaxWorkers"` | Integer | `Automatic` | Maximum parallel workers |
+| `"Preset"` | String | `Automatic` | Configuration preset (`"single thread"`, `"parallel"`) |
+| `"Name"` | String | `Automatic` | Computation name for file naming |
+| `"SaveData"` | Boolean | `Automatic` | Save intermediate computation data |
+
+### Python Configuration
+
+**Set Default Python Executable:**
+```wl
+$FkComputePythonExecutable = "/usr/bin/python3";
+```
+
+**Per-Call Python Specification:**
+```wl
+FkCompute[{1, 1, 1}, 2, "PythonExecutable" -> "/opt/conda/bin/python"]
+```
+
+**Helper Functions:**
+```wl
+SetFkComputePythonExecutable["/usr/bin/python3"]
+GetFkComputePythonExecutable[]
 ```
 
 ### Development (Optional)
 
-For development work, you can load the paclet directly from the source directory without copying:
+For development work, load the paclet directly from the source directory:
 
 ```wl
 PacletDirectoryLoad["/path/to/fk-compute/mathematica"]
 Needs["FkCompute`"]
 ```
 
-Note: This only loads the paclet for the current Mathematica session.
+Note: This only loads the paclet for the current Mathematica session and doesn't require installation.
+
+### Error Handling
+
+The wrapper provides comprehensive error messages:
+
+- `FkCompute::pyfail`: Python execution failed
+- `FkCompute::pybadjson`: Invalid JSON output from Python
+- `FkCompute::pyerror`: fkcompute Python package errors
+
+### Integration with Mathematica
+
+The wrapper returns Mathematica `Association` objects, enabling natural integration:
+
+```wl
+res = FkCompute[{1, 1, 1}, 2, "Symbolic" -> True];
+symbolicForm = res["metadata", "symbolic"];
+components = res["metadata", "components"];
+braid = res["metadata", "braid"];
+```
 
 ## Quick Start
 

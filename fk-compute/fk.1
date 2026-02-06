@@ -300,10 +300,37 @@ General error (invalid arguments, computation failure, etc.)
 File not found (configuration file, binary, etc.)
 .SH AUTHORS
 Toby, Paul, Lara, Josef, Davide
+.SH MATHEMATICA INTEGRATION
+The package includes a Wolfram Language (Mathematica) wrapper paclet that provides seamless integration with Mathematica 12.0+. The wrapper supports all core functionality including symbolic computation and configuration file execution.
+
+.PP
+Installation in Mathematica:
+.nf
+PacletInstall[Directory["/path/to/fk-compute/mathematica/FkCompute"]]
+Needs["FkCompute"]
+.fi
+
+.PP
+Usage examples:
+.nf
+(* Basic computation *)
+res = FkCompute[{1, 1, 1}, 2];
+
+(* Symbolic computation *)
+res = FkCompute[{1, 1, 1}, 2, "Symbolic" -> True];
+
+(* Configuration file execution *)
+res = FkCompute["config.yaml"];
+.fi
+
+.PP
+The wrapper returns Mathematica Association objects and supports all options available in the Python API, including "Symbolic", "Threads", "Verbose", "MaxWorkers", and "Preset". Error messages are provided for Python execution failures, invalid output, and package errors.
+
 .SH SEE ALSO
 .BR python (1),
 .BR cmake (1),
-.BR gurobi (1)
+.BR gurobi (1),
+.BR mathematica (1)
 
 .SH COPYRIGHT
 This is free software under the MIT License.
