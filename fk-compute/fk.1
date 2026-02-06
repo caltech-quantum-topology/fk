@@ -63,12 +63,25 @@ Path to JSON or YAML configuration file containing braid, degree, and other para
 .I OUTPUT_PATH
 Path for the template file to be created (default: fk_config.yaml).
 .SH OPTIONS
-The following option is available for the
+The following options are available for the
 .B simple
 subcommand:
 .TP
 .BR \-\-symbolic ", " \-\-no\-symbolic
 Output result as human-readable symbolic polynomial using SymPy (default: disabled). Requires SymPy to be installed.
+.TP
+.BR \-\-format "=\fIformat\fP"
+Symbolic output format when symbolic output is enabled (default: pretty). Available formats: pretty, inline, latex, mathematica.
+.PP
+The following options are available for the
+.B interactive
+subcommand:
+.TP
+.BR \-\-enhanced
+Use enhanced interactive wizard with progress tracking and history management (default when available).
+.TP
+.BR \-\-quick
+Use quick interactive mode with minimal prompts for fast computations.
 .PP
 The following option is available for the
 .B template create
@@ -76,21 +89,39 @@ subcommand:
 .TP
 .BR \-\-overwrite
 Overwrite the output file if it already exists. Without this flag, the command will fail if the file exists.
+.PP
+The following options are available for the
+.B history
+subcommand:
+.TP
+.BR \-\-limit "=\fInumber\fP", " \-l \fInumber\fP"
+Number of recent computations to show (default: 10).
+.TP
+.BR \-\-all ", " \-a
+Show all computations in history.
+.TP
+.BR \-\-confirm ", " \-y
+Skip confirmation prompts for destructive operations (e.g., clear history).
 .SH EXAMPLES
 .SS Interactive Mode
 .nf
-# Start interactive mode (default when no arguments)
+# Enhanced interactive mode (default)
 fk
-
-# Or explicitly
 fk interactive
+
+# Quick interactive mode
+fk interactive --quick
+
+# Enhanced mode explicitly
+fk interactive --enhanced
 
 # The program will prompt for:
 # - Braid word (supports multiple formats)
 # - Degree (positive integer)
-# - Number of threads (optional, press Enter for default)
+# - Number of threads (optional, auto-detected)
 # - Computation name (optional, for file naming)
-# - Symbolic output preference (y/n)
+# - Symbolic output preference and format selection
+# - Data saving preferences
 .fi
 .SS Simple Usage
 .nf
@@ -99,6 +130,13 @@ fk simple "[1, -2, -2, 3]" 3
 
 # With symbolic polynomial output
 fk simple "[1, -2, -2, 3]" 3 --symbolic
+
+# Different symbolic formats
+fk simple "[1, 1, 1]" 2 --format latex
+fk simple "[1, 1, 1]" 2 --format mathematica
+
+# Custom thread count
+fk simple "[1, -2, 3]" 2 --threads 4
 
 # Same braid, different input formats
 fk simple "1,-2,-2,3" 3
@@ -133,6 +171,7 @@ fk config trefoil.yaml figure_eight.yaml hopf_link.json
 cat > batch.yaml << EOF
 max_workers: 4
 save_data: true
+symbolic: true
 computations:
   - name: trefoil
     braid: [1, 1, 1]
@@ -140,22 +179,118 @@ computations:
   - name: figure_eight
     braid: [1, -2, 1, -2]
     degree: 3
+    preset: parallel
 EOF
 
 fk config batch.yaml
 .fi
+.SS History Management
+.nf
+# Show recent computations
+fk history show
+
+# Search computation history
+fk history search "trefoil"
+
+# Show all computations
+fk history show --all
+
+# Export/import history
+fk history export my_history.json
+fk history import my_history.json
+
+# Clear history (with confirmation)
+fk history clear
+fk history clear --confirm
+.fi
+.SS Advanced Configuration
+.nf
+# Using precomputed data
+cat > advanced.yaml << EOF
+braid: [1, -2, 1, -2]
+degree: 3
+inversion:
+  0: [1, -1, 1, -1]
+  1: [-1, 1, 1, -1]
+ilp_file: "precomputed/ilp.csv"
+preset: parallel
+chunk_size: 65536
+max_shifts: 1000
+EOF
+
+fk config advanced.yaml
+.fi
 .SH CONFIGURATION FILES
 Configuration files can be in JSON or YAML format. YAML requires PyYAML to be installed.
-Supports both single computations and batch processing.
+Supports both single computations and batch processing with comprehensive parameter customization.
+
+.SS Required Parameters
+.TP
+.B braid
+Braid word as list of integers (e.g., [1, -2, 3]).
+.TP
+.B degree
+Computation degree as positive integer.
+
+.SS Optional Parameters
+.TP
+.B name
+Computation name used for output files when save_data is enabled.
+.TP
+.B preset
+Use preset configuration ("single thread" or "parallel").
+.TP
+.B symbolic
+Generate symbolic polynomial output using SymPy (default: false).
+.TP
+.B max_workers
+Maximum number of worker processes for parallel computation (default: 1).
+.TP
+.B threads
+Number of threads for C++ FK computation (default: 1).
+.TP
+.B chunk_size
+Chunk size for parallel processing (default: 16384).
+.TP
+.B include_flip
+Include flip symmetry in computation (default: false).
+.TP
+.B max_shifts
+Maximum number of shifts (null for unlimited).
+.TP
+.B verbose
+Enable verbose logging with debug information (default: false).
+.TP
+.B save_data
+Save intermediate computation data to files (default: false).
+.TP
+.B save_dir
+Directory for saved data files (default: "data").
+.TP
+.B inversion
+Precomputed inversion data as {crossing_index: [signs]}.
+.TP
+.B inversion_file
+Path to JSON file containing precomputed inversion data.
+.TP
+.B ilp_file
+Path to precomputed ILP problem file.
+.TP
+.B partial_signs
+Partial sign assignments to constrain computation.
 
 .SS Single Computation (JSON)
 .nf
 {
   "braid": [1, -2, -2, 3],
   "degree": 3,
+  "name": "my_knot",
+  "preset": "parallel",
   "max_workers": 4,
+  "threads": 8,
   "verbose": true,
-  "save_data": true
+  "save_data": true,
+  "symbolic": true
 }
 .fi
 .SS Batch Processing (YAML)
@@ -164,6 +299,7 @@ Supports both single computations and batch processing.
 max_workers: 4
 save_data: true
 verbose: false
+symbolic: true
 
 computations:
   - name: trefoil
@@ -173,12 +309,32 @@ computations:
   - name: figure_eight
     braid: [1, -2, -1, 2]
     degree: 3
-    max_workers: 8  # Override global workers
+    preset: parallel  # Override global settings
 
   - name: hopf_link
     braid: [1, 1]
     degree: 2
-    verbose: true  # Override global verbose setting
+    max_workers: 8  # Per-computation override
+    symbolic: false # Override global symbolic setting
+.fi
+.SS Advanced Configuration (YAML)
+.nf
+braid: [1, -2, 1, -2]
+degree: 3
+
+# Use precomputed data to skip expensive steps
+inversion:
+  0: [1, -1, 1, -1]
+  1: [-1, 1, 1, -1]
+ilp_file: "precomputed/ilp.csv"
+
+# Performance optimization
+preset: parallel
+chunk_size: 65536
+max_shifts: 1000
+
+# Partial constraints
+partial_signs: [1, -1, 0, 1]
 .fi
 
 .SS Batch Processing Features
@@ -239,8 +395,19 @@ The program outputs comprehensive computation results as JSON to stdout, includi
 .fi
 
 .SS Symbolic Output
-When using the \-\-symbolic flag, output appears as human-readable polynomial expressions:
+When using the \-\-symbolic flag, output appears as human-readable polynomial expressions in multiple formats:
+
 .nf
+# Default pretty format
+fk simple "[1,1,1]" 2 --symbolic
+q - q^3 + x^2*(-q^2 + q^6)
+
+# LaTeX format
+fk simple "[1,1,1]" 2 --format latex
+$q - q^{3} + x^{2} \\left(-q^{2} + q^{6}\\right)$
+
+# Mathematica format
+fk simple "[1,1,1]" 2 --format mathematica
 q - q^3 + x^2*(-q^2 + q^6)
 .fi
 
@@ -251,6 +418,8 @@ Variables are chosen based on braid topology:
 2 components: x, y
 .IP \(bu 2
 3+ components: a, b, c, d, ... (skipping 'q')
+
+Requirements: SymPy >= 1.10 must be installed. Install with optional dependencies: \fBpip install fkcompute[symbolic]\fR.
 
 .SS Output Fields
 .TP
@@ -284,10 +453,13 @@ Saved ILP problem files.
 .SH DEPENDENCIES
 .TP
 .B Required
-Python 3.9+, NumPy, Gurobi (commercial optimization solver), C++ toolchain for compilation
+Python 3.9+, NumPy >= 1.20, Gurobi >= 9.5 (commercial optimization solver), Typer >= 0.9.0, CMake >= 3.20 (for building C++ components)
 .TP
 .B Optional
-SymPy 1.10+ (for symbolic polynomial output), PyYAML (for YAML configuration files), Jupyter (for development)
+SymPy >= 1.10 (for symbolic polynomial output), Rich >= 13 (for enhanced interactive mode), PyYAML >= 6 (for YAML configuration files), IPython >= 8, Jupyter (for development and visualization)
+.TP
+.B System Libraries
+FLINT (arbitrary precision arithmetic), OpenMP (parallel processing), OpenBLAS (linear algebra). Install via system package manager.
 .SH EXIT STATUS
 .TP
 0
