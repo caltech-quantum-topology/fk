@@ -53,6 +53,7 @@ def fk(
     symbolic: bool = False,
     threads: Optional[int] = None,
     name: Optional[str] = None,
+    weight: Optional[int] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
     """
@@ -76,6 +77,8 @@ def fk(
         Number of threads for C++ FK computation
     name
         Name for saved files when save_data is enabled
+    weight
+        Optional weight parameter for stratified calculation
     **kwargs
         Additional parameters (verbose, max_workers, etc.)
 
@@ -121,6 +124,7 @@ def fk(
         'inversion': None,
         'inversion_file': None,
         'partial_signs': None,
+        'weight': weight,
     }
 
     # Override with any provided kwargs
@@ -147,6 +151,7 @@ def _fk_compute(
     inversion: Optional[Dict[str, Any]] = None,
     inversion_file: Optional[str] = None,
     partial_signs: Optional[List[int]] = None,
+    weight: Optional[int] = None,
     _progress_callback: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
@@ -235,6 +240,7 @@ def _fk_compute(
             degree=degree,
             inversion_data=inversion["inversion_data"],
             outfile=link_name + "_ilp.csv",
+            weight=weight,
         )
         logger.debug("ILP data calculated")
 
@@ -312,7 +318,7 @@ def _fk_compute(
     return fk_result
 
 
-def _generate_ilp(braid: List[int], degree: int, inversion_data: Dict, outfile: str) -> Optional[str]:
+def _generate_ilp(braid: List[int], degree: int, inversion_data: Dict, outfile: str, weight: Optional[int] = None) -> Optional[str]:
     """Generate ILP formulation for FK computation."""
     from ..domain.braid.states import BraidStates
     from ..domain.braid.word import is_homogeneous_braid
@@ -325,7 +331,7 @@ def _generate_ilp(braid: List[int], degree: int, inversion_data: Dict, outfile: 
         # Homogeneous braid - use default sign assignment
         all_relations = braid_states.get_state_relations()
         relations = full_reduce(all_relations)
-        return generate_ilp(degree, relations, braid_states, outfile)
+        return generate_ilp(degree, relations, braid_states, outfile, weight=weight)
     else:
         # Fibered braid - use provided inversion data
         braid_states.strand_signs = inversion_data
@@ -334,6 +340,6 @@ def _generate_ilp(braid: List[int], degree: int, inversion_data: Dict, outfile: 
             braid_states.generate_position_assignments()
             all_relations = braid_states.get_state_relations()
             relations = full_reduce(all_relations)
-            return generate_ilp(degree, relations, braid_states, outfile)
+            return generate_ilp(degree, relations, braid_states, outfile, weight=weight)
         else:
             raise Exception("The inversion data doesn't seem to be valid.")

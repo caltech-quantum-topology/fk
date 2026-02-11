@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import typer
 
@@ -58,6 +58,7 @@ def simple_command(
         "pretty", "--format", "-f",
         help="Symbolic output format: pretty, inline, mathematica, latex"
     ),
+    weight: Optional[int] = typer.Option(None, "--weight", "-w", help="Weight parameter for stratified calculation"),
 ) -> None:
     """Simple FK computation with minimal options."""
     braid_list = parse_int_list(braid)
@@ -68,7 +69,7 @@ def simple_command(
     if format_type != "pretty":
         symbolic = True
 
-    result = fk(braid_list, degree, symbolic=symbolic)
+    result = fk(braid_list, degree, symbolic=symbolic, weight=weight)
     _print_result(result, symbolic, format_type=format_type)
 
 
@@ -162,6 +163,9 @@ degree: 15
 
 # Optional: Save computation data to files
 # save_data: false
+
+# Optional: Weight parameter for stratified calculation
+# weight: 5
 """
 
     output_file.write_text(template_content)
