@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Union
 from .presets import PRESETS
 from .batch import fk_from_config
 from ..domain.braid.states import BraidStates
-from ..solver.inversion import get_sign_assignment_parallel
+from ..inversion.api import find_sign_assignment
 from ..solver.ilp import ilp
 from ..infra.binary import binary_path, safe_unlink, run_fk_binary
 from ..infra.config import load_inversion_file, load_ilp_file
@@ -189,16 +189,17 @@ def _fk_compute(
 
         if inversion is None and inversion_file is None:
             logger.debug("Calculating inversion data")
-            inversion = get_sign_assignment_parallel(
+            result = find_sign_assignment(
                 braid,
-                partial_signs=partial_signs,
                 degree=degree,
-                verbose=verbose,
+                partial_signs=partial_signs,
                 max_workers=max_workers,
                 chunk_size=chunk_size,
                 include_flip=include_flip,
                 max_shifts=max_shifts,
+                verbose=verbose,
             )
+            inversion = result.to_result_dict()
             logger.debug("Inversion data calculated")
 
         if inversion is not None:

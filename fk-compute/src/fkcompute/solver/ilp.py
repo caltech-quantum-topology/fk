@@ -14,6 +14,11 @@ from gurobipy import GRB
 from ..domain.constraints.symbols import Symbol, one, zero, nunity
 from ..domain.constraints.reduction import full_reduce
 from ..domain.solver.assignment import symbolic_variable_assignment
+from ..domain.solver.symbolic_constraints import (
+    minimum_degree_symbolic,
+    inequality_manager,
+    process_assignment,
+)
 
 
 def _sort_any(xs):
@@ -82,109 +87,10 @@ def integral_bounded(multiples: List, singlesigns: Dict) -> bool:
     return True
 
 
-def _minimum_degree_symbolic(assignment: Dict, braid_states, verbose: bool = False) -> Dict:
-    """Compute minimum degree constraints symbolically."""
-    conditions = {val: zero for val in range(braid_states.n_components)}
-    for index in range(0, braid_states.n_strands):
-        if verbose:
-            print(braid_states.closed_strand_components)
-        conditions[braid_states.closed_strand_components[index]] -= 1/2
-    for index in range(braid_states.n_crossings):
-        crossing_type = braid_states.r_matrices[index]
-        in1 = braid_states.top_input_state_locations[index]
-        in2 = (in1[0] + 1, in1[1])
-        out1 = (in1[0], in1[1] + 1)
-        out2 = (out1[0] + 1, out1[1])
-        in1 = braid_states.get_state(in1)
-        in2 = braid_states.get_state(in2)
-        out1 = braid_states.get_state(out1)
-        out2 = braid_states.get_state(out2)
-        if crossing_type == "R1" or crossing_type == "R2":
-            conditions[braid_states.top_crossing_components[index]] += (assignment[out1] + assignment[in2] + 1) / 4
-            conditions[braid_states.bottom_crossing_components[index]] += (3 * assignment[out2] - assignment[in1] + 1) / 4
-        elif crossing_type == "R3" or crossing_type == "R4":
-            conditions[braid_states.top_crossing_components[index]] -= (3 * assignment[in2] - assignment[out1] + 1) / 4
-            conditions[braid_states.bottom_crossing_components[index]] -= (assignment[in1] + assignment[out2] + 1) / 4
-        else:
-            raise Exception("Crossing type is not one of the four acceptable values.")
-    return conditions
-
-
-def _inequality_manager(relations: List, assignment: Dict, braid_states):
-    """Process inequalities from relations."""
-    from ..domain.braid.types import ZERO_STATE, NUNITY_STATE
-    from ..domain.constraints.relations import Leq, Less
-
-    singles = []
-    multiples = []
-
-    for inequality in relations:
-        if isinstance(inequality, Leq) or isinstance(inequality, Less):
-            if inequality.first == ZERO_STATE:
-                a = 0
-            elif inequality.first == NUNITY_STATE:
-                a = -1
-            elif isinstance(inequality.first, tuple):
-                a = assignment[braid_states.get_state(inequality.first)]
-            if inequality.second == ZERO_STATE:
-                b = 0
-            elif inequality.second == NUNITY_STATE:
-                b = -1
-            elif isinstance(inequality.second, tuple):
-                b = assignment[braid_states.get_state(inequality.second)]
-
-            if isinstance(a, Symbol):
-                a_dict = a.as_coefficients_dict()
-            elif a == 0:
-                a_dict = {}
-            elif a == -1:
-                a_dict = {one: -1}
-            else:
-                raise Exception(f'Expected "a" to be Symbol, 0, or -1, but was {a}!')
-
-            if isinstance(b, Symbol):
-                b_dict = b.as_coefficients_dict()
-            elif b == 0:
-                b_dict = {}
-            elif b == -1:
-                b_dict = {one: -1}
-            else:
-                raise Exception(f'Expected "b" to be Symbol, 0, or -1, but was {b}!')
-
-            c_dict = {}
-            for key in b_dict.keys():
-                if key in a_dict.keys():
-                    c_dict[key] = b_dict[key] - a_dict[key]
-                else:
-                    c_dict[key] = b_dict[key]
-            for key in a_dict.keys():
-                if key not in b_dict.keys():
-                    c_dict[key] = -a_dict[key]
-
-            bad_keys = [key for key, value in c_dict.items() if value == 0]
-            for key in bad_keys:
-                c_dict.pop(key)
-
-            if c_dict:
-                expression = sum(value * key for key, value in c_dict.items())
-                if len(set(c_dict.keys()) - set([one])) == 1:
-                    singles.append(expression)
-                else:
-                    multiples.append(expression)
-
-    return list(set(singles)), list(set(multiples))
-
-
 def _czech_sign_assignment(degree: int, relations: List, braid_states, verbose: bool = False) -> Optional[Dict]:
     """Check sign assignment validity for ILP generation."""
     assignment = symbolic_variable_assignment(relations, braid_states)
-    criteria = _minimum_degree_symbolic(assignment, braid_states)
-    singles, multiples = _inequality_manager(relations, assignment, braid_states)
-
-    singlesigns = {}
-    for entry in singles:
-        dict_ = entry.as_coefficients_dict()
-        singlesigns[list(set(dict_.keys()) - set([one]))[0]] = list(dict_.values())[0]
+    criteria, multiples, singlesigns = process_assignment(assignment, braid_states, relations)
 
     for (key, value) in criteria.items():
         criteria[key] = degree - value
