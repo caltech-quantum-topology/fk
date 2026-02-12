@@ -7,7 +7,7 @@ from constraint systems.
 
 from typing import Dict, List
 
-from ..constraints.relations import Conservation, Alias, Zero, Nunity
+from ..constraints.relations import Conservation, Alias, Zero, NegOne
 from ..constraints.symbols import Symbol, symbols, solve
 from ..constraints.reduction import free_variables, all_variables
 
@@ -153,22 +153,21 @@ def extend_variable_assignment(reduced_relations: List, partial_assignment: Dict
 
         next_assignment = None
         for relation in reduced_relations:
-            relation_type = type(relation)
-            if relation_type == Zero:
+            if isinstance(relation, Zero):
                 state = relation.state
                 if verbose:
                     print(f"\tconsidering zero {state} := 0")
                 if state not in assigned:
                     next_assignment = (state, 0)
                     break
-            elif relation_type == Nunity:
+            elif isinstance(relation, NegOne):
                 state = relation.state
                 if verbose:
-                    print(f"\tconsidering nunity {state} := -1")
+                    print(f"\tconsidering neg_one {state} := -1")
                 if state not in assigned:
                     next_assignment = (state, -1)
                     break
-            elif relation_type == Alias:
+            elif isinstance(relation, Alias):
                 alias = relation.alias
                 state = relation.state
                 if verbose:
@@ -176,7 +175,7 @@ def extend_variable_assignment(reduced_relations: List, partial_assignment: Dict
                 if state in assigned and alias in unassigned:
                     next_assignment = (alias, partial_assignment[state])
                     break
-            elif relation_type == Conservation:
+            elif isinstance(relation, Conservation):
                 sum_alias = relation.try_sum_alias()
                 if sum_alias is not None:
                     alias, sum_vars = sum_alias

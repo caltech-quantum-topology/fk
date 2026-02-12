@@ -11,7 +11,8 @@ import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
 
-from ..domain.constraints.symbols import Symbol, one, zero, nunity
+from ..domain.constraints.relations import _sort_any
+from ..domain.constraints.symbols import Symbol, one, zero, neg_one
 from ..domain.constraints.reduction import full_reduce
 from ..domain.solver.assignment import symbolic_variable_assignment
 from ..domain.solver.symbolic_constraints import (
@@ -21,18 +22,13 @@ from ..domain.solver.symbolic_constraints import (
 )
 
 
-def _sort_any(xs):
-    """Sort any list by string representation."""
-    return list(sorted(xs, key=lambda x: str(x)))
-
-
 # Initialize Gurobi environment
 _env = gp.Env(empty=True)
 _env.setParam('OutputFlag', 0)
 _env.start()
 
 
-def integral_bounded(multiples: List, singlesigns: Dict) -> bool:
+def integral_bounded(multiples: List, single_var_signs: Dict) -> bool:
     """
     Check if the constraint system has a bounded integer solution.
 
@@ -43,7 +39,7 @@ def integral_bounded(multiples: List, singlesigns: Dict) -> bool:
     ----------
     multiples
         List of symbolic inequality expressions (0 <= expr).
-    singlesigns
+    single_var_signs
         Dictionary mapping symbols to their signs (+1 or -1).
 
     Returns
@@ -61,13 +57,13 @@ def integral_bounded(multiples: List, singlesigns: Dict) -> bool:
         tableau.append(np.concatenate((multiples[index].var, np.zeros(for_fill - sizes[index]))))
     tableau = np.array(tableau) if tableau else np.array([]).reshape(0, for_fill)
     for index in range(1, for_fill):
-        if Symbol(index) in singlesigns.keys():
-            if singlesigns[Symbol(index)] == -1:
+        if Symbol(index) in single_var_signs.keys():
+            if single_var_signs[Symbol(index)] == -1:
                 tableau[:, index] *= -1
                 tableau[:, 0] += tableau[:, index]
     model = gp.Model(env=_env)
     model.setParam(gp.GRB.Param.PoolSearchMode, 1)
-    x = model.addVars(singlesigns.keys(), vtype=GRB.INTEGER)
+    x = model.addVars(single_var_signs.keys(), vtype=GRB.INTEGER)
     for index in range(n_multiples):
         value = tableau[index][0]
         for index_ in range(1, for_fill):
@@ -77,7 +73,7 @@ def integral_bounded(multiples: List, singlesigns: Dict) -> bool:
             model.addConstr(0 <= value)
         except:
             pass
-    for key in singlesigns.keys():
+    for key in single_var_signs.keys():
         model.setObjective(x[key], sense=GRB.MAXIMIZE)
         model.optimize()
         if model.Status != 2:
@@ -87,21 +83,21 @@ def integral_bounded(multiples: List, singlesigns: Dict) -> bool:
     return True
 
 
-def _czech_sign_assignment(degree: int, relations: List, braid_states, verbose: bool = False) -> Optional[Dict]:
+def _check_sign_assignment(degree: int, relations: List, braid_states, verbose: bool = False) -> Optional[Dict]:
     """Check sign assignment validity for ILP generation."""
     assignment = symbolic_variable_assignment(relations, braid_states)
-    criteria, multiples, singlesigns = process_assignment(assignment, braid_states, relations)
+    criteria, multi_var_inequalities, single_var_signs = process_assignment(assignment, braid_states, relations)
 
     for (key, value) in criteria.items():
         criteria[key] = degree - value
 
-    if not integral_bounded(multiples + list(criteria.values()), singlesigns):
+    if not integral_bounded(multi_var_inequalities + list(criteria.values()), single_var_signs):
         return None
 
     return {
         "criteria": criteria,
-        "multiples": multiples,
-        "single_signs": singlesigns,
+        "multi_var_inequalities": multi_var_inequalities,
+        "single_var_signs": single_var_signs,
         "assignment": assignment
     }
 
@@ -128,22 +124,22 @@ def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = No
     str or None
         ILP data as a string, or None if no valid assignment exists.
     """
-    check = _czech_sign_assignment(degree, relations, braid_states)
+    check = _check_sign_assignment(degree, relations, braid_states)
     if check is None:
         return None
 
     criteria = check['criteria']
-    multiples = check['multiples']
-    singlesigns = check['single_signs']
+    multi_var_inequalities = check['multi_var_inequalities']
+    single_var_signs = check['single_var_signs']
     assignment = check['assignment']
 
     criteria = list(criteria.values())
 
     n_criteria = len(criteria)
-    n_multiples = len(multiples)
+    n_multiples = len(multi_var_inequalities)
 
     criteria_sizes = [criterion.var.size for criterion in criteria]
-    inequality_sizes = [multiple.var.size for multiple in multiples]
+    inequality_sizes = [multiple.var.size for multiple in multi_var_inequalities]
     segment_sizes = [segment.var.size for segment in assignment.values() if not isinstance(segment, int)]
     for_fill = max(criteria_sizes + inequality_sizes + segment_sizes) if (criteria_sizes + inequality_sizes + segment_sizes) else 1
 
@@ -157,11 +153,11 @@ def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = No
 
     inequality_tableau = []
     for index in range(n_multiples):
-        if multiples[index].is_constant():
-            if multiples[index].constant() < 0:
-                raise Exception(f"Impossible Inequality 0 <= {multiples[index].constant()}")
+        if multi_var_inequalities[index].is_constant():
+            if multi_var_inequalities[index].constant() < 0:
+                raise Exception(f"Impossible Inequality 0 <= {multi_var_inequalities[index].constant()}")
         else:
-            inequality_tableau.append(np.concatenate((multiples[index].var, np.zeros(for_fill - inequality_sizes[index]))))
+            inequality_tableau.append(np.concatenate((multi_var_inequalities[index].var, np.zeros(for_fill - inequality_sizes[index]))))
 
     assignment_tableau = []
     keys = sorted(assignment.keys())
@@ -178,8 +174,8 @@ def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = No
     assignment_tableau = np.array(assignment_tableau) if assignment_tableau else np.array([]).reshape(0, for_fill)
 
     for index in range(1, for_fill):
-        if Symbol(index) in singlesigns.keys():
-            if singlesigns[Symbol(index)] == -1:
+        if Symbol(index) in single_var_signs.keys():
+            if single_var_signs[Symbol(index)] == -1:
                 if criteria_tableau.shape[0] > 0:
                     criteria_tableau[:, index] *= -1
                     criteria_tableau[:, 0] += criteria_tableau[:, index]
@@ -190,7 +186,7 @@ def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = No
                     assignment_tableau[:, index] *= -1
                     assignment_tableau[:, 0] += assignment_tableau[:, index]
 
-    vars_list = _sort_any([0] + [x.index() for x in list(singlesigns.keys())])
+    vars_list = _sort_any([0] + [x.index() for x in list(single_var_signs.keys())])
 
     if criteria_tableau.shape[0] > 0:
         criteria_tableau = criteria_tableau[:, vars_list]
@@ -271,14 +267,14 @@ def print_symbolic_relations(degree: int, relations: List, braid_states, write_t
     dict or None
         Dictionary with criteria, multiples, single_signs, and assignment if valid.
     """
-    check = _czech_sign_assignment(degree, relations, braid_states)
+    check = _check_sign_assignment(degree, relations, braid_states)
     if check is None:
         print("No valid sign assignment exists for this degree!")
         return None
 
     criteria = check['criteria']
-    multiples = check['multiples']
-    singlesigns = check['single_signs']
+    multi_var_inequalities = check['multi_var_inequalities']
+    single_var_signs = check['single_var_signs']
     assignment = check['assignment']
 
     print(f"=== SYMBOLIC VARIABLES RELATIONS AT DEGREE {degree} ===\n")
@@ -296,7 +292,7 @@ def print_symbolic_relations(degree: int, relations: List, braid_states, write_t
     print()
 
     print("=== VARIABLE SIGNS ===")
-    for var, sign in sorted(singlesigns.items(), key=lambda x: x[0].index() if hasattr(x[0], 'index') else 0):
+    for var, sign in sorted(single_var_signs.items(), key=lambda x: x[0].index() if hasattr(x[0], 'index') else 0):
         sign_str = "+" if sign == 1 else "-"
         print(f"{var}: {sign_str}")
     print()
@@ -310,8 +306,8 @@ def print_symbolic_relations(degree: int, relations: List, braid_states, write_t
     print()
 
     print("=== RELATION INEQUALITIES ===")
-    if multiples:
-        for i, ineq in enumerate(multiples):
+    if multi_var_inequalities:
+        for i, ineq in enumerate(multi_var_inequalities):
             if ineq.is_constant():
                 print(f"Inequality {i+1}: 0 <= {ineq.constant()}")
             else:
@@ -336,7 +332,7 @@ def print_symbolic_relations(degree: int, relations: List, braid_states, write_t
 
     return {
         "criteria": criteria,
-        "multiples": multiples,
-        "single_signs": singlesigns,
+        "multi_var_inequalities": multi_var_inequalities,
+        "single_var_signs": single_var_signs,
         "assignment": assignment
     }

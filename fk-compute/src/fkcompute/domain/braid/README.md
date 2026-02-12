@@ -12,10 +12,10 @@ Core type definitions used throughout the FK computation.
 
 **Constants:**
 - `ZERO_STATE`: The zero state literal `[0]`
-- `NUNITY_STATE`: The negative unity state literal `[-1]`
+- `NEG_ONE_STATE`: The negative one state literal `[-1]`
 
 ```python
-from fkcompute.domain.braid.types import StateLiteral, ZERO_STATE, NUNITY_STATE
+from fkcompute.domain.braid.types import StateLiteral, ZERO_STATE, NEG_ONE_STATE
 
 # Check if something is a zero state
 if state == ZERO_STATE:

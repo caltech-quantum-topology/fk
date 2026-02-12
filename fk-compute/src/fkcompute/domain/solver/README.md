@@ -39,7 +39,7 @@ for state, value in assignment.items():
 2. Assign fresh symbols to each free variable
 3. Extend assignment through:
    - Zero constraints (state = 0)
-   - Nunity constraints (state = -1)
+   - NegOne constraints (state = -1)
    - Alias constraints (state_a = state_b)
    - Sum aliases from conservation (a = b + c)
 4. Minimize free variables using conservation expressions
@@ -74,7 +74,7 @@ else:
 
 **Validation checks:**
 - Inequality constraints (Leq, Less)
-- Equality constraints (Zero, Nunity, Alias)
+- Equality constraints (Zero, NegOne, Alias)
 - Conservation constraints (sum preservation)
 - Degree bounds (component-wise)
 

@@ -10,7 +10,7 @@ and Phase 2 (solver/ilp) for processing symbolic constraints:
 
 from typing import Dict, List, Any
 
-from ..braid.types import ZERO_STATE, NUNITY_STATE
+from ..braid.types import ZERO_STATE, NEG_ONE_STATE
 from ..constraints.relations import Leq, Less
 from ..constraints.symbols import Symbol, one, zero
 
@@ -97,7 +97,7 @@ def inequality_manager(relations: List, assignment: Dict, braid_states):
 
         if inequality.first == ZERO_STATE:
             a = 0
-        elif inequality.first == NUNITY_STATE:
+        elif inequality.first == NEG_ONE_STATE:
             a = -1
         elif isinstance(inequality.first, tuple):
             a = assignment[braid_states.get_state(inequality.first)]
@@ -106,7 +106,7 @@ def inequality_manager(relations: List, assignment: Dict, braid_states):
 
         if inequality.second == ZERO_STATE:
             b = 0
-        elif inequality.second == NUNITY_STATE:
+        elif inequality.second == NEG_ONE_STATE:
             b = -1
         elif isinstance(inequality.second, tuple):
             b = assignment[braid_states.get_state(inequality.second)]
@@ -155,7 +155,8 @@ def inequality_manager(relations: List, assignment: Dict, braid_states):
 
 def process_assignment(assignment: Dict, braid_states, relations: List):
     """
-    Process an assignment to extract criteria, multiples, and single signs.
+    Process an assignment to extract criteria, multi-variable inequalities,
+    and single-variable signs.
 
     Parameters
     ----------
@@ -169,13 +170,13 @@ def process_assignment(assignment: Dict, braid_states, relations: List):
     Returns
     -------
     tuple
-        (criteria, multiples, singlesigns)
+        (criteria, multi_var_inequalities, single_var_signs)
     """
     criteria = minimum_degree_symbolic(assignment, braid_states)
-    singles, multiples = inequality_manager(relations, assignment, braid_states)
-    singlesigns = {}
+    singles, multi_var_inequalities = inequality_manager(relations, assignment, braid_states)
+    single_var_signs = {}
     for entry in singles:
         dict_ = entry.as_coefficients_dict()
-        singlesigns[list(set(dict_.keys()) - {one})[0]] = list(dict_.values())[0]
-    multiples = list(set(multiples))
-    return criteria, multiples, singlesigns
+        single_var_signs[list(set(dict_.keys()) - {one})[0]] = list(dict_.values())[0]
+    multi_var_inequalities = list(set(multi_var_inequalities))
+    return criteria, multi_var_inequalities, single_var_signs

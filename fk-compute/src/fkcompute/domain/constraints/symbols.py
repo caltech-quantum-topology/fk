@@ -319,7 +319,7 @@ class Symbol:
 # Special constant symbols
 one = Symbol()
 zero = one - 1
-nunity = zero - 1
+neg_one = zero - 1
 
 
 def solve(symbol: Symbol, index: Union[int, Symbol]) -> List[Symbol]:

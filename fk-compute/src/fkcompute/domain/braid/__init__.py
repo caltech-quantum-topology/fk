@@ -9,7 +9,7 @@ This subpackage contains:
 - states: BraidStates backward-compatible wrapper
 """
 
-from .types import StateLiteral, ZERO_STATE, NUNITY_STATE
+from .types import StateLiteral, ZERO_STATE, NEG_ONE_STATE
 from .word import is_positive_braid, is_homogeneous_braid
 from .topology import BraidTopology
 from .signed import SignedBraid
@@ -18,7 +18,7 @@ from .states import BraidStates
 __all__ = [
     "StateLiteral",
     "ZERO_STATE",
-    "NUNITY_STATE",
+    "NEG_ONE_STATE",
     "is_positive_braid",
     "is_homogeneous_braid",
     "BraidTopology",

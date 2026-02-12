@@ -5,11 +5,12 @@ This module defines the constraint types used in the FK constraint system:
 - Leq: Less than or equal inequality
 - Less: Strict less than inequality
 - Zero: Equality to zero state
-- Nunity: Equality to negative unity state
+- NegOne: Equality to negative one state
 - Alias: Equality between two states
 - Conservation: Sum conservation constraint
 """
 
+from abc import ABC, abstractmethod
 from typing import List, Any, Optional, Tuple
 
 from ..braid.types import StateLiteral
@@ -20,7 +21,16 @@ def _sort_any(xs):
     return list(sorted(xs, key=lambda x: str(x)))
 
 
-class Leq:
+class Constraint(ABC):
+    """Base class for all constraint relations in the FK system."""
+
+    @abstractmethod
+    def variables(self) -> List:
+        """Return the list of variables involved in this constraint."""
+        ...
+
+
+class Leq(Constraint):
     """Less than or equal constraint: first <= second."""
 
     def __init__(self, first: Any, second: Any):
@@ -42,7 +52,7 @@ class Leq:
         return hash((self.first, self.second))
 
 
-class Less:
+class Less(Constraint):
     """Strict less than constraint: first < second."""
 
     def __init__(self, first: Any, second: Any):
@@ -64,7 +74,7 @@ class Less:
         return hash((self.first, self.second))
 
 
-class Zero:
+class Zero(Constraint):
     """Zero state constraint: state = [0]."""
 
     def __init__(self, state: Any):
@@ -85,8 +95,8 @@ class Zero:
         return hash(self.state)
 
 
-class Nunity:
-    """Negative unity state constraint: state = [-1]."""
+class NegOne(Constraint):
+    """Negative one state constraint: state = [-1]."""
 
     def __init__(self, state: Any):
         self.state = state
@@ -95,10 +105,10 @@ class Nunity:
         return [self.state]
 
     def __repr__(self):
-        return f'Nunity {self.state} = [-1]'
+        return f'NegOne {self.state} = [-1]'
 
     def __eq__(self, other):
-        if isinstance(other, Nunity):
+        if isinstance(other, NegOne):
             return self.state == other.state
         return False
 
@@ -106,7 +116,8 @@ class Nunity:
         return hash(self.state)
 
 
-class Alias:
+
+class Alias(Constraint):
     """Alias constraint: state and alias are equal."""
 
     def __init__(self, state: Any, alias: Any):
@@ -129,7 +140,7 @@ class Alias:
         return hash((self.state, self.alias))
 
 
-class Conservation:
+class Conservation(Constraint):
     """Conservation constraint: sum of inputs = sum of outputs."""
 
     def __init__(self, inputs: List, outputs: List):
@@ -154,11 +165,11 @@ class Conservation:
             return None
 
         # case a = b + c, return a
-        elif len(self.inputs) == 1 and type(self.inputs[0]) != StateLiteral:
+        elif len(self.inputs) == 1 and not isinstance(self.inputs[0], StateLiteral):
             return self.inputs[0], self.outputs
 
         # case a + b = c, return c
-        elif len(self.outputs) == 1 and type(self.outputs[0]) != StateLiteral:
+        elif len(self.outputs) == 1 and not isinstance(self.outputs[0], StateLiteral):
             return self.outputs[0], self.inputs
 
         return None

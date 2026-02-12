@@ -5,128 +5,99 @@ This module provides functions for reducing and simplifying constraint systems
 through various propagation rules.
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Type
 
-from ..braid.types import ZERO_STATE, NUNITY_STATE
-from .relations import Leq, Less, Zero, Nunity, Alias, Conservation
-
-
-def _sort_any(xs):
-    """Sort any list by string representation."""
-    return list(sorted(xs, key=lambda x: str(x)))
+from ..braid.types import ZERO_STATE, NEG_ONE_STATE
+from .relations import _sort_any, Leq, Less, Zero, NegOne, Alias, Conservation
 
 
 def get_zeros(relations: List) -> List:
     """Get all states constrained to be zero."""
-    return [r.state for r in relations if type(r) == Zero]
+    return [r.state for r in relations if isinstance(r, Zero)]
 
 
-def get_nunities(relations: List) -> List:
+def get_neg_ones(relations: List) -> List:
     """Get all states constrained to be negative unity."""
-    return [r.state for r in relations if type(r) == Nunity]
+    return [r.state for r in relations if isinstance(r, NegOne)]
 
 
 def get_aliases(relations: List) -> Dict:
     """Get all alias relations as a dictionary."""
-    return {r.alias: r.state for r in relations if type(r) == Alias}
+    return {r.alias: r.state for r in relations if isinstance(r, Alias)}
 
 
 def get_sum_aliases(relations: List) -> List:
     """Get all sum aliases from conservation relations."""
-    return [x[0] for x in [r.try_sum_alias() for r in relations if type(r) == Conservation] if x is not None]
+    return [x[0] for x in [r.try_sum_alias() for r in relations if isinstance(r, Conservation)] if x is not None]
+
+
+def _propagate_constant_aliases(relations: List, constant_type: Type, verbose: bool = False) -> List:
+    """
+    Propagate constant constraints (Zero or NegOne) through aliases.
+
+    When an alias links two states and one is known to be a constant,
+    the other must also be that constant.
+    """
+    if constant_type == Zero:
+        constants = get_zeros(relations)
+    else:
+        constants = get_neg_ones(relations)
+
+    new_relations = []
+    for r in relations:
+        if isinstance(r, Alias):
+            if r.state in constants:
+                if verbose:
+                    print('reduction:', r, constant_type(r.state), '===>', constant_type(r.alias))
+                if r.alias not in constants:
+                    new_relations.append(constant_type(r.alias))
+            elif r.alias in constants:
+                if verbose:
+                    print('reduction:', r, constant_type(r.alias), '===>', constant_type(r.state))
+                if r.state not in constants:
+                    new_relations.append(constant_type(r.state))
+            else:
+                new_relations.append(r)
+        else:
+            new_relations.append(r)
+
+    return new_relations
 
 
 def propagate_zero_aliases(relations: List, verbose: bool = False) -> List:
     """Propagate zero constraints through aliases."""
-    zeros = get_zeros(relations)
-    aliases = get_aliases(relations)
-
-    new_relations = []
-    for r in relations:
-        if type(r) == Alias:
-            if r.state in zeros:
-                if verbose:
-                    print('reduction:', r, Zero(r.state), '===>', Zero(r.alias))
-                if r.alias not in zeros:
-                    new_relations.append(Zero(r.alias))
-            elif r.alias in zeros:
-                if verbose:
-                    print('reduction:', r, Zero(r.alias), '===>', Zero(r.state))
-                if r.state not in zeros:
-                    new_relations.append(Zero(r.state))
-            else:
-                new_relations.append(r)
-        else:
-            new_relations.append(r)
-
-    return new_relations
+    return _propagate_constant_aliases(relations, Zero, verbose)
 
 
-def propagate_nunity_aliases(relations: List, verbose: bool = False) -> List:
-    """Propagate negative unity constraints through aliases."""
-    nunities = get_nunities(relations)
-    aliases = get_aliases(relations)
+def propagate_neg_one_aliases(relations: List, verbose: bool = False) -> List:
+    """Propagate negative one constraints through aliases."""
+    return _propagate_constant_aliases(relations, NegOne, verbose)
 
-    new_relations = []
-    for r in relations:
-        if type(r) == Alias:
-            if r.state in nunities:
-                if r.alias not in nunities:
-                    new_relations.append(Nunity(r.alias))
-            elif r.alias in nunities:
-                if verbose:
-                    print('reduction:', r, Nunity(r.alias), '===>', Nunity(r.state))
-                if r.state not in nunities:
-                    new_relations.append(Nunity(r.state))
-            else:
-                new_relations.append(r)
-        else:
-            new_relations.append(r)
 
-    return new_relations
+def _resolve_variable(var, zeros, neg_ones, aliases):
+    """Resolve a variable through zeros, neg_ones, and aliases."""
+    if var in zeros:
+        return ZERO_STATE
+    elif var in neg_ones:
+        return NEG_ONE_STATE
+    elif var in aliases:
+        return aliases[var]
+    return var
 
 
 def de_alias_inequalities(relations: List, verbose: bool = False) -> List:
     """Replace aliased variables in inequalities with their canonical forms."""
     zeros = get_zeros(relations)
-    nunities = get_nunities(relations)
+    neg_ones = get_neg_ones(relations)
     aliases = get_aliases(relations)
 
     new_relations = []
 
     for r in relations:
-        if type(r) == Leq:
-            f = r.first
-            s = r.second
-            if r.first in zeros:
-                f = ZERO_STATE
-            elif r.first in nunities:
-                f = NUNITY_STATE
-            elif r.first in aliases:
-                f = aliases[r.first]
-            if r.second in zeros:
-                s = ZERO_STATE
-            elif r.second in nunities:
-                s = NUNITY_STATE
-            elif r.second in aliases:
-                s = aliases[r.second]
-            r = Leq(f, s)
-        elif type(r) == Less:
-            f = r.first
-            s = r.second
-            if r.first in zeros:
-                f = ZERO_STATE
-            elif r.first in aliases:
-                f = aliases[r.first]
-            elif r.first in nunities:
-                f = NUNITY_STATE
-            if r.second in zeros:
-                s = ZERO_STATE
-            elif r.second in aliases:
-                s = aliases[r.second]
-            elif r.second in nunities:
-                s = NUNITY_STATE
-            r = Less(f, s)
+        if isinstance(r, (Leq, Less)):
+            f = _resolve_variable(r.first, zeros, neg_ones, aliases)
+            s = _resolve_variable(r.second, zeros, neg_ones, aliases)
+            r = type(r)(f, s)
 
         new_relations.append(r)
 
@@ -136,7 +107,7 @@ def de_alias_inequalities(relations: List, verbose: bool = False) -> List:
 def symmetric_inequality(relations: List, verbose: bool = False) -> List:
     """Detect symmetric inequalities that imply equality."""
     new_relations = [r for r in relations]
-    inequalities = [r for r in relations if type(r) == Leq]
+    inequalities = [r for r in relations if isinstance(r, Leq)]
 
     for r1 in inequalities:
         for r2 in inequalities:
@@ -145,14 +116,14 @@ def symmetric_inequality(relations: List, verbose: bool = False) -> List:
                     if verbose:
                         print(r1, r2, '=====>', Zero(r1.second))
                     new_relations.append(Zero(r1.second))
-                elif r1.first == NUNITY_STATE:
-                    new_relations.append(Nunity(r1.second))
+                elif r1.first == NEG_ONE_STATE:
+                    new_relations.append(NegOne(r1.second))
                 elif r1.second == ZERO_STATE:
                     if verbose:
                         print(r1, r2, '=====>', Zero(r1.first))
                     new_relations.append(Zero(r1.first))
-                elif r1.second == NUNITY_STATE:
-                    new_relations.append(Nunity(r1.first))
+                elif r1.second == NEG_ONE_STATE:
+                    new_relations.append(NegOne(r1.first))
                 else:
                     if verbose:
                         print(r1, r2, '=====>', Alias(r1.first, r1.second))
@@ -165,7 +136,7 @@ def conservation_zeros(relations: List, verbose: bool = False) -> List:
     zeros = get_zeros(relations)
     new_relations = []
     for r in relations:
-        if type(r) == Conservation:
+        if isinstance(r, Conservation):
             inputs = [v for v in r.inputs if v != ZERO_STATE and v not in zeros]
             outputs = [v for v in r.outputs if v != ZERO_STATE and v not in zeros]
             if verbose and (inputs != r.inputs or outputs != r.outputs):
@@ -181,7 +152,7 @@ def conservation_alias(relations: List, verbose: bool = False) -> List:
     aliases = get_aliases(relations)
     new_relations = []
     for r in relations:
-        if type(r) == Conservation:
+        if isinstance(r, Conservation):
             inputs = [aliases.get(v) or v for v in r.inputs]
             outputs = [aliases.get(v) or v for v in r.outputs]
             if verbose and (inputs != r.inputs or outputs != r.outputs):
@@ -196,7 +167,7 @@ def unary_conservation_is_alias(relations: List, verbose: bool = False) -> List:
     """Convert unary conservation constraints to aliases."""
     new_relations = []
     for r in relations:
-        if type(r) == Conservation and len(r.inputs) == 1 and len(r.outputs) == 1:
+        if isinstance(r, Conservation) and len(r.inputs) == 1 and len(r.outputs) == 1:
             alias = Alias(r.inputs[0], r.outputs[0])
             new_relations.append(alias)
             if verbose:
@@ -209,15 +180,15 @@ def unary_conservation_is_alias(relations: List, verbose: bool = False) -> List:
 
 def is_vacuous(relation: Any) -> bool:
     """Check if a relation is vacuously true."""
-    if type(relation) == Leq:
+    if isinstance(relation, Leq):
         if relation.first == relation.second:
             return True
-    if type(relation) == Alias:
+    if isinstance(relation, Alias):
         if relation.alias == relation.state:
             return True
-    if type(relation) == Zero and relation.state == ZERO_STATE:
+    if isinstance(relation, Zero) and relation.state == ZERO_STATE:
         return True
-    if type(relation) == Nunity and relation.state == NUNITY_STATE:
+    if isinstance(relation, NegOne) and relation.state == NEG_ONE_STATE:
         return True
 
     return False
@@ -235,12 +206,19 @@ def remove_vacuous(relations: List, verbose: bool = False) -> List:
 
 
 def reduce_relations(relations: List, verbose: bool = False) -> List:
-    """Apply all reduction rules once."""
+    """
+    Apply all reduction rules once.
+
+    Rule order matters: de-aliasing inequalities first allows symmetric_inequality
+    to detect equalities. Propagation rules then simplify through the new equalities.
+    Conservation rules run after propagation to benefit from resolved aliases/zeros.
+    Vacuous removal runs last to clean up any trivially true results.
+    """
     reduction_rules = [
         de_alias_inequalities,
         symmetric_inequality,
         propagate_zero_aliases,
-        propagate_nunity_aliases,
+        propagate_neg_one_aliases,
         conservation_alias,
         conservation_zeros,
         unary_conservation_is_alias,
@@ -270,7 +248,7 @@ def all_variables(relations: List) -> List:
     all_vars = []
     for r in relations:
         for v in r.variables():
-            if v != ZERO_STATE and v != NUNITY_STATE:
+            if v != ZERO_STATE and v != NEG_ONE_STATE:
                 all_vars.append(v)
     all_vars = list(set(all_vars))
     return all_vars
@@ -280,11 +258,11 @@ def free_variables(relations: List) -> List:
     """Get all free (unbound) variables in relations."""
     all_vars = all_variables(relations)
     zeros = get_zeros(relations)
-    nunities = get_nunities(relations)
+    neg_ones = get_neg_ones(relations)
     aliases = get_aliases(relations)
     sum_aliases = get_sum_aliases(relations)
     res = []
     for v in all_vars:
-        if v not in zeros and v not in nunities and v not in aliases and v not in sum_aliases:
+        if v not in zeros and v not in neg_ones and v not in aliases and v not in sum_aliases:
             res.append(v)
     return _sort_any(res)

@@ -14,13 +14,13 @@ Constraint relation classes representing different types of constraints in the F
 | `Leq` | Less than or equal: `first <= second` | `Leq(a, b)` means a ≤ b |
 | `Less` | Strict less than: `first < second` | `Less(a, b)` means a < b |
 | `Zero` | State equals zero: `state = [0]` | `Zero(a)` means a = 0 |
-| `Nunity` | State equals -1: `state = [-1]` | `Nunity(a)` means a = -1 |
+| `NegOne` | State equals -1: `state = [-1]` | `NegOne(a)` means a = -1 |
 | `Alias` | Two states are equal | `Alias(a, b)` means a = b |
 | `Conservation` | Sum conservation: `Σinputs = Σoutputs` | Conservation at crossings |
 
 ```python
 from fkcompute.domain.constraints.relations import (
-    Leq, Less, Zero, Nunity, Alias, Conservation
+    Leq, Less, Zero, NegOne, Alias, Conservation
 )
 
 # Create constraints
@@ -62,7 +62,7 @@ solution = solve(expr, a)     # Returns [expression for a]
 **Constants:**
 - `one`: The constant 1
 - `zero`: The constant 0
-- `nunity`: The constant -1
+- `neg_one`: The constant -1
 
 ### `reduction.py`
 Constraint propagation and reduction algorithms.
@@ -80,7 +80,7 @@ Constraint propagation and reduction algorithms.
 1. `de_alias_inequalities`: Replace aliased variables in inequalities
 2. `symmetric_inequality`: Detect `a ≤ b` and `b ≤ a` implies `a = b`
 3. `propagate_zero_aliases`: If `a = 0` and `a = b`, then `b = 0`
-4. `propagate_nunity_aliases`: Same for `-1`
+4. `propagate_neg_one_aliases`: Same for `-1`
 5. `conservation_alias`: Replace aliases in conservation constraints
 6. `conservation_zeros`: Remove zeros from conservation sums
 7. `unary_conservation_is_alias`: `a = b` conservation becomes alias

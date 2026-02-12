@@ -322,19 +322,14 @@ def _generate_ilp(braid: List[int], degree: int, inversion_data: Dict, outfile: 
 
     braid_states = BraidStates(braid)
 
-    if is_homogeneous_braid(braid):
-        # Homogeneous braid - use default sign assignment
-        all_relations = braid_states.get_state_relations()
-        relations = full_reduce(all_relations)
-        return generate_ilp(degree, relations, braid_states, outfile)
-    else:
-        # Fibered braid - use provided inversion data
+    if not is_homogeneous_braid(braid):
+        # Fibered braid - load provided inversion data
         braid_states.strand_signs = inversion_data
         braid_states.compute_matrices()
-        if braid_states.validate():
-            braid_states.generate_position_assignments()
-            all_relations = braid_states.get_state_relations()
-            relations = full_reduce(all_relations)
-            return generate_ilp(degree, relations, braid_states, outfile)
-        else:
+        if not braid_states.validate():
             raise Exception("The inversion data doesn't seem to be valid.")
+        braid_states.generate_position_assignments()
+
+    all_relations = braid_states.get_state_relations()
+    relations = full_reduce(all_relations)
+    return generate_ilp(degree, relations, braid_states, outfile)

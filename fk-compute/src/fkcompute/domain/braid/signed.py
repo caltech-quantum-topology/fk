@@ -9,7 +9,7 @@ import itertools
 from typing import List, Dict, Any, Optional, Tuple
 
 from .topology import BraidTopology
-from .types import ZERO_STATE, NUNITY_STATE
+from .types import ZERO_STATE, NEG_ONE_STATE
 from .word import is_homogeneous_braid
 
 
@@ -201,30 +201,51 @@ class SignedBraid:
             else:
                 index += 1
 
-    def get_state_relations(self) -> List:
-        """Generate state relations for the current braid and sign assignment."""
-        from ..constraints.relations import Zero, Nunity, Alias, Conservation, Leq
+    def _boundary_conditions(self) -> List:
+        """Zero or NegOne constraints for the first strand's endpoints."""
+        from ..constraints.relations import Zero, NegOne
+
+        topo = self.topology
+        if self.strand_signs[0][0] == 1:
+            constraint = Zero
+        else:
+            constraint = NegOne
+        return [
+            constraint(topo.get_state((0, 0))),
+            constraint(topo.get_state((0, len(topo.braid)))),
+        ]
+
+    def _periodicity_constraints(self) -> List:
+        """Alias constraints wrapping states around the braid closure."""
+        from ..constraints.relations import Alias
+
+        topo = self.topology
+        return [
+            Alias(topo.get_state((i, len(topo.braid))), topo.get_state((i, 0)))
+            for i in topo.strands
+        ]
+
+    def _sign_bound_constraints(self) -> List:
+        """Leq bounds on each state based on its sign assignment."""
+        from ..constraints.relations import Leq
 
         topo = self.topology
         relations = []
-        if self.strand_signs[0][0] == 1:
-            relations.append(Zero(topo.get_state((0, 0))))
-            relations.append(Zero(topo.get_state((0, len(topo.braid)))))
-        else:
-            relations.append(Nunity(topo.get_state((0, 0))))
-            relations.append(Nunity(topo.get_state((0, len(topo.braid)))))
-
-        for i in topo.strands:
-            relations.append(Alias(topo.get_state((i, len(topo.braid))), topo.get_state((i, 0))))
-
         for (i, j) in topo.state_info.keys():
             if self.sign_assignment[(i, j)] == 1:
                 relations.append(Leq(ZERO_STATE, (i, j)))
             elif self.sign_assignment[(i, j)] == -1:
-                relations.append(Leq((i, j), NUNITY_STATE))
+                relations.append(Leq((i, j), NEG_ONE_STATE))
             else:
                 raise ValueError(f"The sign at position {(i, j)} is not 1 or -1!")
+        return relations
 
+    def _crossing_constraints(self) -> List:
+        """R-matrix inequalities and conservation constraints at each crossing."""
+        from ..constraints.relations import Leq, Conservation
+
+        topo = self.topology
+        relations = []
         for j, gen in enumerate(topo.braid):
             if self.r_matrices[j] == 'R1':
                 relations.append(Leq(topo.get_state((abs(gen), j + 1)), topo.get_state((abs(gen) - 1, j))))
@@ -239,6 +260,23 @@ class SignedBraid:
             ))
         return relations
 
+    def get_state_relations(self) -> List:
+        """
+        Generate state relations for the current braid and sign assignment.
+
+        Combines four types of constraints:
+        1. Boundary conditions — Zero/NegOne for the first strand
+        2. Periodicity — Alias wrapping states around closure
+        3. Sign bounds — Leq bounds based on sign assignment
+        4. Crossing constraints — R-matrix inequalities + Conservation
+        """
+        return (
+            self._boundary_conditions()
+            + self._periodicity_constraints()
+            + self._sign_bound_constraints()
+            + self._crossing_constraints()
+        )
+
     def reduced_relations(self) -> List:
         """Get the reduced relations for this braid."""
         from ..constraints.reduction import full_reduce
@@ -247,7 +285,7 @@ class SignedBraid:
     def free_variables(self) -> List:
         """Get the free variables after reduction."""
         from ..constraints.reduction import free_variables
-        return [x for x in free_variables(self.reduced_relations()) if x != ZERO_STATE and x != NUNITY_STATE]
+        return [x for x in free_variables(self.reduced_relations()) if x != ZERO_STATE and x != NEG_ONE_STATE]
 
     def load_sign_data(self, sign_data: List[int]):
         """Load sign data into the braid states."""

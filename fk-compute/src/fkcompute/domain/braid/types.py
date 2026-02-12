@@ -31,4 +31,4 @@ class StateLiteral:
 
 # Special state constants
 ZERO_STATE = StateLiteral(0)
-NUNITY_STATE = StateLiteral(-1)
+NEG_ONE_STATE = StateLiteral(-1)

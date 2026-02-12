@@ -7,18 +7,18 @@ This module contains pure domain logic with no I/O dependencies:
 - solver/: Sign assignment logic
 """
 
-from .braid.types import StateLiteral, ZERO_STATE, NUNITY_STATE
+from .braid.types import StateLiteral, ZERO_STATE, NEG_ONE_STATE
 from .braid.word import is_positive_braid, is_homogeneous_braid
 from .braid.states import BraidStates
-from .constraints.relations import Leq, Less, Zero, Nunity, Alias, Conservation
-from .constraints.symbols import Symbol, symbols, one, zero, nunity, solve
+from .constraints.relations import Leq, Less, Zero, NegOne, Alias, Conservation
+from .constraints.symbols import Symbol, symbols, one, zero, neg_one, solve
 from .constraints.reduction import full_reduce, reduce_relations
 
 __all__ = [
     # Types
     "StateLiteral",
     "ZERO_STATE",
-    "NUNITY_STATE",
+    "NEG_ONE_STATE",
     # Braid
     "BraidStates",
     "is_positive_braid",
@@ -27,7 +27,7 @@ __all__ = [
     "Leq",
     "Less",
     "Zero",
-    "Nunity",
+    "NegOne",
     "Alias",
     "Conservation",
     # Symbols
@@ -35,7 +35,7 @@ __all__ = [
     "symbols",
     "one",
     "zero",
-    "nunity",
+    "neg_one",
     "solve",
     # Reduction
     "full_reduce",

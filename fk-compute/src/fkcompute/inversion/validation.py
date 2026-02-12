@@ -27,20 +27,20 @@ def check_sign_assignment(degree: int, relations: List, braid_states) -> Optiona
     Returns
     -------
     dict or None
-        Dictionary with criteria, multiples, single_signs, and assignment if valid,
+        Dictionary with criteria, multi_var_inequalities, single_var_signs, and assignment if valid,
         None otherwise.
     """
     from ..solver.ilp import integral_bounded
 
     assignment = symbolic_variable_assignment(relations, braid_states)
-    criteria, multiples, singlesigns = process_assignment(assignment, braid_states, relations)
+    criteria, multi_var_inequalities, single_var_signs = process_assignment(assignment, braid_states, relations)
     for value in criteria.values():
-        multiples.append(degree - value)
-    if not integral_bounded(multiples, singlesigns):
+        multi_var_inequalities.append(degree - value)
+    if not integral_bounded(multi_var_inequalities, single_var_signs):
         return None
     return {
         "criteria": criteria,
-        "multiples": multiples,
-        "single_signs": singlesigns,
+        "multi_var_inequalities": multi_var_inequalities,
+        "single_var_signs": single_var_signs,
         "assignment": assignment,
     }

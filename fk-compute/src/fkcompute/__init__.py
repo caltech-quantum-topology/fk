@@ -49,11 +49,11 @@ from .api.batch import fk_from_config, fk_batch_from_config
 
 # Domain types (commonly used)
 from .domain.braid.states import BraidStates
-from .domain.braid.types import StateLiteral, ZERO_STATE, NUNITY_STATE
+from .domain.braid.types import StateLiteral, ZERO_STATE, NEG_ONE_STATE
 from .domain.braid.word import is_positive_braid, is_homogeneous_braid
 
 # Constraint classes
-from .domain.constraints.relations import Leq, Less, Zero, Nunity, Alias, Conservation
+from .domain.constraints.relations import Leq, Less, Zero, NegOne, Alias, Conservation
 
 # Output formatting
 from .output.symbolic import format_symbolic_output, SYMPY_AVAILABLE
@@ -71,14 +71,14 @@ __all__ = [
     "BraidStates",
     "StateLiteral",
     "ZERO_STATE",
-    "NUNITY_STATE",
+    "NEG_ONE_STATE",
     "is_positive_braid",
     "is_homogeneous_braid",
     # Constraints
     "Leq",
     "Less",
     "Zero",
-    "Nunity",
+    "NegOne",
     "Alias",
     "Conservation",
     # Output

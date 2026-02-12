@@ -21,13 +21,13 @@ domain/
 
 ### `braid/`
 Braid topology and state management:
-- `types.py`: Core type definitions (`StateLiteral`, `ZERO_STATE`, `NUNITY_STATE`)
+- `types.py`: Core type definitions (`StateLiteral`, `ZERO_STATE`, `NEG_ONE_STATE`)
 - `word.py`: Braid word operations and visualization
 - `states.py`: `BraidStates` class for managing braid state information
 
 ### `constraints/`
 Constraint system for FK computation:
-- `relations.py`: Constraint classes (`Leq`, `Less`, `Zero`, `Nunity`, `Alias`, `Conservation`)
+- `relations.py`: Constraint classes (`Leq`, `Less`, `Zero`, `NegOne`, `Alias`, `Conservation`)
 - `symbols.py`: Symbolic linear algebra (`Symbol` class)
 - `reduction.py`: Constraint propagation and reduction algorithms
 
@@ -41,11 +41,11 @@ Sign assignment logic:
 ```python
 from fkcompute.domain import (
     # Types
-    StateLiteral, ZERO_STATE, NUNITY_STATE,
+    StateLiteral, ZERO_STATE, NEG_ONE_STATE,
     # Braid
     BraidStates, is_homogeneous_braid,
     # Constraints
-    Leq, Less, Zero, Nunity, Alias, Conservation,
+    Leq, Less, Zero, NegOne, Alias, Conservation,
     # Symbols
     Symbol, symbols, solve,
     # Reduction
