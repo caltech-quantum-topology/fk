@@ -73,6 +73,56 @@ def simple_command(
 
 
 # -------------------------------------------------------------------------
+# Print-as command
+# -------------------------------------------------------------------------
+@app.command("print-as")
+def print_as_command(
+    json_file: str = typer.Argument(..., help="Path to JSON file containing FK computation result"),
+    format_type: str = typer.Option(
+        "pretty", "--format", "-f",
+        help="Output format: pretty, inline, latex, mathematica"
+    ),
+) -> None:
+    """Format and print FK computation result from JSON file in symbolic form.
+    
+    Takes a JSON file containing FK computation results (like those generated
+    by running computation with save_data=true) and outputs the terms in the
+    requested symbolic format.
+    
+    Example:
+        fk print-as result.json --format latex
+    """
+    # Validate format
+    valid_formats = ("pretty", "inline", "latex", "mathematica")
+    if format_type not in valid_formats:
+        raise typer.BadParameter(f"Invalid format. Choose from: {', '.join(valid_formats)}")
+    
+    # Load JSON file
+    json_path = Path(json_file)
+    if not json_path.exists():
+        raise typer.BadParameter(f"File not found: {json_file}")
+    
+    try:
+        with open(json_path, 'r') as f:
+            result = json.load(f)
+    except json.JSONDecodeError as e:
+        raise typer.BadParameter(f"Invalid JSON file: {e}")
+    except Exception as e:
+        raise typer.BadParameter(f"Error reading file: {e}")
+    
+    # Validate that this looks like an FK result
+    if "terms" not in result:
+        raise typer.BadParameter("JSON file does not appear to contain FK computation results (missing 'terms' key)")
+    
+    # Print the result in symbolic format
+    if SYMPY_AVAILABLE:
+        print_symbolic_result(result, format_type=format_type, show_matrix=False)
+    else:
+        typer.echo("Error: SymPy is required for symbolic output. Install with: pip install sympy", err=True)
+        raise typer.Exit(1)
+
+
+# -------------------------------------------------------------------------
 # Config file command
 # -------------------------------------------------------------------------
 @app.command("config")
