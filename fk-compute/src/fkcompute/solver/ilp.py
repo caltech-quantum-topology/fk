@@ -100,6 +100,8 @@ def _minimum_degree_symbolic(assignment: Dict, braid_states, weight: Optional[in
         if verbose:
             print(braid_states.closed_strand_components)
         conditions[braid_states.closed_strand_components[index]] -= 1/2
+    for index in range(braid_states.n_components):
+        conditions[index] -= 1/2
     for index in range(braid_states.n_crossings):
         crossing_type = braid_states.r_matrices[index]
         in1 = braid_states.top_input_state_locations[index]

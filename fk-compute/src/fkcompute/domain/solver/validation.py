@@ -215,7 +215,18 @@ def _expr_from_dict(dict_: Dict) -> Any:
     return expression
 
 
-def _minimum_degree_symbolic(assignment: Dict, braid_states, verbose: bool = False) -> Dict:
+def _total_weight(assignment: Dict, braid_states) -> Any:
+    """Compute total weight of the braid from the symbolic assignment."""
+    acc = 0
+    for index in range(braid_states.n_strands):
+        if braid_states.sign_assignment[(index, 0)] > 0:
+            acc += assignment[braid_states.get_state((index, 0))]
+        else:
+            acc -= assignment[braid_states.get_state((index, 0))]
+    return acc
+
+
+def _minimum_degree_symbolic(assignment: Dict, braid_states, verbose: bool = False, weight: Optional[int] = None) -> Dict:
     """
     Compute minimum degree constraints symbolically.
 
@@ -238,6 +249,8 @@ def _minimum_degree_symbolic(assignment: Dict, braid_states, verbose: bool = Fal
         if verbose:
             print(braid_states.closed_strand_components)
         conditions[braid_states.closed_strand_components[index]] -= 1/2
+    for index in range(braid_states.n_components):
+        conditions[index] -= 1/2
     for index in range(braid_states.n_crossings):
         crossing_type = braid_states.r_matrices[index]
         in1 = braid_states.top_input_state_locations[index]
@@ -256,13 +269,15 @@ def _minimum_degree_symbolic(assignment: Dict, braid_states, verbose: bool = Fal
             conditions[braid_states.bottom_crossing_components[index]] -= (assignment[in1] + assignment[out2] + 1) / 4
         else:
             raise Exception("Crossing type is not one of the four acceptable values: 'R1', 'R2', 'R3', or 'R4'.")
+    if weight is not None:
+        conditions[-1] = _total_weight(assignment, braid_states)
     if verbose:
         for value in conditions.values():
             print(value.var)
     return conditions
 
 
-def _process_assignment(assignment: Dict, braid_states, relations: List):
+def _process_assignment(assignment: Dict, braid_states, relations: List, weight: Optional[int] = None):
     """
     Process an assignment to extract criteria, multiples, and single signs.
 
@@ -274,13 +289,15 @@ def _process_assignment(assignment: Dict, braid_states, relations: List):
         BraidStates object.
     relations
         List of constraint relations.
+    weight
+        Optional weight parameter for stratified computation.
 
     Returns
     -------
     tuple
         (criteria, multiples, singlesigns)
     """
-    criteria = _minimum_degree_symbolic(assignment, braid_states)
+    criteria = _minimum_degree_symbolic(assignment, braid_states, weight=weight)
     singles, multiples = _inequality_manager(relations, assignment, braid_states)
     singlesigns = {}
     for entry in singles:
@@ -290,7 +307,7 @@ def _process_assignment(assignment: Dict, braid_states, relations: List):
     return criteria, multiples, singlesigns
 
 
-def check_sign_assignment(degree: int, relations: List, braid_states) -> Optional[Dict]:
+def check_sign_assignment(degree: int, relations: List, braid_states, weight: Optional[int] = None) -> Optional[Dict]:
     """
     Check if a sign assignment is valid for a given degree.
 
@@ -302,6 +319,9 @@ def check_sign_assignment(degree: int, relations: List, braid_states) -> Optiona
         List of reduced constraint relations.
     braid_states
         BraidStates object with sign assignment.
+    weight
+        Optional weight parameter for stratified computation. When provided,
+        the key=-1 criterion uses `weight - value` instead of `degree - value`.
 
     Returns
     -------
@@ -313,9 +333,12 @@ def check_sign_assignment(degree: int, relations: List, braid_states) -> Optiona
     from ...solver.ilp import integral_bounded
 
     assignment = symbolic_variable_assignment(relations, braid_states)
-    criteria, multiples, singlesigns = _process_assignment(assignment, braid_states, relations)
-    for value in criteria.values():
-        multiples.append(degree - value)
+    criteria, multiples, singlesigns = _process_assignment(assignment, braid_states, relations, weight=weight)
+    for (key, value) in criteria.items():
+        if key >= 0:
+            multiples.append(degree - value)
+        elif weight is not None:
+            multiples.append(weight - value)
     if not integral_bounded(multiples, singlesigns):
         return None
     return {

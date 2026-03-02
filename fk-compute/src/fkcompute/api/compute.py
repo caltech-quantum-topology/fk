@@ -203,6 +203,7 @@ def _fk_compute(
                 chunk_size=chunk_size,
                 include_flip=include_flip,
                 max_shifts=max_shifts,
+                weight=weight,
             )
             logger.debug("Inversion data calculated")
 
