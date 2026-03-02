@@ -305,6 +305,7 @@ def check_assignment_for_braid(
     degree: int,
     braid_state: BraidStates,
     partial_signs: Optional[PartialSignsType] = None,
+    weight: Optional[int] = None,
 ) -> Optional[Tuple[List[int], Dict[int, List[int]]]]:
     """
     Test a single sign assignment (by index) for a given braid.
@@ -325,7 +326,7 @@ def check_assignment_for_braid(
     braid_state.generate_position_assignments()
     all_relations = braid_state.get_state_relations()
     relations = full_reduce(all_relations)
-    out = check_sign_assignment(degree, relations, braid_state)
+    out = check_sign_assignment(degree, relations, braid_state, weight=weight)
 
     if out is not None:
         return braid_state.braid, braid_state.strand_signs
@@ -347,18 +348,18 @@ ResultDict = Union[SuccessResult, FailureResult]
 
 
 def worker_on_range(
-    args: Tuple[int, BraidStates, int, int, bool, Optional[PartialSignsType]],
+    args: Tuple[int, BraidStates, int, int, bool, Optional[PartialSignsType], Optional[int]],
 ) -> Optional[Tuple[List[int], Dict[int, List[int]]]]:
     """
     Worker for a range of indices; returns the first success in [start, end).
     """
-    degree, braid_state, start, end, progress, partial_signs = args
+    degree, braid_state, start, end, progress, partial_signs, weight = args
     n = end - start
     for i, idx in enumerate(range(start, end)):
         if progress and n > 0 and (i % max(1, n // 10) == 0):
             pct = round(100.0 * i / n, 1)
             print(f"[worker {os.getpid()}] {pct}% of batch", end="\r")
-        hit = check_assignment_for_braid(idx, degree, braid_state, partial_signs)
+        hit = check_assignment_for_braid(idx, degree, braid_state, partial_signs, weight=weight)
         if hit is not None:
             return hit
     return None
@@ -373,6 +374,7 @@ def parallel_try_sign_assignments(
     include_flip: bool = True,
     max_shifts: Optional[int] = None,
     verbose: bool = False,
+    weight: Optional[int] = None,
 ) -> Union[Tuple[List[int], Dict[int, List[int]]], bool]:
     """
     Parallel search for a consistent sign assignment across braid variants.
@@ -389,6 +391,15 @@ def parallel_try_sign_assignments(
     if verbose:
         print(f"Search space: {total:,} assignments")
 
+    # Try all-ones first (matches legacy default: the reference code always
+    # defaults to all-ones before any search)
+    if total > 0:
+        all_ones_hit = check_assignment_for_braid(
+            total - 1, degree, braid_state, partial_signs, weight=weight
+        )
+        if all_ones_hit is not None:
+            return all_ones_hit
+
     for variant_braid_state, variant_partial_signs, meta in generate_braid_variants(
         braid_state, partial_signs, include_flip=include_flip, max_shifts=max_shifts
     ):
@@ -397,8 +408,8 @@ def parallel_try_sign_assignments(
             print(variant_braid_state.braid)
             print(variant_partial_signs)
 
-        tasks: List[Tuple[int, BraidStates, int, int, bool, Optional[PartialSignsType]]] = [
-            (degree, variant_braid_state, start, end, verbose, variant_partial_signs)
+        tasks: List[Tuple[int, BraidStates, int, int, bool, Optional[PartialSignsType], Optional[int]]] = [
+            (degree, variant_braid_state, start, end, verbose, variant_partial_signs, weight)
             for (start, end) in split_ranges(total, chunk_size)
         ]
 
