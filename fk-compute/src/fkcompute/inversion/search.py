@@ -10,6 +10,8 @@ from __future__ import annotations
 import multiprocessing as mp
 import os
 from enum import Enum
+from functools import lru_cache
+from math import comb
 from typing import (
     Dict,
     Iterator,
@@ -77,6 +79,72 @@ def split_ranges(n: int, chunk_size: int) -> Iterator[Tuple[int, int]]:
         start = end
 
 
+@lru_cache(maxsize=None)
+def _n_choose_k(n: int, k: int) -> int:
+    """Cached binomial coefficient used by rank decoding."""
+    if k < 0 or k > n:
+        return 0
+    return comb(n, k)
+
+
+def _free_signs_from_rank(rank: int, n_free: int) -> List[int]:
+    """Decode rank into a +/-1 list with the desired search ordering.
+
+    Ordering (for n_free = 4):
+        ++++, +++-, ++-+, +-++, -+++, ++--, ...
+
+    This is: sort by number of -1 entries (fewest first), and within a fixed
+    number of -1 entries, sort by the underlying bitstring (where 1 means -1)
+    in increasing lexicographic / numeric order.
+    """
+    if n_free < 0:
+        raise ValueError("n_free must be >= 0")
+    if n_free == 0:
+        if rank != 0:
+            raise ValueError("rank out of range for n_free=0")
+        return []
+
+    total = 1 << n_free
+    if rank < 0 or rank >= total:
+        raise ValueError("rank out of range")
+
+    # First decide k = number of '-'
+    k = 0
+    r = rank
+    while k <= n_free:
+        block = _n_choose_k(n_free, k)
+        if r < block:
+            break
+        r -= block
+        k += 1
+    if k > n_free:
+        raise ValueError("rank out of range")
+
+    # Unrank within the k-block in lex order over bitstrings (MSB first).
+    bits: List[int] = []
+    ones_left = k
+    r_within = r
+    for i in range(n_free):
+        if ones_left == 0:
+            bits.extend([0] * (n_free - i))
+            break
+        if n_free - i == ones_left:
+            bits.extend([1] * ones_left)
+            break
+
+        # If we put a 0 here, count how many completions exist.
+        count_if_zero = _n_choose_k(n_free - i - 1, ones_left)
+        if r_within < count_if_zero:
+            bits.append(0)
+        else:
+            bits.append(1)
+            r_within -= count_if_zero
+            ones_left -= 1
+
+    # Map bit 0 -> +1, bit 1 -> -1.
+    return [1 if b == 0 else -1 for b in bits]
+
+
 def sign_assignment_from_index(
     index: int,
     braid_states: BraidStates,
@@ -94,10 +162,8 @@ def sign_assignment_from_index(
         if partial_signs
         else 0
     )
-    bits: List[int] = list(
-        map(int, list(bin(index)[2:].zfill(braid_states.n_s_total - fixed_n_s_total)))
-    )
-    signs: List[int] = [2 * b - 1 for b in bits]
+    n_free = braid_states.n_s_total - fixed_n_s_total
+    signs: List[int] = _free_signs_from_rank(index, n_free)
     out: Dict[int, List[int]] = {}
     if partial_signs:
         iter_signs = iter(signs)
