@@ -54,6 +54,7 @@ wheel.packages = ["src/fkcompute"]
 sdist.include = [
   "cpp/**",
   "CMakeLists.txt",
+  "docs/**",
   "README.md",
   "LICENSE",
   "mathematica/**",

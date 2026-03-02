@@ -1,0 +1,26 @@
+% Pandoc LaTeX header for combined docs PDF.
+%
+% Purpose: improve table-of-contents spacing so section numbers don't collide
+% with titles when using --number-sections.
+
+\usepackage[titles]{tocloft}
+
+% Reserve enough width for multi-digit section numbers.
+\setlength{\cftsecnumwidth}{3.0em}
+\setlength{\cftsubsecnumwidth}{4.0em}
+\setlength{\cftsubsubsecnumwidth}{4.8em}
+
+% Indentation per level.
+\setlength{\cftsecindent}{0em}
+\setlength{\cftsubsecindent}{1.5em}
+\setlength{\cftsubsubsecindent}{3.0em}
+
+% Ensure a consistent gap after the number.
+\renewcommand{\cftsecaftersnum}{\hspace{0.6em}}
+\renewcommand{\cftsubsecaftersnum}{\hspace{0.6em}}
+\renewcommand{\cftsubsubsecaftersnum}{\hspace{0.6em}}
+
+% Slightly tighten vertical spacing.
+\setlength{\cftbeforesecskip}{0.15em}
+\setlength{\cftbeforesubsecskip}{0.10em}
+\setlength{\cftbeforesubsubsecskip}{0.05em}

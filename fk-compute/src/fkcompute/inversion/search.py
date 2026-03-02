@@ -65,7 +65,7 @@ def total_assignments_for_braid(braid_states: BraidStates, partial_signs: Option
         if partial_signs
         else 0
     )
-    return 1 << (braid_states.n_s_total - fixed_n_s_total)
+    return 1 << (braid_states.n_s_total  - fixed_n_s_total)
 
 
 def split_ranges(n: int, chunk_size: int) -> Iterator[Tuple[int, int]]:

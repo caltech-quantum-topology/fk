@@ -11,6 +11,8 @@ References:
 """
 
 from sympy import Symbol, Rational, eye, factor
+import json
+import sympy as sp
 
 T = Symbol("T")
 
@@ -98,7 +100,7 @@ def _rot(crossings):
     return Cs, phi
 
 
-def bar_natan_Z(crossings):
+def bar_natan_Z(crossings, Tname = T):
     """
     Compute Bar-Natan's Z = (P0, P1) for a knot given in PD notation.
 
@@ -121,6 +123,7 @@ def bar_natan_Z(crossings):
     -------
     (P0, P1) : tuple of SymPy expressions in ``T``
     """
+    T = Tname
     Cs, phi = _rot(crossings)
     n = len(Cs)
     size = 2 * n + 1
@@ -171,6 +174,66 @@ def bar_natan_Z(crossings):
     return P0, P1
 
 
+
+def json_to_sympy_expr(obj, *, q_symbol="q", x_prefix="x"):
+    """
+    Convert your JSON structure to a SymPy expression.
+
+    JSON schema (as in your example):
+      obj["terms"] = [
+        {"x": [deg0, deg1, ...], "q_terms": [{"q": qp, "c": "..."}, ...]},
+        ...
+      ]
+      obj["metadata"]["num_x_variables"] optionally specifies number of x vars.
+
+    Returns:
+      (expr, q, xs)
+        expr: SymPy expression in q and xs
+        q: SymPy Symbol
+        xs: tuple of SymPy Symbols (x0, x1, ...)
+    """
+    q = sp.Symbol(q_symbol)
+
+    # Determine number of x variables
+    nvars = None
+    max_x_pow = 0
+    if isinstance(obj, dict):
+        nvars = obj.get("metadata", {}).get("num_x_variables", None)
+        max_x_pow= obj.get("metadata", {}).get("max_x_degrees", None)
+        if max_x_pow is not None:
+            max_x_pow = max_x_pow[0]
+
+    # Fallback: infer from first term if metadata absent
+    if nvars is None:
+        first = obj["terms"][0]["x"]
+        nvars = len(first)
+
+    xs = sp.symbols(f"{x_prefix}0:{nvars}")  # x0, x1, ..., x(nvars-1)
+
+    expr = sp.Integer(0)
+
+    for term in obj.get("terms", []):
+        x_degs = term.get("x", [])
+        if len(x_degs) != nvars:
+            raise ValueError(f"Expected {nvars} x-degrees, got {len(x_degs)} in term {term}")
+
+        # monomial in x's: Π_i x_i**deg_i
+        monom_x = sp.Integer(1)
+        for xi, di in zip(xs, x_degs):
+            monom_x *= xi ** int(di)
+
+        # polynomial/series part in q: Σ (Integer(c) * q**q_power)
+        q_part = sp.Integer(0)
+        for qt in term.get("q_terms", []):
+            qp = int(qt["q"])
+            c = sp.Integer(qt["c"])   # arbitrary precision from string
+            q_part += c * (q ** qp)
+
+        expr += monom_x * q_part
+
+    return sp.simplify(expr), q, xs, max_x_pow
+
+
 if __name__ == "__main__":
     import pandas as pd
     from ast import literal_eval
@@ -184,6 +247,23 @@ if __name__ == "__main__":
         converters={"PD Notation": parse_braid}
     )
 
-    for _, row in ki_pd.iterrows():
-        print(f"Knot: {row['Name']}")
-        print(f"P0, P1: {bar_natan_Z(row['PD Notation'])}")
+    P0, P1 = bar_natan_Z(ki_pd["PD Notation"][0])
+    with open("data/3_1.json") as f:
+        fk, q, xs, x_max = json_to_sympy_expr(json.load(f))
+    print(f"P0: {P0}\nP1: {P1}\nfk: {fk}")
+    Alex0series = sp.series((1-1/T)/P0, T, 0, x_max+1).removeO()
+    Alex0list = sp.Poly(Alex0series,T).all_coeffs()
+    print(Alex0list)
+    fk0 = fk.subs(q,1)
+    fk0list = sp.Poly(fk0,xs[0]).all_coeffs()
+    print(fk0list)
+    print(fk0list==Alex0list)
+     
+    Alex1series = sp.series(-(1-1/T)*P1/P0**3,T,0,x_max+1).removeO()
+    print(Alex1series)
+    Alex1list = sp.Poly(Alex1series,T).all_coeffs()
+    print(Alex1list)
+    fk1 = fk.diff(q).subs(q,1)
+    fk1list = sp.Poly(fk1,xs[0]).all_coeffs()
+    print(fk1list)
+    print(fk1list==Alex1list)
