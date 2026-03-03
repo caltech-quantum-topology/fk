@@ -12,7 +12,7 @@ from typing import List
 
 import typer
 
-from .app import app, template_app, history_app
+from .app import app, template_app
 from ..api.compute import fk
 from ..infra.config import parse_int_list
 from ..output.symbolic import print_symbolic_result, SYMPY_AVAILABLE
@@ -219,106 +219,6 @@ degree: 15
     typer.echo(f"Template created: {output_path}")
     typer.echo(f"\nEdit the file to configure your computation, then run:")
     typer.echo(f"  fk config {output_path}")
-
-
-# -------------------------------------------------------------------------
-# History management commands
-# -------------------------------------------------------------------------
-@history_app.command("show")
-def history_show(
-    limit: int = typer.Option(10, "--limit", "-l", help="Number of recent computations to show"),
-    all_items: bool = typer.Option(False, "--all", "-a", help="Show all computations")
-) -> None:
-    """Show computation history."""
-    try:
-        from ..interactive import ComputationHistory
-        history = ComputationHistory()
-
-        if all_items:
-            limit = 100
-        elif limit <= 0:
-            raise typer.BadParameter("Limit must be a positive integer")
-
-        history.display_recent(limit=limit)
-    except ImportError as e:
-        typer.echo(f"History management not available: {e}")
-
-
-@history_app.command("search")
-def history_search(
-    query: str = typer.Argument(..., help="Search query for computation history")
-) -> None:
-    """Search computation history."""
-    try:
-        from ..interactive import ComputationHistory
-        history = ComputationHistory()
-        history.display_search_results(query)
-
-        if typer.confirm("Select a computation from results?", default=False):
-            params = history.interactive_select()
-            if params:
-                typer.echo(f"Selected computation: {params}")
-                braid = parse_int_list(params["braid"]) if isinstance(params["braid"], str) else params["braid"]
-                if braid is not None:
-                    result = fk(braid, params["degree"], **params)
-                    _print_result(result, params.get("symbolic", False))
-                else:
-                    typer.echo("Error: Invalid braid data")
-    except ImportError as e:
-        typer.echo(f"History management not available: {e}")
-
-
-@history_app.command("clear")
-def history_clear(
-    confirm: bool = typer.Option(False, "--confirm", "-y", help="Skip confirmation prompt")
-) -> None:
-    """Clear computation history."""
-    if not confirm:
-        if not typer.confirm("Clear all computation history? This cannot be undone.", default=False):
-            typer.echo("History clearing cancelled.")
-            return
-
-    try:
-        from ..interactive import ComputationHistory
-        history = ComputationHistory()
-        if history.clear_history():
-            typer.echo("History cleared successfully")
-        else:
-            typer.echo("Failed to clear history")
-    except ImportError as e:
-        typer.echo(f"History management not available: {e}")
-
-
-@history_app.command("export")
-def history_export(
-    filepath: str = typer.Argument(..., help="File path to export history to")
-) -> None:
-    """Export computation history to a file."""
-    try:
-        from ..interactive import ComputationHistory
-        history = ComputationHistory()
-        if history.export_history(filepath):
-            typer.echo(f"History exported to {filepath}")
-        else:
-            typer.echo("Failed to export history")
-    except ImportError as e:
-        typer.echo(f"History management not available: {e}")
-
-
-@history_app.command("import")
-def history_import(
-    filepath: str = typer.Argument(..., help="File path to import history from")
-) -> None:
-    """Import computation history from a file."""
-    try:
-        from ..interactive import ComputationHistory
-        history = ComputationHistory()
-        if history.import_history(filepath):
-            typer.echo(f"History imported from {filepath}")
-        else:
-            typer.echo("Failed to import history")
-    except ImportError as e:
-        typer.echo(f"History management not available: {e}")
 
 
 # -------------------------------------------------------------------------

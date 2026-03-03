@@ -52,10 +52,8 @@ For detailed documentation, run 'man fk' (after running 'fk-install-man').
 
 # Sub-apps
 template_app = typer.Typer(help="Template management commands")
-history_app = typer.Typer(help="History and session management commands")
 
 app.add_typer(template_app, name="template")
-app.add_typer(history_app, name="history")
 
 
 def main(argv: Optional[List[str]] = None) -> None:
@@ -67,7 +65,7 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     # Handle legacy simple mode: fk "[1,-2,3]" 2 -> fk simple "[1,-2,3]" 2
     if len(argv) >= 3 and argv[1] not in [
-        "simple", "config", "interactive", "template", "history", "-h", "--help", "--version"
+        "simple", "config", "interactive", "template", "-h", "--help", "--version"
     ]:
         try:
             int(argv[2])
