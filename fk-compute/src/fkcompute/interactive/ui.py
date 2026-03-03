@@ -95,15 +95,7 @@ class ValidatedInput:
                 
                 # Parse and validate braid
                 try:
-                    braid = ValidatedInput._parse_braid(braid_input)
-                    
-                    # Show braid analysis
-                    ValidatedInput._analyze_braid(braid)
-                    
-                    # Confirm if user wants to proceed
-                    if Confirm.ask("Continue with this braid?"):
-                        return braid
-                        
+                    return ValidatedInput._parse_braid(braid_input)
                 except ValueError as e:
                     StatusMessage.error(f"Invalid braid: {e}")
     
@@ -350,57 +342,6 @@ class ValidatedInput:
         
         return parts
     
-    @staticmethod
-    def _analyze_braid(braid: List[int]):
-        """Analyze and display information about the braid."""
-        try:
-            from ..domain.braid.word import is_homogeneous_braid
-            from ..domain.braid.states import BraidStates
-            
-            # Basic statistics
-            crossings = len(braid)
-            max_strand = max(abs(x) for x in braid)
-            min_strand = min(abs(x) for x in braid)
-            components = max_strand
-            
-            console.print(Rule("Braid Analysis", style="cyan"))
-            
-            # Show statistics
-            stats_table = Table(show_header=False, box=None)
-            stats_table.add_column("Property", style="bold")
-            stats_table.add_column("Value")
-            
-            stats_table.add_row("Crossings", str(crossings))
-            stats_table.add_row("Strands", str(components))
-            stats_table.add_row("Max absolute value", str(max_strand))
-            
-            # Type classification
-            if is_homogeneous_braid(braid):
-                braid_type = "Homogeneous (standard computation)"
-                type_style = "green"
-            else:
-                braid_type = "Fibered (requires inversion data)"
-                type_style = "yellow"
-            
-            stats_table.add_row("Type", f"[{type_style}]{braid_type}[/{type_style}]")
-            
-            console.print(stats_table)
-            
-            # Complexity estimate
-            if crossings <= 3:
-                complexity = "Simple"
-                color = "green"
-            elif crossings <= 6:
-                complexity = "Moderate" 
-                color = "yellow"
-            else:
-                complexity = "Complex"
-                color = "red"
-            
-            console.print(f"\nComplexity: [{color}]{complexity}[/{color}]", style="bold")
-            
-        except Exception as e:
-            console.print(f"Analysis failed: {e}", style="dim red")
 
 
 class ComputationSummary:

@@ -11,16 +11,12 @@ from typing import Any, Dict
 
 def _get_optimal_workers() -> int:
     """Get optimal number of worker processes for this system."""
-    cpu_count = os.cpu_count() or 1
-    # Reserve 1 core for system responsiveness on multi-core systems
-    return max(1, cpu_count - 1) if cpu_count > 2 else cpu_count
+    return os.cpu_count() or 1
 
 
 def _get_optimal_threads() -> int:
     """Get optimal number of threads for C++ computation."""
-    cpu_count = os.cpu_count() or 1
-    # Reserve 1 core for system responsiveness on multi-core systems
-    return max(1, cpu_count - 1) if cpu_count > 2 else cpu_count
+    return os.cpu_count() or 1
 
 
 # Preset configurations
