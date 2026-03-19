@@ -411,6 +411,52 @@ void FMPoly::addToCoefficient(int qPower, const std::vector<int> &xPowers,
   flint_free(exps);
 }
 
+void FMPoly::addToCoefficientFmpz(int qPower, const std::vector<int> &xPowers,
+                                  const fmpz_t coefficient) {
+  if (fmpz_is_zero(coefficient)) return;
+
+  if (xPowers.size() != static_cast<size_t>(numXVariables)) {
+    throw std::invalid_argument(
+        "X powers vector size must match number of variables");
+  }
+
+  bool needsAdjustmentCheck = (qPower < allGroundPowers[0]);
+  if (!needsAdjustmentCheck) {
+    for (int i = 0; i < numXVariables; i++) {
+      if (xPowers[i] < allGroundPowers[i + 1]) {
+        needsAdjustmentCheck = true;
+        break;
+      }
+    }
+  }
+
+  if (needsAdjustmentCheck) {
+    adjustGroundPowersIfNeeded(qPower, xPowers);
+  }
+
+  fmpz *exps;
+  slong exp_bits;
+  convertExponents(qPower, xPowers, &exps, &exp_bits);
+
+  fmpz **exp_ptrs = (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+  for (int i = 0; i <= numXVariables; i++) {
+    exp_ptrs[i] = &(exps[i]);
+  }
+
+  fmpz_t current;
+  fmpz_init(current);
+  fmpz_mpoly_get_coeff_fmpz_fmpz(current, poly, exp_ptrs, ctx);
+  fmpz_add(current, current, coefficient);
+  fmpz_mpoly_set_coeff_fmpz_fmpz(poly, current, exp_ptrs, ctx);
+
+  fmpz_clear(current);
+  for (int i = 0; i <= numXVariables; i++) {
+    fmpz_clear(&(exps[i]));
+  }
+  flint_free(exp_ptrs);
+  flint_free(exps);
+}
+
 QPolynomial
 FMPoly::getQPolynomialObject(const std::vector<int> &xPowers) const {
   if (xPowers.size() != static_cast<size_t>(numXVariables)) {

@@ -62,12 +62,12 @@ namespace {
   std::shared_mutex inverse_pochhammer_mutex;
 }
 
-void computePositiveQBinomialHelper(std::vector<int> &binomialCoefficients,
+void computePositiveQBinomialHelper(std::vector<fmpz_wrapper> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift) {
   if (upperLimit == lowerLimit) {
-    binomialCoefficients[shift] += 1;
+    fmpz_add_si(binomialCoefficients[shift].val, binomialCoefficients[shift].val, 1);
   } else if (lowerLimit == 0) {
-    binomialCoefficients[shift] += 1;
+    fmpz_add_si(binomialCoefficients[shift].val, binomialCoefficients[shift].val, 1);
   } else {
     computePositiveQBinomialHelper(binomialCoefficients, upperLimit - 1,
                                    lowerLimit, shift + lowerLimit);
@@ -79,7 +79,7 @@ void computePositiveQBinomialHelper(std::vector<int> &binomialCoefficients,
 void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
                               int upperLimit, int lowerLimit, bool neg) {
   int maxQDegree = lowerLimit * (upperLimit - lowerLimit);
-  std::vector<int> binomialCoefficients(maxQDegree + 1, 0);
+  std::vector<fmpz_wrapper> binomialCoefficients(maxQDegree + 1);
   if (upperLimit == lowerLimit) {
     binomialCoefficients[0] = 1;
   } else if (lowerLimit == 0) {
@@ -97,6 +97,43 @@ void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
   polynomialTerms[0].clear();
 
   // Apply the q-binomial multiplication
+#if POLYNOMIAL_TYPE == 1
+  fmpz_t coeff_j;
+  fmpz_init(coeff_j);
+  fmpz_t product;
+  fmpz_init(product);
+  if (neg) {
+    // Negative case: multiply with power shift j -> j-k
+    for (int j = temporaryTerm.getMaxNegativeIndex();
+         j <= temporaryTerm.getMaxPositiveIndex(); j++) {
+      temporaryTerm.getCoefficientFmpz(coeff_j, j);
+      if (!fmpz_is_zero(coeff_j)) {
+        for (int k = 0; k < maxQDegree + 1; k++) {
+          if (!binomialCoefficients[k].is_zero()) {
+            fmpz_mul(product, binomialCoefficients[k].val, coeff_j);
+            polynomialTerms[0].addToCoefficientFmpz(j - k, product);
+          }
+        }
+      }
+    }
+  } else {
+    // Positive case: multiply with power shift j -> j+k
+    for (int j = temporaryTerm.getMaxNegativeIndex();
+         j <= temporaryTerm.getMaxPositiveIndex(); j++) {
+      temporaryTerm.getCoefficientFmpz(coeff_j, j);
+      if (!fmpz_is_zero(coeff_j)) {
+        for (int k = 0; k < maxQDegree + 1; k++) {
+          if (!binomialCoefficients[k].is_zero()) {
+            fmpz_mul(product, binomialCoefficients[k].val, coeff_j);
+            polynomialTerms[0].addToCoefficientFmpz(j + k, product);
+          }
+        }
+      }
+    }
+  }
+  fmpz_clear(coeff_j);
+  fmpz_clear(product);
+#else
   if (neg) {
     // Negative case: multiply with power shift j -> j-k
     for (int j = temporaryTerm.getMaxNegativeIndex();
@@ -104,8 +141,8 @@ void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
       int coeff_j = temporaryTerm.getCoefficient(j);
       if (coeff_j != 0) {
         for (int k = 0; k < maxQDegree + 1; k++) {
-          polynomialTerms[0].addToCoefficient(j - k,
-                                              binomialCoefficients[k] * coeff_j);
+          polynomialTerms[0].addToCoefficient(
+              j - k, (int)fmpz_get_si(binomialCoefficients[k].val) * coeff_j);
         }
       }
     }
@@ -116,22 +153,23 @@ void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
       int coeff_j = temporaryTerm.getCoefficient(j);
       if (coeff_j != 0) {
         for (int k = 0; k < maxQDegree + 1; k++) {
-          polynomialTerms[0].addToCoefficient(j + k,
-                                              binomialCoefficients[k] * coeff_j);
+          polynomialTerms[0].addToCoefficient(
+              j + k, (int)fmpz_get_si(binomialCoefficients[k].val) * coeff_j);
         }
       }
     }
   }
+#endif
 }
 
-void computeNegativeQBinomialHelper(std::vector<int> &binomialCoefficients,
+void computeNegativeQBinomialHelper(std::vector<fmpz_wrapper> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift,
                                     bool neg) {
   if (lowerLimit == 0) {
     if (neg) {
-      binomialCoefficients[shift] += -1;
+      fmpz_sub_si(binomialCoefficients[shift].val, binomialCoefficients[shift].val, 1);
     } else {
-      binomialCoefficients[shift] += 1;
+      fmpz_add_si(binomialCoefficients[shift].val, binomialCoefficients[shift].val, 1);
     }
   } else if (lowerLimit < 0) {
     // Base case: if lowerLimit < 0, the binomial coefficient is 0
@@ -153,7 +191,7 @@ void computeNegativeQBinomial(std::vector<QPolynomialType> &polynomialTerms,
                               int upperLimit, int lowerLimit, bool neg) {
   int qDegreeDelta = -(1 + upperLimit) * lowerLimit;
   int maxQDegree = -lowerLimit * (lowerLimit + 1) / 2;
-  std::vector<int> binomialCoefficients(qDegreeDelta + 1, 0);
+  std::vector<fmpz_wrapper> binomialCoefficients(qDegreeDelta + 1);
   if (lowerLimit == 0) {
     binomialCoefficients[0] = 1;
   } else if (upperLimit == -1) {
@@ -175,6 +213,45 @@ void computeNegativeQBinomial(std::vector<QPolynomialType> &polynomialTerms,
   polynomialTerms[0].clear();
 
   // Apply the q-binomial multiplication
+#if POLYNOMIAL_TYPE == 1
+  fmpz_t coeff_j;
+  fmpz_init(coeff_j);
+  fmpz_t product;
+  fmpz_init(product);
+  if (neg) {
+    // Negative case: multiply with power shift j -> j - k + qDegreeDelta - maxQDegree
+    for (int j = temporaryTerm.getMaxNegativeIndex();
+         j <= temporaryTerm.getMaxPositiveIndex(); j++) {
+      temporaryTerm.getCoefficientFmpz(coeff_j, j);
+      if (!fmpz_is_zero(coeff_j)) {
+        for (int k = 0; k < qDegreeDelta + 1; k++) {
+          if (!binomialCoefficients[k].is_zero()) {
+            fmpz_mul(product, binomialCoefficients[k].val, coeff_j);
+            polynomialTerms[0].addToCoefficientFmpz(
+                j - k + qDegreeDelta - maxQDegree, product);
+          }
+        }
+      }
+    }
+  } else {
+    // Positive case: multiply with power shift j -> j + k - qDegreeDelta + maxQDegree
+    for (int j = temporaryTerm.getMaxNegativeIndex();
+         j <= temporaryTerm.getMaxPositiveIndex(); j++) {
+      temporaryTerm.getCoefficientFmpz(coeff_j, j);
+      if (!fmpz_is_zero(coeff_j)) {
+        for (int k = 0; k < qDegreeDelta + 1; k++) {
+          if (!binomialCoefficients[k].is_zero()) {
+            fmpz_mul(product, binomialCoefficients[k].val, coeff_j);
+            polynomialTerms[0].addToCoefficientFmpz(
+                j + k - qDegreeDelta + maxQDegree, product);
+          }
+        }
+      }
+    }
+  }
+  fmpz_clear(coeff_j);
+  fmpz_clear(product);
+#else
   if (neg) {
     // Negative case: multiply with power shift j -> j - k + qDegreeDelta - maxQDegree
     for (int j = temporaryTerm.getMaxNegativeIndex();
@@ -184,7 +261,7 @@ void computeNegativeQBinomial(std::vector<QPolynomialType> &polynomialTerms,
         for (int k = 0; k < qDegreeDelta + 1; k++) {
           polynomialTerms[0].addToCoefficient(
               j - k + qDegreeDelta - maxQDegree,
-              binomialCoefficients[k] * coeff_j);
+              (int)fmpz_get_si(binomialCoefficients[k].val) * coeff_j);
         }
       }
     }
@@ -197,11 +274,12 @@ void computeNegativeQBinomial(std::vector<QPolynomialType> &polynomialTerms,
         for (int k = 0; k < qDegreeDelta + 1; k++) {
           polynomialTerms[0].addToCoefficient(
               j + k - qDegreeDelta + maxQDegree,
-              binomialCoefficients[k] * coeff_j);
+              (int)fmpz_get_si(binomialCoefficients[k].val) * coeff_j);
         }
       }
     }
   }
+#endif
 }
 
 void computeXQPochhammer(std::vector<QPolynomialType> &polynomialTerms,
@@ -434,24 +512,24 @@ PolynomialType qpochhammer_xq_q(int n, int qpow) {
   const int maxXDegree = n;
 
   // Coefficients map: coeffs[x_degree][q_power] = coefficient
-  std::map<int, std::map<int, int>> coeffs;
+  std::map<int, std::map<int, fmpz_wrapper>> coeffs;
   coeffs[0][0] = 1; // Initialize with 1
 
   // For each factor (1 - x q^{qpow + k})
   for (int k = 0; k < n; ++k) {
     const int q_factor = qpow + k;
-    std::map<int, std::map<int, int>> new_coeffs;
+    std::map<int, std::map<int, fmpz_wrapper>> new_coeffs;
 
     // Multiply current polynomial by (1 - x q^q_factor)
     for (const auto &[x_deg, q_map] : coeffs) {
       for (const auto &[q_pow, coeff] : q_map) {
-        if (coeff != 0) {
+        if (!coeff.is_zero()) {
           // "1" term
-          new_coeffs[x_deg][q_pow] += coeff;
+          new_coeffs[x_deg][q_pow].add(coeff);
 
           // "-x q^q_factor" term
           if (x_deg + 1 <= maxXDegree) {
-            new_coeffs[x_deg + 1][q_pow + q_factor] -= coeff;
+            new_coeffs[x_deg + 1][q_pow + q_factor].sub(coeff);
           }
         }
       }
@@ -464,8 +542,12 @@ PolynomialType qpochhammer_xq_q(int n, int qpow) {
   for (const auto &[x_deg, q_map] : coeffs) {
     if (x_deg <= maxXDegree) {
       for (const auto &[q_pow, coeff] : q_map) {
-        if (coeff != 0) {
-          result.addToCoefficient(q_pow, {x_deg}, coeff);
+        if (!coeff.is_zero()) {
+#if POLYNOMIAL_TYPE == 1
+          result.addToCoefficientFmpz(q_pow, {x_deg}, coeff.val);
+#else
+          result.addToCoefficient(q_pow, {x_deg}, (int)fmpz_get_si(coeff.val));
+#endif
         }
       }
     }
@@ -500,23 +582,23 @@ PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
   const int numXVars = 1;
 
   // Coefficients map: coeffs[x_degree][q_power] = coefficient
-  std::map<int, std::map<int, int>> coeffs;
+  std::map<int, std::map<int, fmpz_wrapper>> coeffs;
   coeffs[0][0] = 1; // Initialize with 1
 
   // For each factor (geometric series)
   for (int l = 0; l < n; ++l) {
     const int q_base = l + qpow;
-    std::map<int, std::map<int, int>> new_coeffs;
+    std::map<int, std::map<int, fmpz_wrapper>> new_coeffs;
 
     // Multiply current polynomial by the l-th geometric series
     for (const auto &[x_deg, q_map] : coeffs) {
       for (const auto &[q_pow, coeff] : q_map) {
-        if (coeff != 0) {
+        if (!coeff.is_zero()) {
           // Add terms from geometric series: 1 + x*q^q_base + x^2*q^(2*q_base) + ...
           for (int m = 0; x_deg + m <= xMax; ++m) {
             const int new_x_deg = x_deg + m;
             const int new_q_pow = q_pow + m * q_base;
-            new_coeffs[new_x_deg][new_q_pow] += coeff;
+            new_coeffs[new_x_deg][new_q_pow].add(coeff);
           }
         }
       }
@@ -529,8 +611,12 @@ PolynomialType inverse_qpochhammer_xq_q(int n, int qpow, int xMax) {
   for (const auto &[x_deg, q_map] : coeffs) {
     if (x_deg <= xMax) {
       for (const auto &[q_pow, coeff] : q_map) {
-        if (coeff != 0) {
-          result.addToCoefficient(q_pow, {x_deg}, coeff);
+        if (!coeff.is_zero()) {
+#if POLYNOMIAL_TYPE == 1
+          result.addToCoefficientFmpz(q_pow, {x_deg}, coeff.val);
+#else
+          result.addToCoefficient(q_pow, {x_deg}, (int)fmpz_get_si(coeff.val));
+#endif
         }
       }
     }

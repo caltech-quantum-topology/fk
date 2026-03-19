@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "fk/polynomial_config.hpp"
+#include "fk/fmpz_wrapper.hpp"
 
 // Forward declarations
 void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
@@ -15,13 +16,13 @@ void matrixIndexColumn(int &dimensions, std::vector<int> arrayLengths,
 // consider saving the multiplicands as separate variables before multiplying by
 // term
 
-void computePositiveQBinomialHelper(std::vector<int> &binomialCoefficients,
+void computePositiveQBinomialHelper(std::vector<fmpz_wrapper> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift);
 
 void computePositiveQBinomial(std::vector<QPolynomialType> &polynomialTerms,
                               int upperLimit, int lowerLimit, bool neg);
 
-void computeNegativeQBinomialHelper(std::vector<int> &binomialCoefficients,
+void computeNegativeQBinomialHelper(std::vector<fmpz_wrapper> &binomialCoefficients,
                                     int upperLimit, int lowerLimit, int shift,
                                     bool neg);
 

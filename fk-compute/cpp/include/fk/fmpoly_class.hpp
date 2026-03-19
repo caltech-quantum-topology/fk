@@ -106,6 +106,15 @@ public:
                         int coefficient) override;
 
   /**
+   * Add to coefficient for specific term (arbitrary precision)
+   * @param qPower Power of q
+   * @param xPowers Vector of powers for x₁, x₂, ..., xₙ
+   * @param coefficient Value to add as fmpz_t (no truncation)
+   */
+  void addToCoefficientFmpz(int qPower, const std::vector<int> &xPowers,
+                            const fmpz_t coefficient);
+
+  /**
    * Truncate polynomial to given degrees
    * @param maxXdegrees Maximum degree for each x variable
    */
