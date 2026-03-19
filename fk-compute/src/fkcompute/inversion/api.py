@@ -80,7 +80,7 @@ def find_sign_assignment(
     max_workers
         Number of parallel workers for the search.
     chunk_size
-        Size of index chunks for parallel workers.
+        Number of permutation candidates per worker task (internally capped for IPC safety).
     include_flip
         Whether to include flipped braid variants.
     max_shifts
