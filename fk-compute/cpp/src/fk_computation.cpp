@@ -521,12 +521,19 @@ void FKComputation::compute(const FKConfiguration &config,
   std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
   std::cout << assignments.size() << " assignments found" << std::endl;
 
-  // Process each assignment's points immediately to avoid accumulating all
-  // points in memory simultaneously.
+#ifdef _OPENMP
+  omp_set_num_threads(static_cast<int>(engines_.size()));
+#pragma omp parallel for schedule(dynamic)
+#endif
   for (size_t assign_idx = 0; assign_idx < assignments.size(); ++assign_idx) {
     auto points = enumeratePoints(assignments[assign_idx]);
-    if (!points.empty()) {
-      setupWorkStealingComputation(points);
+#ifdef _OPENMP
+    int thread_id = omp_get_thread_num();
+#else
+    int thread_id = 0;
+#endif
+    for (const auto &point : points) {
+      engines_[thread_id]->computeForAngles(point);
     }
   }
   assignments.clear();
@@ -1256,11 +1263,6 @@ void FKComputation::setupWorkStealingComputation(
 #ifdef _OPENMP
   int num_engines = engines_.size();
   omp_set_num_threads(num_engines);
-  std::cout << "Processing " << total_points << " points with " << num_engines
-            << " threads using OpenMP" << std::endl;
-#else
-  std::cout << "Processing " << total_points
-            << " points sequentially (OpenMP not available)" << std::endl;
 #endif
 
   // Use OpenMP parallel for to distribute work across threads
@@ -1271,22 +1273,10 @@ void FKComputation::setupWorkStealingComputation(
 #ifdef _OPENMP
     int thread_id = omp_get_thread_num();
     engines_[thread_id]->computeForAngles(all_points[i]);
-
-    // Print progress occasionally from thread 0 only to avoid race conditions
-    if (thread_id == 0 && i % 100 == 0) {
-      std::cout << "Processing point " << i << "/" << total_points << std::endl;
-    }
 #else
     engines_[0]->computeForAngles(all_points[i]);
-
-    // Print progress for sequential execution
-    if (i % 100 == 0) {
-      std::cout << "Processing point " << i << "/" << total_points << std::endl;
-    }
 #endif
   }
-
-  std::cout << "All points processed!" << std::endl;
 }
 
 void FKComputation::combineEngineResults() {
