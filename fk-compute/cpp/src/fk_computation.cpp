@@ -433,7 +433,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
 
     // Limit cache size to prevent unbounded memory growth for large degrees
     // If cache is full, clear it (simple eviction strategy)
-    const size_t MAX_CACHE_SIZE = 10000;
+    const size_t MAX_CACHE_SIZE = 1000;
     if (crossing_factor_cache_.size() >= MAX_CACHE_SIZE) {
       crossing_factor_cache_.clear();
     }
@@ -521,20 +521,16 @@ void FKComputation::compute(const FKConfiguration &config,
   std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
   std::cout << assignments.size() << " assignments found" << std::endl;
 
-  // Collect all points from each variable assignment
-  std::vector<std::vector<int>> all_points;
+  // Process each assignment's points immediately to avoid accumulating all
+  // points in memory simultaneously.
   for (size_t assign_idx = 0; assign_idx < assignments.size(); ++assign_idx) {
-    const AssignmentResult &assignment = assignments[assign_idx];
-    auto points = enumeratePoints(assignment);
-    all_points.insert(all_points.end(), points.begin(), points.end());
+    auto points = enumeratePoints(assignments[assign_idx]);
+    if (!points.empty()) {
+      setupWorkStealingComputation(points);
+    }
   }
-
-  // Clear assignments to free memory (no longer needed)
   assignments.clear();
   assignments.shrink_to_fit();
-
-  // Execute work stealing computation
-  setupWorkStealingComputation(all_points);
 
   // Combine results and perform final computations
   PolynomialType result(config_.components, 0);
@@ -767,67 +763,37 @@ FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
 
   const auto bounds_vector = convertBoundsToVector(valid_criteria.first_bounds);
 
-  using AssignmentNode = VariableAssignmentState;
+  // Iterative DFS without a visited set. The assignment state tree has no
+  // cycles (current_var_index only increases), so tracking visited nodes is
+  // unnecessary and would waste O(total_states) memory.
+  std::stack<VariableAssignmentState> stack;
+  stack.push(createInitialAssignmentState(valid_criteria, bounds_vector));
 
-  graph_search::DepthFirstSearchWithVisited<AssignmentNode>::Config dfs_config;
+  while (!stack.empty()) {
+    auto current_state = std::move(stack.top());
+    stack.pop();
 
-  // We no longer use "goal nodes" to emit assignments. All work happens
-  // in get_neighbors, so we disable goal handling here.
-  dfs_config.is_valid_goal = [](const AssignmentNode &) {
-    return false;
-  };
+    if (isStateExhausted(current_state)) {
+      continue;
+    }
 
-  dfs_config.get_neighbors =
-      [this, &bounds_vector, &assignments](const AssignmentNode &current_state) {
-        std::vector<AssignmentNode> neighbors;
-        neighbors.reserve(current_state.max_value - current_state.current_value + 1);
+    for (int value = current_state.current_value;
+         value <= current_state.max_value; ++value) {
+      auto state_copy = current_state;
+      state_copy.current_value = value;
 
-        // If this state is exhausted, it has no neighbors,
-        // mirroring the old "if (isStateExhausted) { continue; }" behavior.
-        if (isStateExhausted(current_state)) {
-          return neighbors;
-        }
+      processCurrentVariable(state_copy, bounds_vector);
+      auto updated_degrees =
+          calculateUpdatedDegrees(state_copy, bounds_vector);
 
-        // Enumerate all still-available values for the current variable.
-        for (int value = current_state.current_value;
-             value <= current_state.max_value; ++value) {
-          auto state_copy = current_state;
-          state_copy.current_value = value;
-
-          // This matches the old loop body:
-          //   processCurrentVariable(...)
-          //   updated_degrees = calculateUpdatedDegrees(...)
-          processCurrentVariable(state_copy, bounds_vector);
-          auto updated_degrees =
-              calculateUpdatedDegrees(state_copy, bounds_vector);
-
-          if (!isLastVariable(state_copy, bounds_vector)) {
-            // Non-last variable: create the next state (next variable),
-            // as in the old createNextState(...) + stack.push(next_state).
-            auto next_state =
-                createNextState(state_copy, std::move(updated_degrees), bounds_vector);
-            neighbors.push_back(std::move(next_state));
-          } else {
-            // Last variable: instead of pushing a neighbor, we emit the
-            // assignment directly, just like the old
-            //   if (isLastVariable) { assignments.push_back(...); }
-            assignments.push_back(createAssignmentResult(state_copy));
-          }
-        }
-
-        return neighbors;
-      };
-
-  // No-op: all work is done in get_neighbors.
-  dfs_config.process_node =
-      [](const AssignmentNode &) {};
-
-  graph_search::DepthFirstSearchWithVisited<AssignmentNode> dfs_search(
-      dfs_config);
-
-  auto initial_state =
-      createInitialAssignmentState(valid_criteria, bounds_vector);
-  dfs_search.search_all(initial_state);
+      if (!isLastVariable(state_copy, bounds_vector)) {
+        stack.push(
+            createNextState(state_copy, std::move(updated_degrees), bounds_vector));
+      } else {
+        assignments.push_back(createAssignmentResult(state_copy));
+      }
+    }
+  }
 
   return assignments;
 }
