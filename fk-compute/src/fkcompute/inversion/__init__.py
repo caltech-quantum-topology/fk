@@ -7,7 +7,7 @@ for a braid at a given degree.
 The main entry point is find_sign_assignment() from api.py.
 """
 
-from .api import find_sign_assignment, InversionResult
+from .api import find_sign_assignment, find_sign_assignment_full, InversionResult
 from .search import (
     BraidType,
     braid_type,
@@ -16,6 +16,7 @@ from .search import (
 
 __all__ = [
     "find_sign_assignment",
+    "find_sign_assignment_full",
     "InversionResult",
     "BraidType",
     "braid_type",
