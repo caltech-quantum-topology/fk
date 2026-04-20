@@ -132,7 +132,7 @@ def compute_fk(knot_name: str, config: dict) -> dict:
         name=knot_name,
         threads=mp.cpu_count(),
         save_data=False,
-        inversion=inversion,
+        #inversion=inversion,
     )
 
     return result
