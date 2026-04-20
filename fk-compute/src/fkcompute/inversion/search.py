@@ -60,6 +60,7 @@ def _matches_partial_signs(
 
 _WORKER_STATE: Optional[BraidStates] = None
 _WORKER_DEGREE: Optional[int] = None
+_WORKER_WEIGHT: Optional[int] = None
 _WORKER_PARTIAL: Optional[PartialSignsType] = None
 _WORKER_ARC_LABELS: Optional[List[int]] = None
 _WORKER_ARC_COMP: Optional[Dict[int, int]] = None
@@ -74,11 +75,13 @@ def _init_perm_worker(
     arc_labels: List[int],
     arc_comp: Dict[int, int],
     n_components: int,
+    weight: Optional[int] = None,
 ) -> None:
-    global _WORKER_STATE, _WORKER_DEGREE, _WORKER_PARTIAL
+    global _WORKER_STATE, _WORKER_DEGREE, _WORKER_WEIGHT, _WORKER_PARTIAL
     global _WORKER_ARC_LABELS, _WORKER_ARC_COMP, _WORKER_N_COMPONENTS, _WORKER_MAX_ARC_LABEL
     _WORKER_STATE = BraidStates(braid)
     _WORKER_DEGREE = int(degree)
+    _WORKER_WEIGHT = weight
     _WORKER_PARTIAL = partial_signs
     _WORKER_ARC_LABELS = arc_labels
     _WORKER_ARC_COMP = arc_comp
@@ -100,7 +103,7 @@ def _check_signs_for_worker(signs: Dict[int, List[int]]) -> Optional[Tuple[List[
 
     _WORKER_STATE.generate_position_assignments()
     relations = full_reduce(_WORKER_STATE.get_state_relations())
-    out = check_sign_assignment(_WORKER_DEGREE, relations, _WORKER_STATE)
+    out = check_sign_assignment(_WORKER_DEGREE, relations, _WORKER_STATE, weight=_WORKER_WEIGHT)
     if out is None:
         return None
     return _WORKER_STATE.braid, _WORKER_STATE.strand_signs
@@ -275,6 +278,7 @@ def check_assignment_for_braid(
     degree: int,
     braid_state: BraidStates,
     partial_signs: Optional[PartialSignsType] = None,
+    weight: Optional[int] = None,
 ) -> Optional[Tuple[List[int], Dict[int, List[int]]]]:
     """
     Test a single sign assignment (by index) for a given braid.
@@ -295,7 +299,7 @@ def check_assignment_for_braid(
     braid_state.generate_position_assignments()
     all_relations = braid_state.get_state_relations()
     relations = full_reduce(all_relations)
-    out = check_sign_assignment(degree, relations, braid_state)
+    out = check_sign_assignment(degree, relations, braid_state, weight=weight)
 
     if out is not None:
         return braid_state.braid, braid_state.strand_signs
@@ -303,18 +307,18 @@ def check_assignment_for_braid(
 
 
 def worker_on_range(
-    args: Tuple[int, BraidStates, int, int, bool, Optional[PartialSignsType]],
+    args: Tuple[int, BraidStates, int, int, bool, Optional[PartialSignsType], Optional[int]],
 ) -> Optional[Tuple[List[int], Dict[int, List[int]]]]:
     """
     Worker for a range of indices; returns the first success in [start, end).
     """
-    degree, braid_state, start, end, progress, partial_signs = args
+    degree, braid_state, start, end, progress, partial_signs, weight = args
     n = end - start
     for i, idx in enumerate(range(start, end)):
         if progress and n > 0 and (i % max(1, n // 10) == 0):
             pct = round(100.0 * i / n, 1)
             print(f"[worker {os.getpid()}] {pct}% of batch", end="\r")
-        hit = check_assignment_for_braid(idx, degree, braid_state, partial_signs)
+        hit = check_assignment_for_braid(idx, degree, braid_state, partial_signs, weight=weight)
         if hit is not None:
             return hit
     return None
@@ -329,7 +333,8 @@ def parallel_try_sign_assignments(
     include_flip: bool = True,
     max_shifts: Optional[int] = None,
     verbose: bool = False,
- ) -> Union[Tuple[List[int], Dict[int, List[int]]], Literal[False]]:
+    weight: Optional[int] = None,
+) -> Union[Tuple[List[int], Dict[int, List[int]]], Literal[False]]:
     """
     Parallel search for a consistent sign assignment across braid variants.
 
@@ -382,6 +387,7 @@ def parallel_try_sign_assignments(
                 arc_labels,
                 arc_comp,
                 n_components,
+                weight,
             ),
         ) as pool:
             for out in pool.imap_unordered(worker_on_perm_batch, perm_batches, chunksize=1):

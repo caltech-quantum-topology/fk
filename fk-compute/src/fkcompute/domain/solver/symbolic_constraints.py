@@ -8,7 +8,7 @@ and Phase 2 (solver/ilp) for processing symbolic constraints:
 - _process_assignment: combine the above into criteria, multiples, singlesigns
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from ..braid.types import ZERO_STATE, NEG_ONE_STATE
 from ..constraints.relations import Leq, Less
@@ -23,7 +23,18 @@ def _expr_from_dict(dict_: Dict) -> Any:
     return expression
 
 
-def minimum_degree_symbolic(assignment: Dict, braid_states, verbose: bool = False) -> Dict:
+def _total_weight(assignment: Dict, braid_states) -> Any:
+    """Compute total signed weight of initial strand states."""
+    acc = 0
+    for index in range(braid_states.n_strands):
+        if braid_states.sign_assignment[(index, 0)] > 0:
+            acc += assignment[braid_states.get_state((index, 0))]
+        else:
+            acc -= assignment[braid_states.get_state((index, 0))]
+    return acc
+
+
+def minimum_degree_symbolic(assignment: Dict, braid_states, verbose: bool = False, weight: Optional[int] = None) -> Dict:
     """
     Compute minimum degree constraints symbolically.
 
@@ -64,6 +75,8 @@ def minimum_degree_symbolic(assignment: Dict, braid_states, verbose: bool = Fals
             conditions[braid_states.bottom_crossing_components[index]] -= (assignment[in1] + assignment[out2] + 1) / 4
         else:
             raise Exception("Crossing type is not one of the four acceptable values: 'R1', 'R2', 'R3', or 'R4'.")
+    if weight is not None:
+        conditions[-1] = _total_weight(assignment, braid_states)
     if verbose:
         for value in conditions.values():
             print(value.var)
@@ -153,7 +166,7 @@ def inequality_manager(relations: List, assignment: Dict, braid_states):
     return list(set(singles)), list(set(multiples))
 
 
-def process_assignment(assignment: Dict, braid_states, relations: List):
+def process_assignment(assignment: Dict, braid_states, relations: List, weight: Optional[int] = None):
     """
     Process an assignment to extract criteria, multi-variable inequalities,
     and single-variable signs.
@@ -172,7 +185,7 @@ def process_assignment(assignment: Dict, braid_states, relations: List):
     tuple
         (criteria, multi_var_inequalities, single_var_signs)
     """
-    criteria = minimum_degree_symbolic(assignment, braid_states)
+    criteria = minimum_degree_symbolic(assignment, braid_states, weight=weight)
     singles, multi_var_inequalities = inequality_manager(relations, assignment, braid_states)
 
     # Knots (single-component closures) use a single topological variable `x`.

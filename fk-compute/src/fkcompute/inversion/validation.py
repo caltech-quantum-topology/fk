@@ -11,7 +11,7 @@ from ..domain.solver.assignment import symbolic_variable_assignment
 from ..domain.solver.symbolic_constraints import process_assignment
 
 
-def check_sign_assignment(degree: int, relations: List, braid_states) -> Optional[Dict]:
+def check_sign_assignment(degree: int, relations: List, braid_states, weight: Optional[int] = None) -> Optional[Dict]:
     """
     Check if a sign assignment is valid for a given degree.
 
@@ -23,6 +23,10 @@ def check_sign_assignment(degree: int, relations: List, braid_states) -> Optiona
         List of reduced constraint relations.
     braid_states
         BraidStates object with sign assignment.
+    weight
+        Optional weight bound for stratified computation. When provided, the
+        key=-1 criterion (total signed strand weight) uses this bound instead
+        of degree.
 
     Returns
     -------
@@ -33,9 +37,12 @@ def check_sign_assignment(degree: int, relations: List, braid_states) -> Optiona
     from ..solver.ilp import integral_bounded
 
     assignment = symbolic_variable_assignment(relations, braid_states)
-    criteria, multi_var_inequalities, single_var_signs = process_assignment(assignment, braid_states, relations)
-    for value in criteria.values():
-        multi_var_inequalities.append(degree - value)
+    criteria, multi_var_inequalities, single_var_signs = process_assignment(assignment, braid_states, relations, weight=weight)
+    for (key, value) in criteria.items():
+        if key >= 0:
+            multi_var_inequalities.append(degree - value)
+        elif weight is not None:
+            multi_var_inequalities.append(weight - value)
     if not integral_bounded(multi_var_inequalities, single_var_signs):
         return None
     return {

@@ -83,13 +83,16 @@ def integral_bounded(multiples: List, single_var_signs: Dict) -> bool:
     return True
 
 
-def _check_sign_assignment(degree: int, relations: List, braid_states, verbose: bool = False) -> Optional[Dict]:
+def _czech_sign_assignment(degree: int, relations: List, braid_states, weight: Optional[int] = None, verbose: bool = False) -> Optional[Dict]:
     """Check sign assignment validity for ILP generation."""
     assignment = symbolic_variable_assignment(relations, braid_states)
-    criteria, multi_var_inequalities, single_var_signs = process_assignment(assignment, braid_states, relations)
+    criteria, multi_var_inequalities, single_var_signs = process_assignment(assignment, braid_states, relations, weight=weight)
 
     for (key, value) in criteria.items():
-        criteria[key] = degree - value
+        if key >= 0:
+            criteria[key] = degree - value
+        else:
+            criteria[key] = weight - value if weight is not None else value
 
     if not integral_bounded(multi_var_inequalities + list(criteria.values()), single_var_signs):
         return None
@@ -102,7 +105,7 @@ def _check_sign_assignment(degree: int, relations: List, braid_states, verbose: 
     }
 
 
-def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = None, verbose: bool = False) -> Optional[str]:
+def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = None, verbose: bool = False, weight: Optional[int] = None) -> Optional[str]:
     """
     Generate ILP formulation for FK computation.
 
@@ -118,13 +121,15 @@ def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = No
         Optional file path to write the ILP data.
     verbose
         Whether to print progress information.
+    weight
+        Optional weight parameter for stratified calculation.
 
     Returns
     -------
     str or None
         ILP data as a string, or None if no valid assignment exists.
     """
-    check = _check_sign_assignment(degree, relations, braid_states)
+    check = _czech_sign_assignment(degree, relations, braid_states, weight)
     if check is None:
         return None
 
@@ -145,11 +150,18 @@ def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = No
 
     criteria_tableau = []
     for index in range(n_criteria):
-        if criteria[index].is_constant():
+        if hasattr(criteria[index], 'is_constant') and criteria[index].is_constant():
             if criteria[index].constant() < 0:
                 raise Exception(f"Impossible Inequality 0 <= {criteria[index].constant()}")
         else:
-            criteria_tableau.append(np.concatenate((criteria[index].var, np.zeros(for_fill - criteria_sizes[index]))))
+            # Handle both Symbol objects and integers
+            if hasattr(criteria[index], 'var'):
+                criteria_tableau.append(np.concatenate((criteria[index].var, np.zeros(for_fill - criteria_sizes[index]))))
+            else:
+                # Handle integer (weight constraint)
+                weight_val = criteria[index]
+                weight_symbol = one * weight_val
+                criteria_tableau.append(np.concatenate((weight_symbol.var, np.zeros(for_fill - len(weight_symbol.var)))))
 
     inequality_tableau = []
     for index in range(n_multiples):
@@ -245,7 +257,7 @@ def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = No
     return output
 
 
-def print_symbolic_relations(degree: int, relations: List, braid_states, write_to: Optional[str] = None, verbose: bool = False) -> Optional[Dict]:
+def print_symbolic_relations(degree: int, relations: List, braid_states, write_to: Optional[str] = None, verbose: bool = False, weight: Optional[int] = None) -> Optional[Dict]:
     """
     Print the reduced relations in human-readable format.
 
@@ -267,7 +279,7 @@ def print_symbolic_relations(degree: int, relations: List, braid_states, write_t
     dict or None
         Dictionary with criteria, multiples, single_signs, and assignment if valid.
     """
-    check = _check_sign_assignment(degree, relations, braid_states)
+    check = _czech_sign_assignment(degree, relations, braid_states, weight)
     if check is None:
         print("No valid sign assignment exists for this degree!")
         return None

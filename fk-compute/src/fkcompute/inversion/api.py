@@ -67,6 +67,7 @@ def find_sign_assignment(
     include_flip: bool = True,
     max_shifts: Optional[int] = None,
     verbose: bool = False,
+    weight: Optional[int] = None,
 ) -> InversionResult:
     """Find a valid sign assignment for the given braid and degree.
 
@@ -116,6 +117,7 @@ def find_sign_assignment(
         include_flip=include_flip,
         max_shifts=max_shifts,
         verbose=verbose,
+        weight=weight,
     )
     if sol is False:
         return InversionResult(
