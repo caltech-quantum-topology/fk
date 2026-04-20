@@ -1,0 +1,17 @@
+/* Custom styles for fkcompute documentation */
+
+/* Slightly larger code blocks */
+div.highlight pre {
+    font-size: 0.88em;
+    line-height: 1.5;
+}
+
+/* Highlight the main function name in the index */
+dt.sig-name {
+    font-weight: bold;
+}
+
+/* Math display */
+.math {
+    font-size: 1.05em;
+}

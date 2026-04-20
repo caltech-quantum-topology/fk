@@ -1,31 +1,25 @@
 # fkcompute
 
-Compute the FK invariant of braid closures (knot theory) via a Python orchestration layer plus a compiled C++ backend.
+`fkcompute` computes the FK (Gukov-Manolescu) invariant `F_K(x,q)` of knots and links presented as braid closures.
+It combines a Python orchestration layer (sign/inversion search + constraint/ILP preparation + formatting) with a compiled C++ backend for the expensive state-sum/R-matrix evaluation.
 
 - Python package: `fkcompute`
 - CLI: `fk`
-- Backend executable: `fk_main` (bundled into the wheel)
+- Helper binary: `fk_main` (built and bundled at install time)
 
-## Documentation
+## What is the FK invariant?
 
-Project docs live in `docs/`:
+`F_K` is a two-variable quantum invariant for knot and link complements introduced by Gukov and Manolescu (arXiv:1904.060597).
+This repository implements the large-color R-matrix / inverted state-sum approach developed by Park (arXiv:2004.02087 and followups).
+In practice, you provide a braid word and a truncation degree, and `fkcompute` returns a sparse polynomial/series in `q` and in one `x`-variable per link component.
 
-- Getting started: `docs/quickstart.md`
-- CLI: `docs/cli.md`
-- Config files: `docs/config.md`
-- Python API: `docs/python_api.md`
-- Output format: `docs/output.md`
-- Pipeline internals: `docs/pipeline.md`
+## Installation
 
-Optional: build a single PDF from `docs/` with `./docs/build_pdf.sh`.
+### System dependencies (C++ backend)
 
-## Install
+To build/run the backend you need these system libraries:
 
-### System dependencies
-
-You must install these system libraries to build/run the C++ backend:
-
-- FLINT (+ GMP)
+- FLINT (and GMP)
 - OpenMP runtime
 - BLAS implementation (OpenBLAS recommended)
 
@@ -47,7 +41,14 @@ RHEL/Fedora:
 sudo yum install flint-devel gcc-openmp openblas-devel
 ```
 
-### Python package
+Build tooling:
+
+- A C++ compiler (Clang or GCC)
+- CMake >= 3.20
+
+### Install the Python package
+
+From the repo root:
 
 ```bash
 pip install .
@@ -56,19 +57,27 @@ pip install .
 Optional extras:
 
 ```bash
-pip install ".[symbolic]"      # SymPy symbolic output
-pip install ".[interactive]"   # Rich interactive wizard + history
-pip install ".[yaml]"          # YAML configs (PyYAML)
+pip install ".[symbolic]"      # SymPy symbolic formatting (pretty/latex/mathematica)
+pip install ".[interactive]"   # Rich-based interactive wizard
+pip install ".[yaml]"          # YAML config files (PyYAML)
 pip install ".[full]"          # all optional extras
 ```
 
 ### Gurobi
 
-`fkcompute` uses Gurobi (`gurobipy`) for ILP feasibility/boundedness checks. You need a working Gurobi install and license.
+`fkcompute` uses Gurobi (`gurobipy`) for ILP feasibility/boundedness checks.
+You need a working Gurobi installation and license (often configured via `GRB_LICENSE_FILE`).
 
 ## Quickstart
 
-### CLI
+### CLI (updated syntax)
+
+Help:
+
+```bash
+fk --help
+fk simple --help
+```
 
 Compute quickly:
 
@@ -84,17 +93,42 @@ fk simple "[1,1,1]" 2 --format latex
 fk simple "[1,1,1]" 2 --format mathematica
 ```
 
-Run from a config file (threading, saving, presets, batch, etc.):
-
-```bash
-fk config my_run.yaml
-```
-
 Interactive wizard:
 
 ```bash
 fk
 fk interactive --quick
+```
+
+Run from one or more config files:
+
+```bash
+fk config my_run.yaml
+fk config a.yaml b.yaml c.json
+```
+
+Create a starter config:
+
+```bash
+fk template create my_run.yaml
+```
+
+Reformat a saved JSON result (no recomputation):
+
+```bash
+fk print-as data/trefoil.json --format inline
+```
+
+Braid input strings can be JSON-style, comma-separated, or space-separated. Always quote the argument so `-2` is not parsed as a flag:
+
+```bash
+fk simple "1 -2 3" 2
+```
+
+Legacy shortcut (still accepted):
+
+```bash
+fk "[1,-2,3]" 2
 ```
 
 ### Python
@@ -107,50 +141,40 @@ print(result["metadata"]["components"])
 print(len(result["terms"]))
 ```
 
-## Config files
+Config-file mode:
 
-Config execution supports JSON and YAML (YAML requires `fkcompute[yaml]`).
+```python
+result = fk("my_run.yaml")
+```
 
-Minimal `my_run.yaml`:
+### Minimal config
+
+`my_run.yaml`:
 
 ```yaml
 braid: [1, 1, 1]
 degree: 2
 ```
 
-Typical config with performance and I/O options:
+Batch mode uses a top-level `computations:` list; see `docs/config.md`.
 
-```yaml
-braid: [1, -2, 1, -2]
-degree: 3
+## Documentation
 
-name: figure_eight_d3
-preset: parallel
+Project docs live in `docs/` (Sphinx / ReadTheDocs):
 
-threads: 8
-max_workers: 8
-chunk_size: 16384
+- Getting started: `docs/quickstart.rst`
+- Installation: `docs/installation.rst`
+- CLI: `docs/cli.rst`
+- Config files: `docs/configuration.rst`
+- Output format: `docs/output.rst`
+- Pipeline internals: `docs/pipeline.rst`
+- Troubleshooting: `docs/troubleshooting.rst`
 
-symbolic: true
-save_data: true
-save_dir: data
-```
-
-Batch mode uses a top-level `computations:` list (see `docs/config.md`).
-
-## Output
-
-The result is JSON with:
-
-- `terms`: sparse FK polynomial terms
-- `metadata`: auxiliary information (and optional `metadata.symbolic`)
-
-See `docs/output.md` for the exact schema.
-
-If you saved results to disk (`save_data: true`), you can reformat a JSON result without recomputing:
+Build locally:
 
 ```bash
-fk print-as data/trefoil.json --format latex
+pip install -r docs/requirements.txt
+sphinx-build -b html docs docs/_build/html
 ```
 
 ## Man page
@@ -170,16 +194,10 @@ Start here: `docs/mathematica.md`.
 
 ## Development
 
-Build the C++ backend:
-
 ```bash
+pip install -e .
 cmake -B build -S .
 cmake --build build
-```
-
-Run tests:
-
-```bash
 pytest
 ```
 
@@ -191,4 +209,4 @@ MIT.
 
 ## Authors
 
-Toby, Paul, Lara, Josef, Davide.
+Paul Orland, Davide Passaro, Lara San Martin Suarez, Toby Saunders-A'Court, Josef Svoboda.
