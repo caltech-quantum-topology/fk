@@ -123,8 +123,10 @@ class TestTrefoil:
         assert len(criteria) == 1
         assert str(criteria[0]) == "0 + a" or str(criteria[0]) == "a"
 
-        # No multi-variable inequalities for trefoil
-        assert multiples == []
+        # Knot-only restriction: x-power must be nonnegative.
+        assert len(multiples) == 1
+        ineq_coeffs = {str(k): v for k, v in multiples[0].as_coefficients_dict().items()}
+        assert ineq_coeffs == {"1": 2.0, "a": 4.0}
 
         # Single variable 'a' has positive sign
         assert len(singlesigns) == 1
@@ -232,8 +234,10 @@ class TestFigureEight:
         assert len(criteria) == 1
         assert str(criteria[0]) == "-1 + a - 2b"
 
-        # No multi-variable inequalities
-        assert multiples == []
+        # Knot-only restriction: x-power must be nonnegative.
+        assert len(multiples) == 1
+        ineq_coeffs = {str(k): v for k, v in multiples[0].as_coefficients_dict().items()}
+        assert ineq_coeffs == {"1": -6.0, "a": 4.0, "b": -8.0}
 
         # Two variables: a positive, b negative
         assert len(singlesigns) == 2

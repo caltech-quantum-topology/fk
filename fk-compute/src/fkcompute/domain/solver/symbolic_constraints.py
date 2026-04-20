@@ -174,6 +174,13 @@ def process_assignment(assignment: Dict, braid_states, relations: List):
     """
     criteria = minimum_degree_symbolic(assignment, braid_states)
     singles, multi_var_inequalities = inequality_manager(relations, assignment, braid_states)
+
+    # Knots (single-component closures) use a single topological variable `x`.
+    # Enforce nonnegative x-power by adding: 0 <= 4 * x_power.
+    # We scale by 4 so the inequality tableau stays integral (the symbolic
+    # degree expressions use quarters).
+    if braid_states.n_components == 1:
+        multi_var_inequalities.append(4 * criteria[0])
     single_var_signs = {}
     for entry in singles:
         dict_ = entry.as_coefficients_dict()
