@@ -56,7 +56,7 @@ class InversionResult:
 
 def find_sign_assignment(
     braid: List[int],
-    degree: int,
+    degree: int = 10,
     partial_signs: Optional[PartialSignsType] = None,
     max_workers: int = 1,
     chunk_size: int = 1 << 14,
