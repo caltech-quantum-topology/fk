@@ -143,6 +143,7 @@ def find_sign_assignment_full(
     degree: int = 10,
     partial_signs: Optional[PartialSignsType] = None,
     *,
+    weight: Optional[int] = None,
     verbose: bool = False,
 ) -> List[InversionResult]:
     """Find all *unique* valid sign assignments induced by multicycle candidates.
@@ -227,7 +228,7 @@ def find_sign_assignment_full(
 
         bs.generate_position_assignments()
         relations = full_reduce(bs.get_state_relations())
-        if check_sign_assignment(degree, relations, bs) is None:
+        if check_sign_assignment(degree, relations, bs, weight=weight) is None:
             continue
 
         out.append(
