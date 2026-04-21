@@ -136,6 +136,8 @@ public:
    * @param fileName Output file name
    */
   void exportToJson(const std::string &fileName) const override;
+  void exportToJson(const std::string &fileName,
+                    const std::vector<double> &overall_x_powers) const;
 
   /**
    * Print polynomial in human-readable format

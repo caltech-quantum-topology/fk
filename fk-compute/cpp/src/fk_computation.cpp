@@ -303,6 +303,16 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
     }
   }
 
+  // Capture fractional x-power offset (constant across all points) on first call
+  if (x_fractional_powers_.empty()) {
+    x_fractional_powers_.resize(config_.components);
+    for (int n = 0; n < config_.components; n++) {
+      x_fractional_powers_[n] =
+          x_power_accumulator_double[n] -
+          std::floor(x_power_accumulator_double[n]);
+    }
+  }
+
   // Convert to integer power accumulators
   int q_power_accumulator =
       static_cast<int>(std::floor(q_power_accumulator_double));
@@ -447,6 +457,7 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
 
 void FKComputationEngine::reset() {
   result_ = PolynomialType(config_.components, config_.degree);
+  x_fractional_powers_.clear();
   for (auto &row : numerical_assignments_) {
     std::fill(row.begin(), row.end(), 0);
   }
@@ -460,8 +471,13 @@ void FKComputationEngine::reset() {
 
 // FKResultWriter implementation
 void FKResultWriter::writeToJson(const PolynomialType &result,
-                                 const std::string &filename) {
-  result.exportToJson(filename);
+                                 const std::string &filename,
+                                 const std::vector<double> &overall_x_powers) {
+  if (overall_x_powers.empty()) {
+    result.exportToJson(filename);
+  } else {
+    result.exportToJson(filename, overall_x_powers);
+  }
 }
 
 void FKResultWriter::writeToText(const PolynomialType &result,
@@ -553,7 +569,8 @@ void FKComputation::compute(const FKConfiguration &config,
   offset.setCoefficient(0, xPowers, 1);
   result *= offset;
   result = result.truncate(config_.degree - 1);
-  writer_.writeToJson(result, output_filename);
+  const auto &overall_x_powers = engines_[0]->getXFractionalPowers();
+  writer_.writeToJson(result, output_filename, overall_x_powers);
 }
 
 const PolynomialType &FKComputation::getLastResult() const {

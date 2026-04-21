@@ -874,6 +874,101 @@ void FMPoly::exportToJson(const std::string &fileName) const {
   outputFile.close();
 }
 
+void FMPoly::exportToJson(const std::string &fileName,
+                          const std::vector<double> &overall_x_powers) const {
+  std::ofstream outputFile(fileName + ".json");
+  outputFile << "{\n\t\"terms\":[\n";
+
+  slong numTerms = fmpz_mpoly_length(poly, ctx);
+
+  std::map<std::vector<int>, std::vector<std::pair<int, std::string>>> xToQTerms;
+
+  for (slong i = 0; i < numTerms; ++i) {
+    fmpz_t coeff;
+    fmpz_init(coeff);
+    fmpz_mpoly_get_term_coeff_fmpz(coeff, poly, i, ctx);
+
+    if (fmpz_is_zero(coeff)) {
+      fmpz_clear(coeff);
+      continue;
+    }
+
+    fmpz *exps = (fmpz *)flint_malloc((numXVariables + 1) * sizeof(fmpz));
+    fmpz **exp_ptrs =
+        (fmpz **)flint_malloc((numXVariables + 1) * sizeof(fmpz *));
+    for (int j = 0; j <= numXVariables; ++j) {
+      fmpz_init(&exps[j]);
+      exp_ptrs[j] = &exps[j];
+    }
+
+    fmpz_mpoly_get_term_exp_fmpz(exp_ptrs, poly, i, ctx);
+
+    int qPower;
+    std::vector<int> xPowers;
+    getExponentsFromMonomial(exps, qPower, xPowers);
+
+    char *coeffStr = fmpz_get_str(NULL, 10, coeff);
+    xToQTerms[xPowers].emplace_back(qPower, std::string(coeffStr));
+    flint_free(coeffStr);
+
+    fmpz_clear(coeff);
+    for (int j = 0; j <= numXVariables; ++j) {
+      fmpz_clear(&exps[j]);
+    }
+    flint_free(exp_ptrs);
+    flint_free(exps);
+  }
+
+  bool firstTerm = true;
+  for (const auto &entry : xToQTerms) {
+    const std::vector<int> &xPowers = entry.first;
+    const auto &qTerms = entry.second;
+
+    if (!qTerms.empty()) {
+      if (!firstTerm)
+        outputFile << ",\n";
+      firstTerm = false;
+
+      outputFile << "\t\t{\"x\": [";
+      for (size_t k = 0; k < xPowers.size(); k++) {
+        outputFile << xPowers[k];
+        if (k < xPowers.size() - 1)
+          outputFile << ",";
+      }
+      outputFile << "], \"q_terms\": [";
+
+      for (size_t i = 0; i < qTerms.size(); i++) {
+        outputFile << "{\"q\": " << qTerms[i].first
+                   << ", \"c\": \"" << qTerms[i].second << "\"}";
+        if (i < qTerms.size() - 1)
+          outputFile << ", ";
+      }
+      outputFile << "]}";
+    }
+  }
+
+  outputFile << "\n\t],\n";
+  outputFile << "\t\"metadata\": {\n";
+  outputFile << "\t\t\"num_x_variables\": " << numXVariables << ",\n";
+  outputFile << "\t\t\"max_x_degrees\": [";
+  for (int i = 0; i < numXVariables; i++) {
+    outputFile << maxXDegrees[i];
+    if (i < numXVariables - 1)
+      outputFile << ",";
+  }
+  outputFile << "],\n";
+  outputFile << "\t\t\"overall_x_powers\": [";
+  for (size_t i = 0; i < overall_x_powers.size(); i++) {
+    outputFile << overall_x_powers[i];
+    if (i < overall_x_powers.size() - 1)
+      outputFile << ",";
+  }
+  outputFile << "],\n";
+  outputFile << "\t\t\"storage_type\": \"flint\"\n";
+  outputFile << "\t}\n}";
+  outputFile.close();
+}
+
 void FMPoly::print(int maxTerms) const {
   std::cout << "FMPoly P(q";
   for (int i = 0; i < numXVariables; i++) {

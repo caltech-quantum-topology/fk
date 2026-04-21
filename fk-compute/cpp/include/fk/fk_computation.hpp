@@ -86,6 +86,10 @@ public:
   const PolynomialType &getResult() const { return result_; }
   PolynomialType &getResult() { return result_; }
 
+  const std::vector<double> &getXFractionalPowers() const {
+    return x_fractional_powers_;
+  }
+
   /**
    * Reset computation state
    */
@@ -94,6 +98,7 @@ public:
 private:
   const FKConfiguration &config_;
   PolynomialType result_;
+  std::vector<double> x_fractional_powers_;
   std::vector<int> accumulator_block_sizes_;
   std::vector<std::vector<int>> numerical_assignments_;
 
@@ -160,7 +165,8 @@ public:
    * @param filename Output filename
    */
   void writeToJson(const PolynomialType &result,
-                   const std::string &filename);
+                   const std::string &filename,
+                   const std::vector<double> &overall_x_powers = {});
 
   /**
    * Write polynomial result to human-readable format

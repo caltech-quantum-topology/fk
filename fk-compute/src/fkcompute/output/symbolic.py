@@ -107,6 +107,12 @@ def matrix_to_polynomial(fk_result: Dict) -> 'sp.Expr':
 
         fk_polynomial += new_term
 
+    # Re-introduce the fractional x-power offset that was stripped before flooring
+    overall_x_powers = fk_result.get('metadata', {}).get('overall_x_powers', [])
+    for i, frac_pow in enumerate(overall_x_powers):
+        if frac_pow != 0 and i < len(variables):
+            fk_polynomial *= variables[i] ** sp.nsimplify(frac_pow)
+
     return fk_polynomial
 
 
