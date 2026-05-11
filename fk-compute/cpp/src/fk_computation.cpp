@@ -301,6 +301,8 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
           -param_i * (param_j - param_ip) -
           (param_j - param_ip) * (param_j - param_ip + 1) / 2.0;
     }
+    
+    // Capture fractional x-power offset (constant across all points) on first call
   }
 
   // Capture fractional x-power offset (constant across all points) on first call
@@ -311,6 +313,13 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
           x_power_accumulator_double[n] -
           std::floor(x_power_accumulator_double[n]);
     }
+  }
+
+  // Capture fractional q-power offset (constant across all points) on first call
+  if (!q_fractional_power_set_) {
+    q_fractional_power_ =
+        q_power_accumulator_double - std::floor(q_power_accumulator_double);
+    q_fractional_power_set_ = true;
   }
 
   // Convert to integer power accumulators
@@ -458,6 +467,8 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
 void FKComputationEngine::reset() {
   result_ = PolynomialType(config_.components, config_.degree);
   x_fractional_powers_.clear();
+  q_fractional_power_ = 0.0;
+  q_fractional_power_set_ = false;
   for (auto &row : numerical_assignments_) {
     std::fill(row.begin(), row.end(), 0);
   }
@@ -472,11 +483,12 @@ void FKComputationEngine::reset() {
 // FKResultWriter implementation
 void FKResultWriter::writeToJson(const PolynomialType &result,
                                  const std::string &filename,
-                                 const std::vector<double> &overall_x_powers) {
+                                 const std::vector<double> &overall_x_powers,
+                                 double overall_q_power) {
   if (overall_x_powers.empty()) {
     result.exportToJson(filename);
   } else {
-    result.exportToJson(filename, overall_x_powers);
+    result.exportToJson(filename, overall_x_powers, overall_q_power);
   }
 }
 
@@ -537,24 +549,26 @@ void FKComputation::compute(const FKConfiguration &config,
   std::vector<AssignmentResult> assignments = assignVariables(valid_criteria);
   std::cout << assignments.size() << " assignments found" << std::endl;
 
+  std::vector<std::vector<int>> all_points;
+  for (size_t assign_idx = 0; assign_idx < assignments.size(); ++assign_idx) {
+    auto points = enumeratePoints(assignments[assign_idx]);
+    all_points.insert(all_points.end(), std::make_move_iterator(points.begin()),
+                      std::make_move_iterator(points.end()));
+  }
+  std::cout << "Total points: " << all_points.size() << std::endl;
+
 #ifdef _OPENMP
   omp_set_num_threads(static_cast<int>(engines_.size()));
 #pragma omp parallel for schedule(dynamic)
 #endif
-  for (size_t assign_idx = 0; assign_idx < assignments.size(); ++assign_idx) {
-    auto points = enumeratePoints(assignments[assign_idx]);
+  for (size_t i = 0; i < all_points.size(); ++i) {
 #ifdef _OPENMP
     int thread_id = omp_get_thread_num();
 #else
     int thread_id = 0;
 #endif
-    for (const auto &point : points) {
-      engines_[thread_id]->computeForAngles(point);
-    }
+    engines_[thread_id]->computeForAngles(all_points[i]);
   }
-  assignments.clear();
-  assignments.shrink_to_fit();
-
   // Combine results and perform final computations
   PolynomialType result(config_.components, 0);
   int num_engines = engines_.size();
@@ -569,8 +583,19 @@ void FKComputation::compute(const FKConfiguration &config,
   offset.setCoefficient(0, xPowers, 1);
   result *= offset;
   result = result.truncate(config_.degree - 1);
-  const auto &overall_x_powers = engines_[0]->getXFractionalPowers();
-  writer_.writeToJson(result, output_filename, overall_x_powers);
+  // engine_[0] may have processed no points under dynamic OpenMP scheduling,
+  // so scan all engines for the first one that captured fractional powers.
+  std::vector<double> overall_x_powers;
+  double overall_q_power = 0.0;
+  for (int engine_idx = 0; engine_idx < num_engines; ++engine_idx) {
+    const auto &powers = engines_[engine_idx]->getXFractionalPowers();
+    if (!powers.empty()) {
+      overall_x_powers = powers;
+      overall_q_power = engines_[engine_idx]->getQFractionalPower();
+      break;
+    }
+  }
+  writer_.writeToJson(result, output_filename, overall_x_powers, overall_q_power);
 }
 
 const PolynomialType &FKComputation::getLastResult() const {
@@ -1149,7 +1174,7 @@ FKComputation::ValidatedCriteria FKComputation::buildValidatedCriteriaFromValid(
   const auto bounded_info = identifyBoundedVariables(criteria, variable_count);
 
   result.criteria = criteria;
-  result.degrees = extractDegrees(config_.criteria);
+  result.degrees = extractDegrees(criteria);
   result.first_bounds = bounded_info.first;
   result.initial_point = std::vector<int>(variable_count - 1, 0);
   result.is_valid = true;
@@ -1277,6 +1302,7 @@ void FKComputation::setupWorkStealingComputation(
     const std::vector<std::vector<int>> &all_points) {
   int total_points = all_points.size();
 
+std::cout<<"Total points "<<total_points<<std::endl;
 #ifdef _OPENMP
   int num_engines = engines_.size();
   omp_set_num_threads(num_engines);

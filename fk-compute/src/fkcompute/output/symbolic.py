@@ -113,6 +113,12 @@ def matrix_to_polynomial(fk_result: Dict) -> 'sp.Expr':
         if frac_pow != 0 and i < len(variables):
             fk_polynomial *= variables[i] ** sp.nsimplify(frac_pow)
 
+    # Re-introduce the fractional q-power offset (in 1/4 Z) that was stripped before flooring
+    overall_q_power = fk_result.get('metadata', {}).get('overall_q_power', 0.0)
+    if overall_q_power != 0:
+        q = symbols('q')
+        fk_polynomial *= q ** sp.nsimplify(overall_q_power)
+
     return fk_polynomial
 
 

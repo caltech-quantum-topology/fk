@@ -90,6 +90,8 @@ public:
     return x_fractional_powers_;
   }
 
+  double getQFractionalPower() const { return q_fractional_power_; }
+
   /**
    * Reset computation state
    */
@@ -99,6 +101,8 @@ private:
   const FKConfiguration &config_;
   PolynomialType result_;
   std::vector<double> x_fractional_powers_;
+  double q_fractional_power_ = 0.0;
+  bool q_fractional_power_set_ = false;
   std::vector<int> accumulator_block_sizes_;
   std::vector<std::vector<int>> numerical_assignments_;
 
@@ -166,7 +170,8 @@ public:
    */
   void writeToJson(const PolynomialType &result,
                    const std::string &filename,
-                   const std::vector<double> &overall_x_powers = {});
+                   const std::vector<double> &overall_x_powers = {},
+                   double overall_q_power = 0.0);
 
   /**
    * Write polynomial result to human-readable format
