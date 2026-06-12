@@ -105,29 +105,30 @@ def de_alias_inequalities(relations: List, verbose: bool = False) -> List:
 
 
 def symmetric_inequality(relations: List, verbose: bool = False) -> List:
-    """Detect symmetric inequalities that imply equality."""
+    """Detect symmetric inequalities (a <= b and b <= a) that imply equality."""
     new_relations = [r for r in relations]
     inequalities = [r for r in relations if isinstance(r, Leq)]
+    pairs = {(r.first, r.second) for r in inequalities}
 
     for r1 in inequalities:
-        for r2 in inequalities:
-            if r1.second == r2.first and r2.second == r1.first:
-                if r1.first == ZERO_STATE:
-                    if verbose:
-                        print(r1, r2, '=====>', Zero(r1.second))
-                    new_relations.append(Zero(r1.second))
-                elif r1.first == NEG_ONE_STATE:
-                    new_relations.append(NegOne(r1.second))
-                elif r1.second == ZERO_STATE:
-                    if verbose:
-                        print(r1, r2, '=====>', Zero(r1.first))
-                    new_relations.append(Zero(r1.first))
-                elif r1.second == NEG_ONE_STATE:
-                    new_relations.append(NegOne(r1.first))
-                else:
-                    if verbose:
-                        print(r1, r2, '=====>', Alias(r1.first, r1.second))
-                    new_relations.append(Alias(r1.first, r1.second))
+        if (r1.second, r1.first) not in pairs:
+            continue
+        if r1.first == ZERO_STATE:
+            if verbose:
+                print(r1, '=====>', Zero(r1.second))
+            new_relations.append(Zero(r1.second))
+        elif r1.first == NEG_ONE_STATE:
+            new_relations.append(NegOne(r1.second))
+        elif r1.second == ZERO_STATE:
+            if verbose:
+                print(r1, '=====>', Zero(r1.first))
+            new_relations.append(Zero(r1.first))
+        elif r1.second == NEG_ONE_STATE:
+            new_relations.append(NegOne(r1.first))
+        else:
+            if verbose:
+                print(r1, '=====>', Alias(r1.first, r1.second))
+            new_relations.append(Alias(r1.first, r1.second))
     return new_relations
 
 
@@ -233,14 +234,12 @@ def reduce_relations(relations: List, verbose: bool = False) -> List:
 
 def full_reduce(relations: List, verbose: bool = False, max_depth: int = 20) -> List:
     """Fully reduce relations by repeatedly applying reduction rules until fixed point."""
-    if max_depth == 0:
-        raise Exception('max reduction recursion depth exceeded')
-
-    new_relations = reduce_relations(relations, verbose=verbose)
-    if set(relations) == set(new_relations):
-        return new_relations
-    else:
-        return full_reduce(new_relations, verbose=verbose, max_depth=max_depth - 1)
+    for _ in range(max_depth):
+        new_relations = reduce_relations(relations, verbose=verbose)
+        if set(relations) == set(new_relations):
+            return new_relations
+        relations = new_relations
+    raise Exception('max reduction recursion depth exceeded')
 
 
 def all_variables(relations: List) -> List:

@@ -1,8 +1,10 @@
 """
-Parallel sign assignment search for FK computation.
+Sign assignment search for FK computation.
 
-This module provides functions for searching through sign assignment
-configurations in parallel to find valid assignments.
+This module searches through sign-assignment candidates (induced by
+arc-label permutations) to find a valid assignment for a braid at a
+given degree. The search runs in-process for a single worker and uses
+a multiprocessing pool when more workers are requested.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from .validation import check_sign_assignment
 from .variants import (
     PartialSignsType,
     generate_braid_variants,
+    matches_partial_signs,
 )
 
 
@@ -45,83 +48,81 @@ def _batched(it: Iterator[List[int]], batch_size: int) -> Iterator[List[List[int
         yield batch
 
 
-def _matches_partial_signs(
-    signs: Dict[int, List[int]], partial_signs: PartialSignsType
-) -> bool:
-    for comp, templ in partial_signs.items():
-        cand = signs.get(comp)
-        if cand is None or len(cand) != len(templ):
-            return False
-        for s_cand, s_req in zip(cand, templ):
-            if s_req is not None and int(s_cand) != int(s_req):
-                return False
-    return True
+class _PermChecker:
+    """Check permutation candidates against one braid variant.
 
+    Holds the per-variant state (BraidStates, arc-label metadata) so that
+    candidate checks reuse the expensive topology computation. Instances are
+    used directly for serial search and as process-global state for workers.
+    """
 
-_WORKER_STATE: Optional[BraidStates] = None
-_WORKER_DEGREE: Optional[int] = None
-_WORKER_WEIGHT: Optional[int] = None
-_WORKER_PARTIAL: Optional[PartialSignsType] = None
-_WORKER_ARC_LABELS: Optional[List[int]] = None
-_WORKER_ARC_COMP: Optional[Dict[int, int]] = None
-_WORKER_N_COMPONENTS: Optional[int] = None
-_WORKER_MAX_ARC_LABEL: int = 0
+    def __init__(
+        self,
+        braid: List[int],
+        degree: int,
+        partial_signs: Optional[PartialSignsType],
+        arc_labels: List[int],
+        arc_comp: Dict[int, int],
+        n_components: int,
+        weight: Optional[int] = None,
+    ):
+        self.state = BraidStates(braid)
+        self.degree = int(degree)
+        self.weight = weight
+        self.partial_signs = partial_signs
+        self.arc_labels = arc_labels
+        self.arc_comp = arc_comp
+        self.n_components = int(n_components)
+        self.max_arc_label = max(arc_labels) if arc_labels else 0
 
+    def check_signs(
+        self, signs: Dict[int, List[int]]
+    ) -> Optional[Tuple[List[int], Dict[int, List[int]]]]:
+        if self.partial_signs is not None and not matches_partial_signs(
+            signs, self.partial_signs
+        ):
+            return None
 
-def _init_perm_worker(
-    braid: List[int],
-    degree: int,
-    partial_signs: Optional[PartialSignsType],
-    arc_labels: List[int],
-    arc_comp: Dict[int, int],
-    n_components: int,
-    weight: Optional[int] = None,
-) -> None:
-    global _WORKER_STATE, _WORKER_DEGREE, _WORKER_WEIGHT, _WORKER_PARTIAL
-    global _WORKER_ARC_LABELS, _WORKER_ARC_COMP, _WORKER_N_COMPONENTS, _WORKER_MAX_ARC_LABEL
-    _WORKER_STATE = BraidStates(braid)
-    _WORKER_DEGREE = int(degree)
-    _WORKER_WEIGHT = weight
-    _WORKER_PARTIAL = partial_signs
-    _WORKER_ARC_LABELS = arc_labels
-    _WORKER_ARC_COMP = arc_comp
-    _WORKER_N_COMPONENTS = int(n_components)
-    _WORKER_MAX_ARC_LABEL = max(arc_labels) if arc_labels else 0
+        state = self.state
+        state.strand_signs = signs
+        state.compute_matrices()
+        if not state.validate():
+            return None
 
+        state.generate_position_assignments()
+        relations = full_reduce(state.get_state_relations())
+        out = check_sign_assignment(self.degree, relations, state, weight=self.weight)
+        if out is None:
+            return None
+        return state.braid, state.strand_signs
 
-def _check_signs_for_worker(signs: Dict[int, List[int]]) -> Optional[Tuple[List[int], Dict[int, List[int]]]]:
-    if _WORKER_STATE is None or _WORKER_DEGREE is None:
-        raise RuntimeError("Worker state not initialized")
-
-    if _WORKER_PARTIAL is not None and not _matches_partial_signs(signs, _WORKER_PARTIAL):
+    def check_perm_batch(
+        self, perms: List[List[int]]
+    ) -> Optional[Tuple[List[int], Dict[int, List[int]]]]:
+        for perm in perms:
+            if self.max_arc_label > len(perm):
+                continue
+            signs: Dict[int, List[int]] = {c: [] for c in range(self.n_components)}
+            for label in self.arc_labels:
+                signs[self.arc_comp[label]].append(1 if perm[label - 1] == label else -1)
+            hit = self.check_signs(signs)
+            if hit is not None:
+                return hit
         return None
 
-    _WORKER_STATE.strand_signs = signs
-    _WORKER_STATE.compute_matrices()
-    if not _WORKER_STATE.validate():
-        return None
 
-    _WORKER_STATE.generate_position_assignments()
-    relations = full_reduce(_WORKER_STATE.get_state_relations())
-    out = check_sign_assignment(_WORKER_DEGREE, relations, _WORKER_STATE, weight=_WORKER_WEIGHT)
-    if out is None:
-        return None
-    return _WORKER_STATE.braid, _WORKER_STATE.strand_signs
+_WORKER_CHECKER: Optional[_PermChecker] = None
+
+
+def _init_perm_worker(*args) -> None:
+    global _WORKER_CHECKER
+    _WORKER_CHECKER = _PermChecker(*args)
 
 
 def worker_on_perm_batch(perms: List[List[int]]) -> Optional[Tuple[List[int], Dict[int, List[int]]]]:
-    if _WORKER_ARC_LABELS is None or _WORKER_ARC_COMP is None or _WORKER_N_COMPONENTS is None:
-        raise RuntimeError("Worker permutation metadata not initialized")
-    for perm in perms:
-        if _WORKER_MAX_ARC_LABEL > len(perm):
-            continue
-        signs: Dict[int, List[int]] = {c: [] for c in range(_WORKER_N_COMPONENTS)}
-        for label in _WORKER_ARC_LABELS:
-            signs[_WORKER_ARC_COMP[label]].append(1 if perm[label - 1] == label else -1)
-        hit = _check_signs_for_worker(signs)
-        if hit is not None:
-            return hit
-    return None
+    if _WORKER_CHECKER is None:
+        raise RuntimeError("Worker state not initialized")
+    return _WORKER_CHECKER.check_perm_batch(perms)
 
 
 class BraidType(Enum):
@@ -149,27 +150,6 @@ def braid_type(braid: List[int]) -> int:
         if is_homogeneous_braid(braid)
         else BraidType.FIBERED.value
     )
-
-
-def total_assignments_for_braid(braid_states: BraidStates, partial_signs: Optional[PartialSignsType] = None) -> int:
-    """Return the total number of sign assignments for this braid."""
-    fixed_n_s_total = (
-        sum(
-            abs(x) for values in partial_signs.values() for x in values if x is not None
-        )
-        if partial_signs
-        else 0
-    )
-    return 1 << (braid_states.n_s_total  - fixed_n_s_total)
-
-
-def split_ranges(n: int, chunk_size: int) -> Iterator[Tuple[int, int]]:
-    """Yield half-open integer ranges [start, end) covering 0..n-1."""
-    start = 0
-    while start < n:
-        end = min(start + chunk_size, n)
-        yield start, end
-        start = end
 
 
 @lru_cache(maxsize=None)
@@ -306,24 +286,6 @@ def check_assignment_for_braid(
     return None
 
 
-def worker_on_range(
-    args: Tuple[int, BraidStates, int, int, bool, Optional[PartialSignsType], Optional[int]],
-) -> Optional[Tuple[List[int], Dict[int, List[int]]]]:
-    """
-    Worker for a range of indices; returns the first success in [start, end).
-    """
-    degree, braid_state, start, end, progress, partial_signs, weight = args
-    n = end - start
-    for i, idx in enumerate(range(start, end)):
-        if progress and n > 0 and (i % max(1, n // 10) == 0):
-            pct = round(100.0 * i / n, 1)
-            print(f"[worker {os.getpid()}] {pct}% of batch", end="\r")
-        hit = check_assignment_for_braid(idx, degree, braid_state, partial_signs, weight=weight)
-        if hit is not None:
-            return hit
-    return None
-
-
 def parallel_try_sign_assignments(
     degree: int,
     braid_state: BraidStates,
@@ -336,12 +298,15 @@ def parallel_try_sign_assignments(
     weight: Optional[int] = None,
 ) -> Union[Tuple[List[int], Dict[int, List[int]]], Literal[False]]:
     """
-    Parallel search for a consistent sign assignment across braid variants.
+    Search for a consistent sign assignment across braid variants.
 
     This search enumerates only sign assignments induced by permutation
     candidates from :func:`fkcompute.inversion.permutations.iter_perms_rot_closed`.
     The *chunk_size* parameter controls how many candidate permutations are
     bundled into each worker task.
+
+    With max_workers == 1 the search runs in-process (no multiprocessing
+    overhead); otherwise candidates are distributed over a process pool.
 
     Returns
     -------
@@ -351,13 +316,7 @@ def parallel_try_sign_assignments(
     if max_workers is None:
         max_workers = max(1, (os.cpu_count() or 1))
 
-    # This search considers only sign assignments coming from permutation candidates.
-    # These candidates are enumerated lazily; we do not precompute or store them.
-    if verbose:
-        print("Search space: permutation candidates (lazy)")
-
-    # chunk_size historically referred to index ranges for brute-force search.
-    # For permutation candidates, cap it to a safe batch size to avoid large IPC payloads.
+    # Candidates are enumerated lazily; cap batches to keep IPC payloads small.
     batch_size = max(1, min(int(chunk_size), 1024))
 
     for variant_braid_state, variant_partial_signs, meta in generate_braid_variants(
@@ -368,27 +327,36 @@ def parallel_try_sign_assignments(
             print(variant_braid_state.braid)
             print(variant_partial_signs)
 
-        # Ensure this braid admits permutation candidates before spawning workers.
+        # Ensure this braid admits permutation candidates before searching.
         try:
             arc_labels, arc_comp, n_components = perm_to_signs_metadata(variant_braid_state.braid)
         except ValueError:
             continue
 
+        checker_args = (
+            variant_braid_state.braid,
+            degree,
+            variant_partial_signs,
+            arc_labels,
+            arc_comp,
+            n_components,
+            weight,
+        )
         perm_iter = iter_perms_rot_closed(variant_braid_state.braid)
         perm_batches = _batched(perm_iter, batch_size)
+
+        if max_workers == 1:
+            checker = _PermChecker(*checker_args)
+            for batch in perm_batches:
+                out = checker.check_perm_batch(batch)
+                if out is not None:
+                    return out
+            continue
 
         with mp.Pool(
             processes=max_workers,
             initializer=_init_perm_worker,
-            initargs=(
-                variant_braid_state.braid,
-                degree,
-                variant_partial_signs,
-                arc_labels,
-                arc_comp,
-                n_components,
-                weight,
-            ),
+            initargs=checker_args,
         ) as pool:
             for out in pool.imap_unordered(worker_on_perm_batch, perm_batches, chunksize=1):
                 if out is not None:

@@ -20,7 +20,7 @@ from .search import (
     parallel_try_sign_assignments,
 )
 from .validation import check_sign_assignment
-from .variants import PartialSignsType
+from .variants import PartialSignsType, matches_partial_signs
 
 
 @dataclass
@@ -177,19 +177,6 @@ def find_sign_assignment_full(
         no valid assignments exist.
     """
 
-    def _matches_partial(
-        signs: Dict[int, List[int]],
-        partial: PartialSignsType,
-    ) -> bool:
-        for comp, templ in partial.items():
-            cand = signs.get(comp)
-            if cand is None or len(cand) != len(templ):
-                return False
-            for s_cand, s_req in zip(cand, templ):
-                if s_req is not None and int(s_cand) != int(s_req):
-                    return False
-        return True
-
     bs = BraidStates(braid)
     t = braid_type(braid)
     braid_kind = "homogeneous" if t == BraidType.HOMOGENEOUS.value else "fibered"
@@ -211,7 +198,7 @@ def find_sign_assignment_full(
             # Defensive: skip malformed candidates.
             continue
 
-        if partial_signs is not None and not _matches_partial(signs, partial_signs):
+        if partial_signs is not None and not matches_partial_signs(signs, partial_signs):
             continue
 
         key = tuple(

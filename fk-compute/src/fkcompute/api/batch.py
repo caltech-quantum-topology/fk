@@ -6,27 +6,37 @@ from configuration files.
 """
 
 import logging
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Union
 
 from .presets import PRESETS
-from ..infra.config import load_config_file, parse_int_list
+from ..infra.config import load_config_file
 
 logger = logging.getLogger("fk_logger")
 
 
-def configure_logging(verbose: bool) -> None:
-    """Set logging level based on verbose flag."""
-    handler = logging.StreamHandler()
-    fmt = logging.Formatter("[%(levelname)s] %(message)s")
-    handler.setFormatter(fmt)
+def _wrap_inversion(config: Dict[str, Any], braid: List[int], degree: int) -> None:
+    """Convert a config-style inversion dict into the pipeline format, in place."""
+    if config.get("inversion") is not None:
+        inversion_data = {int(k): v for k, v in config["inversion"].items()}
+        config["inversion"] = {
+            "inversion_data": inversion_data,
+            "braid": braid,
+            "degree": degree,
+        }
 
-    logger.handlers.clear()
-    logger.addHandler(handler)
 
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.WARNING)
+def _apply_preset(config: Dict[str, Any], context: str = "") -> Dict[str, Any]:
+    """Merge a named preset (if any) under the explicit config values."""
+    preset = config.get("preset")
+    if not preset:
+        return {k: v for k, v in config.items() if k != "preset"}
+    if preset not in PRESETS:
+        raise ValueError(
+            f"Unknown preset '{preset}'{context}. Available: {list(PRESETS.keys())}"
+        )
+    merged = PRESETS[preset].copy()
+    merged.update({k: v for k, v in config.items() if k != "preset"})
+    return merged
 
 
 def fk_from_config(config_path: str) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
@@ -61,45 +71,21 @@ def fk_from_config(config_path: str) -> Union[Dict[str, Any], Dict[str, Dict[str
     if degree is None:
         raise ValueError("'degree' is required in config file")
 
-    # Process inversion data if present
-    if "inversion" in config_data and config_data["inversion"] is not None:
-        inversion_dict = config_data["inversion"]
-        inversion_data = {int(k): v for k, v in inversion_dict.items()}
-        config_data["inversion"] = {
-            "inversion_data": inversion_data,
-            "braid": braid,
-            "degree": degree,
-        }
+    _wrap_inversion(config_data, braid, degree)
 
     # Use 'name' parameter as 'link_name' if provided
     name = config_data.get("name")
     if name and "link_name" not in config_data:
         config_data["link_name"] = name
 
-    # Check if using preset in config
-    preset = config_data.get("preset")
-
     # Import compute function here to avoid circular imports
     from .compute import _fk_compute, configure_logging
 
-    if preset:
-        filtered_config = {
-            k: v for k, v in config_data.items()
-            if k not in ["braid", "degree", "preset", "name"]
-        }
-        preset_config = PRESETS.get(preset, {}).copy()
-        preset_config.update(filtered_config)
-        verbose = preset_config.get("verbose", False)
-        configure_logging(verbose)
-        return _fk_compute(braid, degree, **preset_config)
-    else:
-        filtered_config = {
-            k: v for k, v in config_data.items()
-            if k not in ["braid", "degree", "preset", "name"]
-        }
-        verbose = filtered_config.get("verbose", False)
-        configure_logging(verbose)
-        return _fk_compute(braid, degree, **filtered_config)
+    comp_config = _apply_preset(
+        {k: v for k, v in config_data.items() if k not in ("braid", "degree", "name")}
+    )
+    configure_logging(comp_config.get("verbose", False))
+    return _fk_compute(braid, degree, **comp_config)
 
 
 def fk_batch_from_config(
@@ -129,7 +115,7 @@ def fk_batch_from_config(
 
     # Global defaults from the config file
     global_defaults = {
-        k: v for k, v in config_data.items() if k not in ["computations"]
+        k: v for k, v in config_data.items() if k != "computations"
     }
 
     results = {}
@@ -150,43 +136,19 @@ def fk_batch_from_config(
         comp_config = global_defaults.copy()
         comp_config.update({
             k: v for k, v in computation.items()
-            if k not in ["name", "braid", "degree"]
+            if k not in ("name", "braid", "degree")
         })
 
         # Use computation name as link_name if not explicitly set
-        comp_name_from_config = computation.get("name")
-        if comp_name_from_config and "link_name" not in comp_config:
-            comp_config["link_name"] = comp_name_from_config
+        if computation.get("name") and "link_name" not in comp_config:
+            comp_config["link_name"] = computation["name"]
 
-        # Handle preset if specified
-        preset = comp_config.get("preset")
-        if preset:
-            if preset not in PRESETS:
-                raise ValueError(
-                    f"Unknown preset '{preset}' for computation '{comp_name}'. "
-                    f"Available: {list(PRESETS.keys())}"
-                )
-            filtered_config = {k: v for k, v in comp_config.items() if k != "preset"}
-            preset_config = PRESETS[preset].copy()
-            preset_config.update(filtered_config)
-            comp_config = preset_config
+        comp_config = _apply_preset(comp_config, context=f" for computation '{comp_name}'")
 
-        # Configure logging
         verbose = comp_config.get("verbose", False)
-        if not verbose and total > 1:
-            comp_config["verbose"] = False
-
         configure_logging(verbose)
 
-        # Process inversion data if present
-        if "inversion" in comp_config and comp_config["inversion"] is not None:
-            inversion_dict = comp_config["inversion"]
-            inversion_data = {int(k): v for k, v in inversion_dict.items()}
-            comp_config["inversion"] = {
-                "inversion_data": inversion_data,
-                "braid": braid,
-                "degree": degree,
-            }
+        _wrap_inversion(comp_config, braid, degree)
 
         if total > 1 and verbose:
             logger.info(f"Computing {comp_name} ({i}/{total})")
@@ -195,7 +157,7 @@ def fk_batch_from_config(
             result = _fk_compute(
                 braid,
                 degree,
-                **{k: v for k, v in comp_config.items() if k not in ["braid", "degree", "preset"]}
+                **{k: v for k, v in comp_config.items() if k not in ("braid", "degree")}
             )
             results[comp_name] = result
 

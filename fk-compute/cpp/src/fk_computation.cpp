@@ -218,23 +218,12 @@ std::vector<std::string> FKInputParser::splitLine(const std::string &line,
 // FKComputationEngine implementation
 FKComputationEngine::FKComputationEngine(const FKConfiguration &config)
     : config_(config), result_(config.components, config.degree) {
-  initializeAccumulatorBlockSizes();
   numerical_assignments_.resize(config_.crossings + 1,
                                 std::vector<int>(config_.prefactors + 1));
 }
 
-void FKComputationEngine::initializeAccumulatorBlockSizes() {
-  accumulator_block_sizes_.clear();
-  accumulator_block_sizes_.push_back(1);
 
-  for (int i = 1; i < config_.components; i++) {
-    accumulator_block_sizes_.push_back(accumulator_block_sizes_[i - 1] *
-                                       (config_.degree + 1));
-  }
-}
-
-PolynomialType
-FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
+void FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   computeNumericalAssignments(angles);
   //
   // Calculate power accumulators
@@ -301,8 +290,6 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
           -param_i * (param_j - param_ip) -
           (param_j - param_ip) * (param_j - param_ip + 1) / 2.0;
     }
-    
-    // Capture fractional x-power offset (constant across all points) on first call
   }
 
   // Capture fractional x-power offset (constant across all points) on first call
@@ -338,9 +325,8 @@ FKComputationEngine::computeForAngles(const std::vector<int> &angles) {
   PolynomialType poly(config_.components, 0);
   poly.setCoefficient(q_power_accumulator, x_power_accumulator,
                       initial_coefficient);
-  poly *= crossingFactor(max_x_degrees);
+  poly *= *crossingFactor(max_x_degrees);
   result_ += poly;
-  return result_;
 }
 
 void FKComputationEngine::computeNumericalAssignments(
@@ -354,13 +340,13 @@ void FKComputationEngine::computeNumericalAssignments(
   }
 }
 
-PolynomialType
+std::shared_ptr<const PolynomialType>
 FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
 
   // Create cache key
   CrossingFactorKey cache_key{numerical_assignments_, max_x_degrees};
 
-  // Check cache (read lock)
+  // Check cache (read lock); hits share the cached polynomial, no copy
   {
     std::shared_lock<std::shared_mutex> lock(crossing_factor_mutex_);
     auto it = crossing_factor_cache_.find(cache_key);
@@ -446,22 +432,25 @@ FKComputationEngine::crossingFactor(const std::vector<int> &max_x_degrees) {
     result = result.truncate(max_x_degrees);
   }
 
+  auto shared_result =
+      std::make_shared<const PolynomialType>(std::move(result));
+
   // Store in cache (write lock) with size limit
   {
     std::unique_lock<std::shared_mutex> lock(crossing_factor_mutex_);
 
-    // Limit cache size to prevent unbounded memory growth for large degrees
-    // If cache is full, clear it (simple eviction strategy)
+    // Limit cache size to prevent unbounded memory growth for large degrees.
+    // If the cache is full, clear it (simple eviction strategy); shared_ptr
+    // keeps any factor still in use alive.
     const size_t MAX_CACHE_SIZE = 1000;
     if (crossing_factor_cache_.size() >= MAX_CACHE_SIZE) {
       crossing_factor_cache_.clear();
     }
 
-    // Use insert instead of [] to avoid needing a default constructor
-    crossing_factor_cache_.insert({cache_key, result});
+    crossing_factor_cache_.insert({cache_key, shared_result});
   }
 
-  return result;
+  return shared_result;
 }
 
 void FKComputationEngine::reset() {
@@ -848,66 +837,6 @@ FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
 }
 
 
-/*
-std::vector<FKComputation::AssignmentResult>
-FKComputation::assignVariables(const ValidatedCriteria &valid_criteria) {
-
-  std::vector<AssignmentResult> assignments;
-
-  if (valid_criteria.first_bounds.empty()) {
-    return {createSingleAssignment(valid_criteria)};
-  }
-
-  const auto bounds_vector = convertBoundsToVector(valid_criteria.first_bounds);
-
-  using AssignmentNode = VariableAssignmentState;
-
-  graph_search::DepthFirstSearchWithVisited<AssignmentNode>::Config dfs_config;
-
-  dfs_config.is_valid_goal = [this,
-                              &bounds_vector](const AssignmentNode &state) {
-    return isLastVariable(state, bounds_vector) && !isStateExhausted(state);
-  };
-
-  dfs_config.get_neighbors =
-      [this, &bounds_vector](const AssignmentNode &current_state) {
-        std::vector<AssignmentNode> neighbors;
-
-        for (int value = current_state.current_value;
-             value <= current_state.max_value; ++value) {
-          auto state_copy = current_state;
-          state_copy.current_value = value;
-          processCurrentVariable(state_copy, bounds_vector);
-          const auto updated_degrees =
-              calculateUpdatedDegrees(state_copy, bounds_vector);
-
-          if (!isLastVariable(state_copy, bounds_vector)) {
-            auto next_state =
-                createNextState(state_copy, updated_degrees, bounds_vector);
-            neighbors.push_back(next_state);
-          } else {
-            neighbors.push_back(state_copy);
-          }
-        }
-
-        return neighbors;
-      };
-
-  dfs_config.process_node = [&assignments,
-                             this](const AssignmentNode &final_state) {
-    assignments.push_back(createAssignmentResult(final_state));
-  };
-
-  graph_search::DepthFirstSearchWithVisited<AssignmentNode> dfs_search(
-      dfs_config);
-
-  auto initial_state =
-      createInitialAssignmentState(valid_criteria, bounds_vector);
-  dfs_search.search_all(initial_state);
-
-  return assignments;
-}
-*/
 
 FKComputation::AssignmentResult
 FKComputation::createSingleAssignment(const ValidatedCriteria &valid_criteria) {
@@ -947,30 +876,6 @@ FKComputation::createInitialAssignmentState(
   return initial_state;
 }
 
-std::stack<FKComputation::VariableAssignmentState>
-FKComputation::initializeAssignmentStack(
-    const ValidatedCriteria &valid_criteria,
-    const std::vector<std::array<int, 2>> &bounds_vector) {
-  std::stack<VariableAssignmentState> stack;
-
-  VariableAssignmentState initial_state;
-  initial_state.new_criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
-  initial_state.degrees = std::make_shared<const std::vector<double>>(valid_criteria.degrees);
-  initial_state.criteria = std::make_shared<const std::vector<std::vector<double>>>(valid_criteria.criteria);
-  initial_state.bounds = valid_criteria.additional_bounds;
-  auto all_original = config_.inequalities;
-  all_original.insert(all_original.end(), config_.criteria.begin(),
-                      config_.criteria.end());
-  initial_state.supporting_inequalities = std::make_shared<const std::vector<std::vector<double>>>(all_original);
-  initial_state.point = valid_criteria.initial_point;
-  initial_state.current_var_index = 0;
-  initial_state.current_value = 0;
-  initial_state.max_value = calculateMaxValue(
-      valid_criteria.criteria, valid_criteria.degrees, bounds_vector[0]);
-
-  stack.push(initial_state);
-  return stack;
-}
 
 int FKComputation::calculateMaxValue(
     const std::vector<std::vector<double>> &criteria,
@@ -1296,63 +1201,6 @@ bool FKComputation::shouldExploreCombination(
 
   // Check if this combination could be beneficial
   return isPotentiallyBeneficial(current_criteria[criterion_index], inequality);
-}
-
-void FKComputation::setupWorkStealingComputation(
-    const std::vector<std::vector<int>> &all_points) {
-  int total_points = all_points.size();
-
-std::cout<<"Total points "<<total_points<<std::endl;
-#ifdef _OPENMP
-  int num_engines = engines_.size();
-  omp_set_num_threads(num_engines);
-#endif
-
-  // Use OpenMP parallel for to distribute work across threads
-#ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic)
-#endif
-  for (int i = 0; i < total_points; ++i) {
-#ifdef _OPENMP
-    int thread_id = omp_get_thread_num();
-    engines_[thread_id]->computeForAngles(all_points[i]);
-#else
-    engines_[0]->computeForAngles(all_points[i]);
-#endif
-  }
-}
-
-void FKComputation::combineEngineResults() {
-  int num_engines = engines_.size();
-  std::cout << "Combining results from " << num_engines << " engines..."
-            << std::endl;
-
-  for (int engine_idx = 1; engine_idx < num_engines; ++engine_idx) {
-    engines_[0]->getResult() += engines_[engine_idx]->getResult();
-  }
-}
-
-void FKComputation::performFinalOffsetComputation() {
-  // Final offset addition: multiply by (-1 + x₀)
-  // This computes the discrete derivative in the x₀ direction
-
-  PolynomialType offset(config_.components, 0);
-  std::vector<int> xPowers(config_.components, 0);
-
-  // Coefficient for x₀⁰: -1
-  offset.setCoefficient(0, xPowers, -1);
-
-  // Coefficient for x₀¹: +1
-  xPowers[0] = 1;
-  offset.setCoefficient(0, xPowers, 1);
-
-  // Multiply result by offset polynomial
-  const_cast<PolynomialType &>(engines_[0]->getResult()) *= offset;
-
-  // Truncate to final degree
-  std::vector<int> maxima(config_.components, config_.degree - 1);
-  const_cast<PolynomialType &>(engines_[0]->getResult()) =
-      engines_[0]->getResult().truncate(maxima);
 }
 
 } // namespace fk

@@ -10,7 +10,6 @@ import pathlib
 import shutil
 import subprocess
 from importlib import resources
-from typing import Optional
 
 
 def binary_path(name: str) -> str:
@@ -83,18 +82,22 @@ def run_fk_binary(
 
     Raises
     ------
-    subprocess.CalledProcessError
-        If the binary execution fails.
+    RuntimeError
+        If the binary execution fails (the binary's stderr is included).
     """
     bin_path = binary_path("fk_main")
     cmd = [bin_path, ilp_file, output_file, "--threads", str(threads)]
 
     if verbose:
-        subprocess.run(cmd, check=True)
+        result = subprocess.run(cmd)
     else:
-        subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        detail = ""
+        if not verbose and result.stderr:
+            detail = "\n" + result.stderr.strip()[-2000:]
+        raise RuntimeError(
+            f"FK helper binary failed (exit code {result.returncode}): "
+            f"{' '.join(cmd)}{detail}"
         )

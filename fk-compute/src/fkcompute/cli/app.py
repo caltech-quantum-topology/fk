@@ -56,6 +56,37 @@ template_app = typer.Typer(help="Template management commands")
 app.add_typer(template_app, name="template")
 
 
+def _version_string() -> str:
+    try:
+        from importlib.metadata import version
+        return version("fkcompute")
+    except Exception:
+        from .. import __version__
+        return __version__
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"fkcompute {_version_string()}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _main_callback(
+    version: bool = typer.Option(
+        False, "--version", "-V", help="Show the fkcompute version and exit.",
+        callback=_version_callback, is_eager=True,
+    ),
+) -> None:
+    """FK invariant computation toolkit."""
+
+
+_KNOWN_SUBCOMMANDS = {
+    "simple", "config", "interactive", "template", "print-as",
+    "-h", "--help", "--version", "-V",
+}
+
+
 def main(argv: Optional[List[str]] = None) -> None:
     """Main entry point for the fk CLI tool."""
     from .commands import handle_interactive
@@ -64,21 +95,20 @@ def main(argv: Optional[List[str]] = None) -> None:
         argv = sys.argv
 
     # Handle legacy simple mode: fk "[1,-2,3]" 2 -> fk simple "[1,-2,3]" 2
-    if len(argv) >= 3 and argv[1] not in [
-        "simple", "config", "interactive", "template", "-h", "--help", "--version"
-    ]:
+    if len(argv) >= 3 and argv[1] not in _KNOWN_SUBCOMMANDS:
         try:
             int(argv[2])
-            new_argv = [argv[0], "simple"] + argv[1:]
+            is_legacy = True
+        except ValueError:
+            is_legacy = False
+        if is_legacy:
             original_argv = sys.argv[:]
-            sys.argv = new_argv
+            sys.argv = [argv[0], "simple"] + argv[1:]
             try:
                 app()
             finally:
                 sys.argv = original_argv
             return
-        except (ValueError, IndexError):
-            pass
 
     # Check if no arguments provided - default to interactive mode
     if len(argv) == 1:

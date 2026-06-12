@@ -7,7 +7,7 @@ from rich.prompt import Confirm
 
 from ..api.compute import fk
 from ..infra.config import parse_int_list
-from .ui import StatusMessage, ComputationSummary, ValidatedInput
+from .ui import StatusMessage
 from .progress import FKProgressTracker
 from .prompts import show_main_menu, get_computation_parameters, show_help_menu
 
@@ -165,7 +165,7 @@ class QuickWizard:
             if symbolic:
                 console.print(f"  Symbolic: Yes ({format_type})")
             else:
-                console.print(f"  Symbolic: No")
+                console.print("  Symbolic: No")
             console.print()
 
             if not Confirm.ask("Proceed?", default=True):

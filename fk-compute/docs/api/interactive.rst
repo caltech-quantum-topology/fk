@@ -68,9 +68,3 @@ Module Reference
    :members:
    :undoc-members:
 
-``fkcompute.interactive.history``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: fkcompute.interactive.history
-   :members:
-   :undoc-members:

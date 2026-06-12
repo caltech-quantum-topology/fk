@@ -17,33 +17,27 @@ from ..api.compute import fk
 from ..infra.config import parse_int_list
 from ..output.symbolic import print_symbolic_result, SYMPY_AVAILABLE
 
+VALID_FORMATS = ("pretty", "inline", "latex", "mathematica")
+
 
 # -------------------------------------------------------------------------
 # Interactive mode command
 # -------------------------------------------------------------------------
-@app.command("interactive", deprecated=False)
+@app.command("interactive")
 def interactive_command(
     enhanced: bool = typer.Option(False, "--enhanced", help="Use enhanced interactive wizard with progress tracking"),
     quick: bool = typer.Option(False, "--quick", help="Use quick interactive mode with minimal prompts"),
 ) -> None:
     """Interactive mode with guided prompts."""
-    try:
-        if enhanced:
-            from ..interactive import run_enhanced_interactive
-            run_enhanced_interactive()
-        elif quick:
+    if quick:
+        try:
             from ..interactive import run_quick_interactive
             run_quick_interactive()
-        else:
-            try:
-                from ..interactive import run_enhanced_interactive
-                run_enhanced_interactive()
-            except ImportError:
-                handle_basic_interactive()
-    except ImportError as e:
-        typer.echo("Enhanced interactive mode not available. Using basic mode.")
-        typer.echo(f"Error: {e}")
-        handle_basic_interactive()
+        except ImportError as e:
+            typer.echo(f"Quick interactive mode not available ({e}). Using basic mode.")
+            handle_basic_interactive()
+    else:
+        handle_interactive()
 
 
 # -------------------------------------------------------------------------
@@ -56,20 +50,42 @@ def simple_command(
     symbolic: bool = typer.Option(False, "--symbolic", help="Print result in human-readable symbolic form using SymPy"),
     format_type: str = typer.Option(
         "pretty", "--format", "-f",
-        help="Symbolic output format: pretty, inline, mathematica, latex"
+        help=f"Symbolic output format: {', '.join(VALID_FORMATS)}"
     ),
     weight: Optional[int] = typer.Option(None, "--weight", "-w", help="Weight parameter for stratified calculation"),
+    threads: Optional[int] = typer.Option(None, "--threads", "-t", help="Threads for the C++ FK computation"),
+    max_workers: Optional[int] = typer.Option(None, "--workers", help="Parallel workers for the sign-assignment search"),
+    name: Optional[str] = typer.Option(None, "--name", "-n", help="Name for the computation (used for saved files)"),
+    save: bool = typer.Option(False, "--save", help="Save inversion/ILP/result files to the data directory"),
+    save_dir: str = typer.Option("data", "--save-dir", help="Directory for saved files (with --save)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
 ) -> None:
     """Simple FK computation with minimal options."""
     braid_list = parse_int_list(braid)
     if not braid_list:
         raise typer.BadParameter("Could not parse braid into a non-empty list of integers")
 
+    _validate_format(format_type)
+
     # If --format is explicitly passed (not default), auto-enable symbolic
     if format_type != "pretty":
         symbolic = True
 
-    result = fk(braid_list, degree, symbolic=symbolic, weight=weight)
+    kwargs = {
+        "symbolic": symbolic,
+        "weight": weight,
+        "save_data": save,
+        "save_dir": save_dir,
+        "verbose": verbose,
+    }
+    if threads is not None:
+        kwargs["threads"] = threads
+    if max_workers is not None:
+        kwargs["max_workers"] = max_workers
+    if name is not None:
+        kwargs["name"] = name
+
+    result = fk(braid_list, degree, **kwargs)
     _print_result(result, symbolic, format_type=format_type)
 
 
@@ -81,46 +97,41 @@ def print_as_command(
     json_file: str = typer.Argument(..., help="Path to JSON file containing FK computation result"),
     format_type: str = typer.Option(
         "pretty", "--format", "-f",
-        help="Output format: pretty, inline, latex, mathematica"
+        help=f"Output format: {', '.join(VALID_FORMATS)}"
     ),
 ) -> None:
     """Format and print FK computation result from JSON file in symbolic form.
-    
+
     Takes a JSON file containing FK computation results (like those generated
     by running computation with save_data=true) and outputs the terms in the
     requested symbolic format.
-    
+
     Example:
         fk print-as result.json --format latex
     """
-    # Validate format
-    valid_formats = ("pretty", "inline", "latex", "mathematica")
-    if format_type not in valid_formats:
-        raise typer.BadParameter(f"Invalid format. Choose from: {', '.join(valid_formats)}")
-    
-    # Load JSON file
+    _validate_format(format_type)
+
     json_path = Path(json_file)
     if not json_path.exists():
         raise typer.BadParameter(f"File not found: {json_file}")
-    
+
     try:
         with open(json_path, 'r') as f:
             result = json.load(f)
     except json.JSONDecodeError as e:
         raise typer.BadParameter(f"Invalid JSON file: {e}")
-    except Exception as e:
+    except OSError as e:
         raise typer.BadParameter(f"Error reading file: {e}")
-    
+
     # Validate that this looks like an FK result
     if "terms" not in result:
         raise typer.BadParameter("JSON file does not appear to contain FK computation results (missing 'terms' key)")
-    
-    # Print the result in symbolic format
-    if SYMPY_AVAILABLE:
-        print_symbolic_result(result, format_type=format_type, show_matrix=False)
-    else:
+
+    if not SYMPY_AVAILABLE:
         typer.echo("Error: SymPy is required for symbolic output. Install with: pip install sympy", err=True)
         raise typer.Exit(1)
+
+    print_symbolic_result(result, format_type=format_type, show_matrix=False)
 
 
 # -------------------------------------------------------------------------
@@ -191,7 +202,7 @@ def template_create_command(
 braid: [1, -2, 1, -2]
 
 # Required: Computation degree (positive integer)
-degree: 15 
+degree: 15
 
 # Optional: Name for this computation (used for output files if save_data is true)
 # name: my_knot
@@ -221,13 +232,20 @@ degree: 15
     output_file.write_text(template_content)
 
     typer.echo(f"Template created: {output_path}")
-    typer.echo(f"\nEdit the file to configure your computation, then run:")
+    typer.echo("\nEdit the file to configure your computation, then run:")
     typer.echo(f"  fk config {output_path}")
 
 
 # -------------------------------------------------------------------------
 # Helper functions
 # -------------------------------------------------------------------------
+def _validate_format(format_type: str) -> None:
+    if format_type not in VALID_FORMATS:
+        raise typer.BadParameter(
+            f"Invalid format '{format_type}'. Choose from: {', '.join(VALID_FORMATS)}"
+        )
+
+
 def _prompt_interactive() -> dict:
     """Prompt user for parameters in interactive mode."""
     print("\n" + "=" * 60)
@@ -278,9 +296,9 @@ def _prompt_interactive() -> dict:
 
     format_type = "pretty"
     if symbolic:
-        print("\nChoose symbolic format (pretty, inline, latex, mathematica):")
+        print(f"\nChoose symbolic format ({', '.join(VALID_FORMATS)}):")
         format_input = input("Format [pretty]: ").strip().lower()
-        if format_input in ("pretty", "inline", "latex", "mathematica"):
+        if format_input in VALID_FORMATS:
             format_type = format_input
 
     print("\nSave the output?")
@@ -321,8 +339,7 @@ def handle_interactive() -> None:
         from ..interactive import run_enhanced_interactive
         run_enhanced_interactive()
     except ImportError as e:
-        typer.echo("Enhanced interactive mode not available. Using basic mode.")
-        typer.echo(f"Error: {e}")
+        typer.echo(f"Enhanced interactive mode not available ({e}). Using basic mode.")
         handle_basic_interactive()
 
 

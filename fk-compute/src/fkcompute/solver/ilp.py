@@ -5,27 +5,31 @@ This module provides functions for formulating and solving integer linear
 programs used in the FK computation pipeline.
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 
 import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
 
 from ..domain.constraints.relations import _sort_any
-from ..domain.constraints.symbols import Symbol, one, zero, neg_one
-from ..domain.constraints.reduction import full_reduce
+from ..domain.constraints.symbols import Symbol, one
 from ..domain.solver.assignment import symbolic_variable_assignment
-from ..domain.solver.symbolic_constraints import (
-    minimum_degree_symbolic,
-    inequality_manager,
-    process_assignment,
-)
+from ..domain.solver.symbolic_constraints import process_assignment
 
 
-# Initialize Gurobi environment
-_env = gp.Env(empty=True)
-_env.setParam('OutputFlag', 0)
-_env.start()
+# Gurobi environment, created lazily on first use so that importing the
+# package (or running `fk --help`) does not require a Gurobi license.
+_env = None
+
+
+def _gurobi_env() -> gp.Env:
+    global _env
+    if _env is None:
+        env = gp.Env(empty=True)
+        env.setParam('OutputFlag', 0)
+        env.start()
+        _env = env
+    return _env
 
 
 def integral_bounded(multiples: List, single_var_signs: Dict) -> bool:
@@ -61,7 +65,7 @@ def integral_bounded(multiples: List, single_var_signs: Dict) -> bool:
             if single_var_signs[Symbol(index)] == -1:
                 tableau[:, index] *= -1
                 tableau[:, 0] += tableau[:, index]
-    model = gp.Model(env=_env)
+    model = gp.Model(env=_gurobi_env())
     model.setParam(gp.GRB.Param.PoolSearchMode, 1)
     x = model.addVars(single_var_signs.keys(), vtype=GRB.INTEGER)
     for index in range(n_multiples):
@@ -83,7 +87,7 @@ def integral_bounded(multiples: List, single_var_signs: Dict) -> bool:
     return True
 
 
-def _czech_sign_assignment(degree: int, relations: List, braid_states, weight: Optional[int] = None, verbose: bool = False) -> Optional[Dict]:
+def _check_sign_assignment(degree: int, relations: List, braid_states, weight: Optional[int] = None, verbose: bool = False) -> Optional[Dict]:
     """Check sign assignment validity for ILP generation."""
     assignment = symbolic_variable_assignment(relations, braid_states)
     criteria, multi_var_inequalities, single_var_signs = process_assignment(assignment, braid_states, relations, weight=weight)
@@ -129,7 +133,7 @@ def ilp(degree: int, relations: List, braid_states, write_to: Optional[str] = No
     str or None
         ILP data as a string, or None if no valid assignment exists.
     """
-    check = _czech_sign_assignment(degree, relations, braid_states, weight)
+    check = _check_sign_assignment(degree, relations, braid_states, weight)
     if check is None:
         return None
 
@@ -279,7 +283,7 @@ def print_symbolic_relations(degree: int, relations: List, braid_states, write_t
     dict or None
         Dictionary with criteria, multiples, single_signs, and assignment if valid.
     """
-    check = _czech_sign_assignment(degree, relations, braid_states, weight)
+    check = _check_sign_assignment(degree, relations, braid_states, weight)
     if check is None:
         print("No valid sign assignment exists for this degree!")
         return None

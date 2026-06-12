@@ -5,8 +5,7 @@ A SignedBraid extends BraidTopology with sign assignment data,
 crossing matrices, R-matrices, and relation generation.
 """
 
-import itertools
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .topology import BraidTopology
 from .types import ZERO_STATE, NEG_ONE_STATE
@@ -90,25 +89,13 @@ class SignedBraid:
             return True
         return False
 
-    def none_count(self, matrix: List[List[Any]]) -> int:
-        """Count the number of None values in a matrix."""
-        return list(itertools.chain.from_iterable(matrix)).count(None)
-
     def sign_at_position(self, position: Tuple[int, int]) -> Optional[int]:
         """Get the sign at a given position in the crossing matrices."""
-        topo = self.topology
-        for index in range(topo.n_crossings):
-            for index1 in range(2):
-                for index2 in range(2):
-                    if topo.loc[index][index1][index2] == position:
-                        return self.matrices[index][index1][index2]
-        return None
-
-    def generate_strand_signs(self):
-        """Generate strand signs from the current assignment."""
-        self.strand_signs = []
-        for index in range(1, self.topology.n_s):
-            self.strand_signs.append(self.sign_assignment[self.topology.strand_endpoints[index][0]])
+        cell = self.topology._crossing_cell_at_location.get(position)
+        if cell is None:
+            return None
+        index, row, col = cell
+        return self.matrices[index][row][col]
 
     def generate_position_assignments(self):
         """Generate position assignments from strand signs."""
@@ -136,70 +123,6 @@ class SignedBraid:
                     top = 1
                 self.matrices[topo.endpoint_crossing_indices[component][index][0]][0][bottom] = self.strand_signs[component][index]
                 self.matrices[topo.endpoint_crossing_indices[component][index][1]][1][top] = self.strand_signs[component][index]
-
-    def update(self, position: Tuple[int, int], value: int):
-        """Update a position in the crossing matrices."""
-        topo = self.topology
-        for index in range(topo.n_s):
-            for index_ in range(2):
-                if topo.strand_endpoints[index][index_] == position:
-                    position = topo.strand_endpoints[index][(index_ + 1) % 2]
-                    break
-        for index in range(topo.n_crossings):
-            for index1 in range(2):
-                for index2 in range(2):
-                    if topo.loc[index][index1][index2] == position:
-                        if self.matrices[index][index1][index2] == -value:
-                            raise Exception("Tried to overwrite R-matrix sign information!")
-                        else:
-                            self.matrices[index][index1][index2] = value
-
-    def propagate(self):
-        """Propagate sign constraints through the crossing matrices."""
-        topo = self.topology
-        index = 0
-        while index < topo.n_crossings:
-            reset = False
-            count = self.none_count(self.matrices[index])
-            if count == 2 or count == 1:
-                for index1 in range(2):
-                    for index2 in range(2):
-                        if self.matrices[index][0][index1] == 1 and self.matrices[index][1][index2] == -1:
-                            self.matrices[index][0][(index1 + 1) % 2] = -1
-                            self.matrices[index][1][(index2 + 1) % 2] = 1
-                            position1 = topo.loc[index][0][(index1 + 1) % 2]
-                            self.update(position1, -1)
-                            position2 = topo.loc[index][1][(index2 + 1) % 2]
-                            self.update(position2, 1)
-                            reset = True
-                        elif self.matrices[index][0][index1] == -1 and self.matrices[index][1][index2] == 1:
-                            self.matrices[index][0][(index1 + 1) % 2] = 1
-                            self.matrices[index][1][(index2 + 1) % 2] = -1
-                            position1 = topo.loc[index][0][(index1 + 1) % 2]
-                            self.update(position1, 1)
-                            position2 = topo.loc[index][1][(index2 + 1) % 2]
-                            self.update(position2, -1)
-                            reset = True
-            elif count == 1:
-                for index1 in range(2):
-                    if self.matrices[index1][0] == [1, 1]:
-                        for index2 in range(2):
-                            if self.matrices[(index1 + 1) % 2][1][index2] == 1:
-                                self.matrices[(index1 + 1) % 2][1][(index2 + 1) % 2] = 1
-                                position = topo.loc[(index1 + 1) % 2][1][(index2 + 1) % 2]
-                                self.update(position, 1)
-                                reset = True
-                    elif self.matrices[index1][0] == [-1, -1]:
-                        for index2 in range(2):
-                            if self.matrices[(index1 + 1) % 2][1][index2] == -1:
-                                self.matrices[(index1 + 1) % 2][1][(index2 + 1) % 2] = -1
-                                position = topo.loc[(index1 + 1) % 2][1][(index2 + 1) % 2]
-                                self.update(position, -1)
-                                reset = True
-            if reset:
-                index = 0
-            else:
-                index += 1
 
     def _boundary_conditions(self) -> List:
         """Zero or NegOne constraints for the first strand's endpoints."""

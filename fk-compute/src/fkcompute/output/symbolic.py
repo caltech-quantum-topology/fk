@@ -11,7 +11,7 @@ from typing import Dict, List, Any, Union
 
 try:
     import sympy as sp
-    from sympy import symbols, expand, latex
+    from sympy import symbols, latex
     SYMPY_AVAILABLE = True
 except ImportError:
     SYMPY_AVAILABLE = False

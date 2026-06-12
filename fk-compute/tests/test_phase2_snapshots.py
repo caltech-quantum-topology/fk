@@ -119,9 +119,10 @@ class TestTrefoil:
         criteria, multiples, singlesigns = process_assignment(
             assignment, braid_states, reduced_relations,
         )
-        # Single component, degree criterion is "a" (with constant 0)
+        # Single component, degree criterion is "a" plus a half-integer
+        # constant (degree expressions live in quarter-integers).
         assert len(criteria) == 1
-        assert str(criteria[0]) == "0 + a" or str(criteria[0]) == "a"
+        assert str(criteria[0]) == "0.5 + a"
 
         # Knot-only restriction: x-power must be nonnegative.
         assert len(multiples) == 1
@@ -232,7 +233,7 @@ class TestFigureEight:
         )
         # Single component
         assert len(criteria) == 1
-        assert str(criteria[0]) == "-1 + a - 2b"
+        assert str(criteria[0]) == "-1.5 + a - 2b"
 
         # Knot-only restriction: x-power must be nonnegative.
         assert len(multiples) == 1

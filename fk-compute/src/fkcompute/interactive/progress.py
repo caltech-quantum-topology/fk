@@ -1,6 +1,6 @@
 """Progress tracking for FK computations."""
 
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn, TimeRemainingColumn
 from rich.live import Live

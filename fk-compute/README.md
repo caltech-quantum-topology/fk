@@ -21,24 +21,23 @@ To build/run the backend you need these system libraries:
 
 - FLINT (and GMP)
 - OpenMP runtime
-- BLAS implementation (OpenBLAS recommended)
 
 macOS (Homebrew):
 
 ```bash
-brew install flint libomp openblas
+brew install flint libomp
 ```
 
 Ubuntu/Debian:
 
 ```bash
-sudo apt-get install libflint-dev libgomp1-dev libopenblas-dev
+sudo apt-get install libflint-dev libgomp1-dev
 ```
 
 RHEL/Fedora:
 
 ```bash
-sudo yum install flint-devel gcc-openmp openblas-devel
+sudo yum install flint-devel gcc-openmp
 ```
 
 Build tooling:
@@ -83,6 +82,15 @@ Compute quickly:
 
 ```bash
 fk simple "[1,1,1]" 2
+```
+
+Common options for `fk simple`:
+
+```bash
+fk simple "[1,1,1]" 10 --threads 8          # C++ backend threads
+fk simple "[1,-2,-1,2]" 10 --workers 4      # parallel sign-assignment search
+fk simple "[1,1,1]" 10 --save --name tref   # save inversion/ILP/result to data/
+fk simple "[1,1,1]" 10 -v                   # verbose logging
 ```
 
 Symbolic output (requires `fkcompute[symbolic]`):
@@ -141,6 +149,17 @@ print(result["metadata"]["components"])
 print(len(result["terms"]))
 ```
 
+If no valid sign assignment exists at the requested degree, `fk()` raises
+`fkcompute.SignAssignmentError` with a suggestion of what to try. The sign
+assignment search itself is also exposed directly:
+
+```python
+from fkcompute import find_sign_assignment
+
+res = find_sign_assignment([1, -2, -1, -1, 2, 2, -1, -2], degree=10)
+print(res.success, res.sign_assignment)
+```
+
 Config-file mode:
 
 ```python
@@ -156,7 +175,7 @@ braid: [1, 1, 1]
 degree: 2
 ```
 
-Batch mode uses a top-level `computations:` list; see `docs/config.md`.
+Batch mode uses a top-level `computations:` list; see `docs/configuration.rst`.
 
 ## Documentation
 
@@ -190,7 +209,7 @@ man fk
 
 This repo includes a Paclet wrapper under `mathematica/FkCompute/`.
 
-Start here: `docs/mathematica.md`.
+Start here: `docs/mathematica.rst`.
 
 ## Development
 

@@ -13,7 +13,7 @@ import json
 import sys
 import traceback
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 @dataclass

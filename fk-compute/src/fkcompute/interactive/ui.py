@@ -1,16 +1,11 @@
 """Rich UI components for enhanced interactive experience."""
 
-from typing import Any, List, Optional, Dict, Union
+from typing import Any, List, Optional, Dict
 import json
 from rich.console import Console
-from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 from rich.text import Text
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
-from rich.live import Live
-from rich.layout import Layout
-from rich.align import Align
 from rich.rule import Rule
 
 console = Console()

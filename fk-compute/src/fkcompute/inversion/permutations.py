@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from enum import IntEnum
-from functools import reduce
 from typing import Callable, Dict, Iterator, List, Optional, Tuple
 from collections import Counter
 
@@ -290,22 +289,6 @@ def new_rot(braid: List[int]) -> List[List[int]]:
 # ---------------------------------------------------------------------------
 
 
-def _extend_and_filter(
-    current: List[List[Tuple[int, int]]],
-    next_options: List[Tuple[int, int]],
-) -> List[List[Tuple[int, int]]]:
-    """
-    Cross-product extend and filter.
-
-    Appends each option in *next_options* to each partial permutation in
-    *current*, keeping only those where all destination values are distinct.
-
-    Port of Mathematica ``extendAndFilter``.
-    """
-    extended = [partial + [rule] for partial in current for rule in next_options]
-    return [x for x in extended if len({dst for _, dst in x}) == len(x)]
-
-
 def _build_perm_options(braid: List[int], closed: bool) -> List[List[Tuple[int, int]]]:
     """Build the sorted list of option groups used by perms_rot / perms_rot_closed."""
     rot_vec = new_rot(braid)
@@ -333,15 +316,6 @@ def _build_perm_options(braid: List[int], closed: bool) -> List[List[Tuple[int, 
 
     perm_options.sort(key=lambda group: group[0][0])
     return perm_options
-
-
-def _fold_to_perms(
-    perm_options: List[List[Tuple[int, int]]], total: int
-) -> List[List[int]]:
-    """Fold option groups into valid permutation lists."""
-    partial_perms = reduce(_extend_and_filter, perm_options, [[]])
-    result: List[List[int]] = [[dst for _, dst in pp] for pp in partial_perms]
-    return result
 
 
 def _iter_fold_to_perms(perm_options: List[List[Tuple[int, int]]]) -> Iterator[List[int]]:
@@ -385,9 +359,7 @@ def perms_rot(braid: List[int]) -> List[List[int]]:
 
     Port of Mathematica ``permsRot``.
     """
-    n = len(braid)
-    opts = _build_perm_options(braid, closed=False)
-    return list(_iter_fold_to_perms(opts))
+    return list(iter_perms_rot(braid))
 
 
 def perms_rot_closed(braid: List[int]) -> List[List[int]]:
@@ -399,9 +371,7 @@ def perms_rot_closed(braid: List[int]) -> List[List[int]]:
 
     Port of Mathematica ``permsRotClosed``.
     """
-    n = len(braid)
-    opts = _build_perm_options(braid, closed=True)
-    return list(_iter_fold_to_perms(opts))
+    return list(iter_perms_rot_closed(braid))
 
 
 def iter_perms_rot(braid: List[int]) -> Iterator[List[int]]:
@@ -472,42 +442,7 @@ def perm_to_signs(perm: List[int], braid: List[int]) -> Dict[int, List[int]]:
     order (ascending).
 
     Port of Mathematica ``permToSigns``, extended to multi-component links.
+    Convenience wrapper; use :func:`compile_perm_to_signs` when converting
+    many permutations for the same braid.
     """
-    rot = new_rot(braid)
-    topo = BraidTopology(braid)
-    arc_comp: Dict[int, int] = {}
-    arc_labels: List[int] = []
-    for j, (crossing_sign, label_a, label_b) in enumerate(rot):
-        top_c = topo.top_crossing_components[j]
-        bottom_c = topo.bottom_crossing_components[j]
-        if top_c is None or bottom_c is None:
-            raise ValueError("Unexpected missing component assignment")
-
-        # new_rot returns labels as (over, under). For positive crossings the
-        # overstrand is the top strand; for negative crossings it's the bottom.
-        if crossing_sign == 1:
-            arc_comp[label_a] = top_c
-            arc_comp[label_b] = bottom_c
-        else:
-            arc_comp[label_a] = bottom_c
-            arc_comp[label_b] = top_c
-        arc_labels.append(label_a)
-        arc_labels.append(label_b)
-
-    # The sign assignment is defined on the 2n arc labels appearing in new_rot.
-    # For links, these labels need not be exactly 1..2n.
-    arc_labels = sorted(set(arc_labels))
-    if len(arc_labels) != 2 * len(braid):
-        raise ValueError("Unexpected number of arc labels for sign assignment")
-    if not arc_labels:
-        return {c: [] for c in range(topo.n_components)}
-    if max(arc_labels) > len(perm):
-        raise ValueError(
-            "Permutation too short for braid arc labels: "
-            f"need >= {max(arc_labels)}, got {len(perm)}"
-        )
-
-    result: Dict[int, List[int]] = {c: [] for c in range(topo.n_components)}
-    for label in arc_labels:
-        result[arc_comp[label]].append(1 if perm[label - 1] == label else -1)
-    return result
+    return compile_perm_to_signs(braid)(perm)

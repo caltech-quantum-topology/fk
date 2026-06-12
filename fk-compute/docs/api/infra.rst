@@ -59,10 +59,3 @@ Parse configuration files and braid input strings.
    :members:
    :undoc-members:
    :show-inheritance:
-
-``fkcompute.infra.io``
------------------------
-
-.. automodule:: fkcompute.infra.io
-   :members:
-   :undoc-members:

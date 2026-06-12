@@ -8,7 +8,7 @@ from constraint systems.
 from typing import Dict, List
 
 from ..constraints.relations import Conservation, Alias, Zero, NegOne
-from ..constraints.symbols import Symbol, symbols, solve
+from ..constraints.symbols import symbols, solve
 from ..constraints.reduction import free_variables, all_variables
 
 

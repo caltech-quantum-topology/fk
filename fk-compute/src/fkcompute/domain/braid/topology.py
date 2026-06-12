@@ -11,8 +11,7 @@ independent of any sign assignment. It contains:
 
 import string
 import copy
-import itertools
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Optional, Tuple
 
 
 class BraidTopology:
@@ -75,11 +74,12 @@ class BraidTopology:
 
         self.component_locations = []
         self.strand_locations = dict()
+        visited_locations = set()
         index = 0
         component = 0
         while index < self.n_strands:
             current_loc = [index, 0]
-            if tuple(current_loc) not in list(itertools.chain.from_iterable(self.component_locations)):
+            if tuple(current_loc) not in visited_locations:
                 done = False
                 prefix = []
                 self.strand_locations[component] = []
@@ -106,12 +106,29 @@ class BraidTopology:
                         self.strand_locations[component][0] = prefix + current_list_strand + self.strand_locations[component][0]
                         done = True
                 if current_list != []:
+                    visited_locations.update(current_list)
                     self.component_locations.append(current_list)
                     component += 1
             index += 1
 
         self.component_locations_dict = {index: list_ for (index, list_) in enumerate(self.component_locations)}
         self.n_components = len(self.component_locations)
+        # O(1) lookup table: location -> component index
+        self._component_at_location = {
+            loc: comp
+            for comp, locs in enumerate(self.component_locations)
+            for loc in locs
+        }
+        # O(1) lookup table: location -> (crossing index, row, col) in `loc`.
+        # Keeps the first match in scan order so it is equivalent to a linear
+        # scan over self.loc.
+        self._crossing_cell_at_location = {}
+        for ci in range(self.n_crossings):
+            for row in range(2):
+                for col in range(2):
+                    cell_loc = self.loc[ci][row][col]
+                    if cell_loc not in self._crossing_cell_at_location:
+                        self._crossing_cell_at_location[cell_loc] = (ci, row, col)
         self.top_crossing_components = [self.get_component(location) for location in self.top_input_state_locations]
         self.bottom_crossing_components = [self.get_component(location) for location in self.bottom_input_state_locations]
         self.closed_strand_components = [self.get_component(location) for location in [(index, 0) for index in range(self.n_strands)]]
@@ -125,10 +142,7 @@ class BraidTopology:
 
     def get_component(self, location: Tuple[int, int]) -> Optional[int]:
         """Get the component index for a given location."""
-        for (key, value) in self.component_locations_dict.items():
-            if location in value:
-                return key
-        return None
+        return self._component_at_location.get(location)
 
     def get_state(self, location: Tuple[int, int]) -> Optional[Tuple[int, int]]:
         """Get the state at a given location."""

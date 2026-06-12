@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, Optional
 from rich.console import Console
-from rich.prompt import Prompt, Confirm
+from rich.prompt import Prompt
 from rich.panel import Panel
 
 from .ui import ValidatedInput, ComputationSummary

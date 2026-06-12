@@ -7,7 +7,6 @@ with integer coefficients, used for symbolic manipulation of constraints.
 
 from __future__ import annotations
 
-import copy
 from string import ascii_lowercase, ascii_uppercase
 from typing import Dict, List, Union, Optional
 
@@ -17,6 +16,13 @@ import numpy as np
 def symbols(n: int) -> List['Symbol']:
     """Create n symbols indexed from 1 to n."""
     return [Symbol(j) for j in range(1, n + 1)]
+
+
+def _from_var(var: np.ndarray) -> 'Symbol':
+    """Construct a Symbol directly from a coefficient array (no validation)."""
+    sym = Symbol.__new__(Symbol)
+    sym.var = var
+    return sym
 
 
 class Symbol:
@@ -38,72 +44,61 @@ class Symbol:
 
     def __add__(self, b: Union['Symbol', int, float]) -> 'Symbol':
         if isinstance(b, (int, float)):
-            sym = copy.deepcopy(self)
-            sym.var[0] += b
-            return sym
+            var = self.var.copy()
+            var[0] += b
+            return _from_var(var)
         s1 = self.var.size
         s2 = b.var.size
         if s1 < s2:
-            var = np.concatenate((self.var, np.zeros(s2 - s1)))
-            new_var = var + b.var
+            new_var = b.var.copy()
+            new_var[:s1] += self.var
         elif s2 < s1:
-            var = np.concatenate((b.var, np.zeros(s1 - s2)))
-            new_var = self.var + var
+            new_var = self.var.copy()
+            new_var[:s2] += b.var
         else:
             new_var = self.var + b.var
-        sym = Symbol()
-        sym.var = new_var
-        return sym
+        return _from_var(new_var)
 
     def __radd__(self, b: Union[int, float]) -> 'Symbol':
-        sym = copy.deepcopy(self)
-        sym.var[0] += b
-        return sym
+        var = self.var.copy()
+        var[0] += b
+        return _from_var(var)
 
     def __sub__(self, b: Union['Symbol', int, float]) -> 'Symbol':
         if isinstance(b, (int, float)):
-            sym = copy.deepcopy(self)
-            sym.var[0] -= b
-            return sym
+            var = self.var.copy()
+            var[0] -= b
+            return _from_var(var)
         s1 = self.var.size
         s2 = b.var.size
         if s1 < s2:
-            var = np.concatenate((self.var, np.zeros(s2 - s1)))
-            new_var = var - b.var
+            new_var = -b.var
+            new_var[:s1] += self.var
         elif s2 < s1:
-            var = np.concatenate((b.var, np.zeros(s1 - s2)))
-            new_var = self.var - var
+            new_var = self.var.copy()
+            new_var[:s2] -= b.var
         else:
             new_var = self.var - b.var
-        sym = Symbol()
-        sym.var = new_var
-        return sym
+        return _from_var(new_var)
 
     def __rsub__(self, b: Union[int, float]) -> 'Symbol':
-        sym = copy.deepcopy(self)
-        sym.var *= -1
-        sym.var[0] += b
-        return sym
+        var = -self.var
+        var[0] += b
+        return _from_var(var)
 
     def __mul__(self, b: Union[int, float]) -> 'Symbol':
         if isinstance(b, (int, float)):
-            sym = copy.deepcopy(self)
-            sym.var *= b
-            return sym
+            return _from_var(self.var * b)
         raise TypeError("Multiplication of a Symbol object by anything other than int or float is not supported!")
 
     def __rmul__(self, b: Union[int, float]) -> 'Symbol':
         if isinstance(b, (int, float)):
-            sym = copy.deepcopy(self)
-            sym.var *= b
-            return sym
+            return _from_var(self.var * b)
         raise TypeError("Multiplication of a Symbol object by anything other than int or float is not supported!")
 
     def __truediv__(self, b: Union[int, float]) -> 'Symbol':
         if isinstance(b, (int, float)):
-            sym = copy.deepcopy(self)
-            sym.var /= b
-            return sym
+            return _from_var(self.var / b)
         raise TypeError("Division of a Symbol object by anything other than int or float is not supported!")
 
     def __gt__(self, b: Union['Symbol', int]) -> bool:
@@ -168,7 +163,7 @@ class Symbol:
 
     def subs(self, dictionary: Dict['Symbol', Union['Symbol', int]]) -> 'Symbol':
         """Substitute values for symbols."""
-        new_var = copy.deepcopy(self.var)
+        new_var = self.var.copy()
         for (key, value) in dictionary.items():
             if self.index(key) < len(self.var):
                 if not isinstance(key, int):
@@ -194,9 +189,7 @@ class Symbol:
                     else:
                         new_var = new_var + new_var[key] * value.var
                 new_var[key] = 0
-        sym = Symbol()
-        sym.var = new_var
-        return sym
+        return _from_var(new_var)
 
     def as_coefficients_dict(self) -> Dict['Symbol', float]:
         """Return dictionary mapping symbols to their coefficients."""
@@ -221,62 +214,42 @@ class Symbol:
         return self.var[index]
 
     def __eq__(self, value: object) -> bool:
-        if isinstance(value, Symbol):
-            s1 = self.var.size
-            s2 = value.var.size
-            if s1 < s2:
-                var = np.concatenate((self.var, np.zeros(s2 - s1)))
-                for index in range(s2):
-                    if var[index] != value.var[index]:
-                        return False
-            elif s2 < s1:
-                var = np.concatenate((value.var, np.zeros(s1 - s2)))
-                for index in range(s1):
-                    if self.var[index] != var[index]:
-                        return False
-            else:
-                for index in range(s1):
-                    if self.var[index] != value.var[index]:
-                        return False
-            return True
-        else:
+        if not isinstance(value, Symbol):
             return False
+        a, b = self.var, value.var
+        n = min(a.size, b.size)
+        return (
+            np.array_equal(a[:n], b[:n])
+            and not a[n:].any()
+            and not b[n:].any()
+        )
 
     def __hash__(self):
-        to_hash = list(self.var)
-        for index in reversed(range(len(to_hash))):
-            if to_hash[index] == 0:
-                to_hash.pop(index)
-            else:
-                break
-        return hash(tuple(to_hash))
+        v = self.var.tolist()
+        n = len(v)
+        while n and v[n - 1] == 0:
+            n -= 1
+        return hash(tuple(v[:n]))
 
     def __repr__(self):
         syms = [''] + list(ascii_lowercase.replace("q", "").replace("x", "").replace("y", "").replace("w", "").replace("z", "")) + list(ascii_uppercase)
         string = ''
         for index in range(len(self.var)):
-            if self.var[index] != 0:
-                try:
-                    to_print = int(self.var[index])
-                except:
-                    pass
-                sign = 2 * (to_print > 0) - 1
-                if string != '':
-                    if sign == 1:
-                        string += ' + '
-                    elif sign == -1:
-                        string += ' - '
-                    else:
-                        raise Exception('Sign should only be 1 or -1!')
-                if index == 0:
-                    string += str(to_print)
-                else:
-                    if sign < 0 and string == '':
-                        string = '-'
-                    if abs(to_print) != 1:
-                        string += str(abs(to_print)) + syms[index]
-                    else:
-                        string += syms[index]
+            coeff = self.var[index]
+            if coeff == 0:
+                continue
+            if coeff == int(coeff):
+                coeff = int(coeff)
+            if string != '':
+                string += ' + ' if coeff > 0 else ' - '
+            elif coeff < 0:
+                string = '-'
+            if index == 0:
+                string += str(abs(coeff))
+            elif abs(coeff) != 1:
+                string += str(abs(coeff)) + syms[index]
+            else:
+                string += syms[index]
         if string == '':
             string = '0'
         return string
@@ -334,7 +307,7 @@ def solve(symbol: Symbol, index: Union[int, Symbol]) -> List[Symbol]:
             index = index.index()
         else:
             raise TypeError('index is neither an int nor Symbol!')
-    new_symbol = copy.deepcopy(symbol)
+    new_symbol = _from_var(symbol.var.copy())
     if new_symbol.var[index] != 0:
         new_symbol.var /= (-new_symbol.var[index])
     else:

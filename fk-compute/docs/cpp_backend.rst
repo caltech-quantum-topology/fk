@@ -25,14 +25,15 @@ Source Layout
    cpp/
    ├── main.cpp                    # Binary entry point
    ├── src/
-   │   ├── fk_computation.cpp      # Core state-sum driver
-   │   ├── fmpoly.cpp              # FLINT modular polynomial wrapper
-   │   ├── fmpoly_class.cpp        # FLINT polynomial class
-   │   ├── qalg_links.cpp          # Link-specific computations
-   │   ├── linalg.cpp              # Linear algebra (BLAS/OpenMP)
-   │   └── inequality_solver.cpp   # Constraint checking
-   └── include/
-       └── *.h                     # Corresponding header files
+   │   ├── fk_computation.cpp      # Core state-sum driver (parse/enumerate/accumulate)
+   │   ├── fmpoly_class.cpp        # FLINT-backed multivariate polynomial (FMPoly)
+   │   ├── qpolynomial.cpp         # FLINT-backed univariate q-polynomial
+   │   ├── qalg_links.cpp          # Cached q-binomials and q-Pochhammer factors
+   │   ├── linalg.cpp              # Affine dot product for variable assignments
+   │   ├── string_to_int.cpp       # Fast CSV number parsing
+   │   └── graph_search.h          # Header-only BFS/DFS used for criteria search
+   └── include/fk/
+       └── *.hpp                   # Corresponding header files
 
 Dependencies
 ------------
@@ -50,9 +51,6 @@ Dependencies
    * - **OpenMP**
      - Shared-memory parallelism
      - Controlled via ``--threads N``
-   * - **BLAS** (OpenBLAS)
-     - Dense linear algebra
-     - Used in ``linalg.cpp``
 
 Polynomial Arithmetic Strategy
 --------------------------------
@@ -90,15 +88,15 @@ automatically by ``pip install``):
    # Build during pip install (automatic)
    pip install .
 
-   # Manual CMake build for development
-   cmake -B build -S .
-   cmake --build build
+   # Manual build for development (produces cpp/fk_main)
+   make -C cpp main
 
    # Copy the binary into the Python package location
-   cp build/fk_main src/fkcompute/_bin/fk_main
+   cp cpp/fk_main src/fkcompute/_bin/fk_main
 
-A legacy ``Makefile`` in ``cpp/`` is retained for reference but CMake is
-preferred for reproducibility.
+The CMake configuration used by scikit-build-core delegates to the same
+``Makefile`` (``make main``) and installs the resulting binary into the
+wheel, so the two paths always produce the same executable.
 
 Binary Resolution
 -----------------

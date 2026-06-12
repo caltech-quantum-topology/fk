@@ -24,6 +24,24 @@ PartialSignsType = Dict[int, List[Optional[int]]]
 Coordinate = Tuple[int, int]
 
 
+def matches_partial_signs(
+    signs: Dict[int, List[int]], partial_signs: PartialSignsType
+) -> bool:
+    """Check a candidate sign assignment against partial sign constraints.
+
+    Entries of *partial_signs* that are None are free; all other entries must
+    match the candidate exactly (including per-component lengths).
+    """
+    for comp, templ in partial_signs.items():
+        cand = signs.get(comp)
+        if cand is None or len(cand) != len(templ):
+            return False
+        for s_cand, s_req in zip(cand, templ):
+            if s_req is not None and int(s_cand) != int(s_req):
+                return False
+    return True
+
+
 def flip(braid: List[int]) -> List[int]:
     """
     Mirror (flip) the braid's generator indices.
