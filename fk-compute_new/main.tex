@@ -1,0 +1,1128 @@
+\documentclass[twocolumn]{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{comment}
+\usepackage{amsmath, amssymb}
+\usepackage{tikz}
+% Color blue Lara
+\newcommand{\Lara}[1]{\textcolor{blue}{[L: #1]}}
+\newcommand{\Josef}[1]{\textcolor{violet}{[J: #1]}}
+\newcommand{\DP}[1]{\textcolor{orange}{[DP: #1]}}
+\newcommand{\JS}[1]{\textcolor{green}{[JS: #1]}}
+\newcommand{\PO}[1]{\textcolor{red}{[PO: #1]}}
+
+\title{\texttt{fkcompute}, an efficient $F_K$ invariant calculator}
+\author{Paul Orland, Davide Passaro, Lara San Mart\'in Su\'arez, Toby Saunders-A'Court, Josef Svoboda}
+\date{February 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Introduction}
+
+Modern topology increasingly relies on the computation of invariants to distinguish, classify, and analyze geometric and algebraic structures.
+For knots, links, and three-manifolds, these invariants are used not only to distinguish examples, but also to test conjectures, build tables, and guide new theoretical work.
+
+
+This computational role has grown as the invariants themselves have become more refined. 
+Leading invariants have grown in sophistication, with their computation has correspondingly becoming more intricate and resource-intensive. 
+Classical invariants such as the Alexander polynomial and the Jones polynomial are relatively inexpensive to compute.
+By contrast, modern invariants such as Khovanov homology, knot Floer homology, colored Jones polynomials, and the Gukov--Manolescu series involve larger algebraic structures, recursive formulas, or state sums whose cost grows quickly with the diagrammatic complexity of the knot involved. 
+
+
+At the same time, large datasets of invariants have become increasingly important.
+Traditional mathematical investigation is now often complemented by data-driven methods, including techniques from data science and machine learning, which are beginning to play a substantive role in contemporary research.
+This shift makes reproducibility and accessibility more urgent.
+As the number of invariants grows, and as their computation depends on increasingly specialized algorithms, it becomes harder to distribute implementations, verify results, and collaborate on further development.
+The problem is especially pronounced when the relevant software consists of complex, domain-specific code.
+
+
+
+This trend has raised the demand for higher accuracy in computation and more comprehensive datasets.
+If invariants are to be used for experimentation, classification, and comparison, then their values must be computed reliably and made available in a form that other researchers can inspect, reproduce, and extend. 
+Datasets are valuable, but a dataset without the code that produced it is difficult to audit. 
+For newer invariants, this point is especially important: different normalizations, expansion conventions, and truncation choices can lead to superficially different outputs.
+
+In this note, we present \texttt{fkcompute}, a Python package which aims to fill the current gap for \emph{open} computational tools for the $F_K$ invariant.
+The $F_K$ invariant emerged from the study of the $\widehat{Z}$ invariant, a $q$-series quantum invariant of closed 3-manifolds \cite{GPV,GPPV}.
+From this perspective, the $F_K$ invariant can be interpreted as a $\widehat{Z}$ invariant for knot and link complements. 
+More broadly, the $\widehat{Z}$ invariant itself was introduced as part of a program aimed at developing categorified invariants of 3-manifolds, analogous in spirit to how Khovanov homology categorifies the Jones polynomial for knots, and $F_K$ plays a central role in this framework.
+
+The \texttt{fkcompute} package provides a suite of utilities and algorithms that implement the necessary algebraic and combinatorial procedures to construct the invariant directly from braid data.
+The implementation supports homogeneous braids and, more generally, the class of \emph{nice} knots and links as defined by Park \cite{ParkThesis}, which conjecturally includes all fibered knots; thereby covering a broad and practically relevant set of examples. 
+We tested the software on \emph{nice} knots with up to 12 crossings and \emph{nice} links up to 10 crossings and 3 components, demonstrating both robustness and computational feasibility within this range.
+
+
+\section{The \texttt{fkcompute} package}
+\texttt{fkcompute} is provided as a Python package, as a standalone command-line interface, and as a Mathematica paclet allowing users to compute the $F_K$ invariant directly from a braid presentation in a flexible and accessible manner.
+The package is designed with extensibility as a central goal: its source code is publicly available and structured to facilitate modification, extension, and integration into future computational workflows or research projects.
+
+Users may interact with \texttt{fkcompute} programmatically by importing it into Python scripts, enabling automated computation, batch processing, and integration with existing mathematical software pipelines.
+Alternatively, \texttt{fkcompute} can be used as a command-line tool, providing a straightforward interface for direct computation from the terminal without requiring additional programming.
+For users working in Mathematica, we also provide a Wolfram Language Paclet (\texttt{FkCompute}) which calls the Python package, allowing computations and symbolic expressions to be used directly in notebooks.
+
+\texttt{fkcompute} is freely available for download through its public GitHub repository, providing open access to both the source code and accompanying documentation. 
+Precomputed $F_K$ tables used for validation and benchmarking are distributed separately from the core source repository.
+
+Internally, \texttt{fkcompute} leverages high-performance external libraries to ensure computational efficiency and reliability: polynomial arithmetic is handled using the FLINT library, a C\texttt{++} library optimized for fast and precise computation with polynomials and power series, while Gurobi is used for constraint validation, enabling robust and efficient resolution of the linear and combinatorial conditions that arise in the construction of the invariant.
+
+The package does not claim to define the $F_K$ series for arbitrary knots.
+It implements the inverted state-sum construction whenever an acceptable inversion datum is found. 
+In particular, it covers homogeneous braids and many non-homogeneous examples.
+Each calculation takes as input a braid word, aa truncation degree for the $x$-variables and optionally a prescribed inversion datum.
+After completing the computation it returns a truncated $F_K(x;q)$ series for knots or a $F_L(x_1,\dots,x_C;q)$ series for links as well as the inversion datum used and other metadata regarding the computation.
+
+\section{Mathematical background}
+
+In this section we recall some of the mathematical background of the $F_K$ invariant, as well as some of its properties which serve as checks on the computations performed by \texttt{fkcompute}.
+In this section we will focus on the case of $F_K$ for knots, although similar considerations for links are also leveraged to assess the computations of \texttt{fkcompute}.
+
+\subsection{The $F_K$ and $F_L$ invariants}
+The $F_K$ invariant arises from the same program which produced the $\widehat{Z}$ invariants of closed 3-manifolds.
+$\widehat{Z}$ invariants are $q$-series quantum invariants, introduced from considerations in supersymmetric quantum field theory in 6D.
+$\widehat{Z}$ invariants are expected to recover the Witten--Reshetikhin--Turaev invariants through radial limits at roots of unity and to admit homological refinements and to admit a categorification
+\cite{GPV,GPPV}.
+Gukov and Manolescu proposed an analogue of this construction for knot complements \cite{GM}.  
+The $F_K$ invariant will is a $C+1$ series, where $C$ is the number of components of the link it is describing.
+For a knot $K\subset S^3$ with a single component, this invariant is the two-variable series $F_K(x;q)$ whereas for a link $L\subset S^3$ with $C$ components the invariant $F_L(x_1,\dots,x_C;q)$ is a function of $C+1$ variables.
+
+In this sense, $F_K$ should be regarded as the knot-complement counterpart of $\widehat{Z}$.
+This interpretation is particularly natural from the perspective of surgery.
+Since closed 3-manifolds may be obtained by Dehn surgery on knots and links in $S^3$, one expects the $\widehat{Z}$ invariants of the resulting closed manifolds to be recoverable from the corresponding knot-complement series.
+More precisely, if $S^3_{p/r}(K)$ denotes the result of $p/r$ surgery on $K$, the expected surgery relation has
+the form
+\begin{equation}\label{eq:surgery-background}
+  \widehat{Z}_b\left(S^3_{p/r}(K)\right)
+  = \varepsilon q^\delta
+  \mathcal{L}^{(b)}_{p/r}
+  \left[
+    \left(x^{\frac{1}{2r}}-x^{-\frac{1}{2r}}\right)F_K(x,q)
+  \right].
+\end{equation}
+Here $\mathcal{L}^{(b)}_{p/r}$ denotes the Laplace transform determined by the surgery coefficient and by the label $b$, which corresponds to a $\operatorname{Spin}^c$ structure on the surgered manifold.  
+Formula \eqref{eq:surgery-background} is one of the principal motivations for the explicit computation of $F_K$: it relates a two-variable invariant of a knot complement to one-variable $q$-series invariants of closed 3-manifolds.
+
+The $F_K$ series is also constrained by its relationship with the colored Jones polynomial.  
+Let $J_{K,n}(q)$ denote the reduced $n$-colored Jones polynomial, normalized so that the unknot has value one.
+The Melvin--Morton--Rozansky expansion studies $J_{K,n}(q)$ in the large-color regime
+\begin{equation}
+    q=e^\hbar, \qquad x=q^n=e^{n\hbar},
+\end{equation}
+where $x$ is held fixed and $\hbar\to 0$.  
+In this limit, one obtains an asymptotic expansion of the form
+\begin{equation}\label{eq:mmr-background}
+  J_{K,n}(e^\hbar)
+  \sim
+  \sum_{j\geq 0}
+  \frac{P_{K,j}(x)}{\Delta_K(x)^{2j+1}}\hbar^j,
+\end{equation}
+where $\Delta_K(x)$ is the Alexander polynomial of $K$.  
+The leading term in \eqref{eq:mmr-background} is the classical Melvin--Morton term and is given by the inverse of the Alexander polynomial.
+
+Gukov and Manolescu conjectured that $F_K$ is obtained by reorganizing this perturbative expansion into an integral two-variable $q$-series.
+In order to state this relation, it is convenient to use the normalized series
+\begin{equation}
+    f_K(x,q)=\frac{F_K(x,q)}{x^{1/2}-x^{-1/2}}.
+\end{equation}
+The expansion of $f_K(x,e^\hbar)$ at $\hbar=0$ is expected to recover the Melvin--Morton--Rozansky expansion, with the rational functions in $x$ expanded at $x=0$ and $x=\infty$ rather than at $x=1$.
+Consequently,
+\begin{equation}\label{eq:q-one-limit-background}
+  \lim_{q\to 1} f_K(x,q)
+  =
+  \operatorname{s.e.}\left(\frac{1}{\Delta_K(x)}\right),
+\end{equation}
+where $\operatorname{s.e.}$ denotes the symmetric expansion, namely the average of the Laurent expansions at $x=0$ and at $x=\infty$.
+Equivalently,
+\begin{equation}
+  \lim_{q\to 1} F_K(x,q)
+  =
+  \operatorname{s.e.}\left(\frac{x^{1/2}-x^{-1/2}}{\Delta_K(x)}\right).
+\end{equation}
+
+The first derivative in the $q$-direction provides a further constraint.  
+The first $q$-derivative of the normalized series at $q=1$ is expected to recover the first nontrivial term in the
+Melvin--Morton--Rozansky expansion:
+\begin{equation}\label{eq:q-derivative-background}
+  \left. D_q f_K(x,q)\right|_{q=1}
+  =
+  \operatorname{s.e.}\left(\frac{P_{K,1}(x)}{\Delta_K(x)^3}\right)~,
+\end{equation}
+following from Park's formulation of Gukov and Manolescu's conjecture
+\begin{equation}
+  \frac{F_K(x,q=e^{\hbar})}{x^{1/2}-x^{-1/2}}=\sum_{j\geq 0}\frac{P_K(j;x)}{\Delta_{K}(x)^{2j+1}}\frac{\hbar^j}{j!}~.
+\end{equation}
+Thus the specialization at $q=1$ tests the Alexander-polynomial term of the expansion,
+while the first $q$-derivative tests the next Melvin--Morton--Rozansky coefficient.  These
+identities provide the basic consistency checks used below for the computations implemented
+in \texttt{fkcompute}.
+
+
+\subsection{Large-color $R$-matrices}
+
+The computation of $F_K$ used in \texttt{fkcompute} follows Park's large-color
+$R$-matrix construction \cite{Park20,Park21}.  It is formally analogous to the
+Reshetikhin--Turaev construction of the colored Jones polynomial: a braid is
+decorated by representation-theoretic data, each crossing contributes a local
+$R$-matrix weight, and the braid is closed by taking a reduced quantum trace.
+
+We first fix the notation used throughout Sections~2.1 and~2.2.  Let $\beta$ be
+a braid on $N$ strands whose closure is the knot or link under consideration.
+Let $V_\beta$ denote the set of crossings of $\beta$, and let $E_\beta$ denote
+the set of oriented segments obtained by cutting the braid at its crossings and
+then identifying the top and bottom endpoints according to the braid closure.
+For a crossing $c\in V_\beta$, write
+\[
+  e_{\mathrm{BL}}(c),\quad e_{\mathrm{BR}}(c),\quad
+  e_{\mathrm{TL}}(c),\quad e_{\mathrm{TR}}(c)
+\]
+for the adjacent bottom-left, bottom-right, top-left, and top-right segments.
+A state is a function
+\[
+  s:E_\beta\to \mathbb Z.
+\]
+At a crossing $c$, we abbreviate
+\[
+  \begin{split}
+  i=s(e_{\mathrm{BL}}(c)),\qquad
+  j=s(e_{\mathrm{BR}}(c)),\\
+  i'=s(e_{\mathrm{TL}}(c)),\qquad
+  j'=s(e_{\mathrm{TR}}(c)).
+  \end{split}
+\]
+The local state variables are required to satisfy the conservation law
+\begin{equation}\label{eq:state-conservation}
+  i+j=i'+j',
+\end{equation}
+or equivalently
+\[
+  s(e_{\mathrm{BL}}(c))+s(e_{\mathrm{BR}}(c))
+  =
+  s(e_{\mathrm{TL}}(c))+s(e_{\mathrm{TR}}(c)).
+\]
+This conservation law is enforced in the formulas below by the Kronecker delta
+\(\delta_{i+j,i'+j'}\).
+
+Suppose first that $c$ is a positive crossing.  Let $x$ be the variable assigned
+to the strand running from the bottom-left segment to the top-right segment,
+and let $y$ be the variable assigned to the strand running from the bottom-right
+segment to the top-left segment.  With these conventions, the extended
+large-color $R$-matrix is
+\begin{multline}\label{eq:positive-rmatrix-1}
+\check{R}(x,y)^{\,i',j'}_{i,j}=
+\delta_{i+j,\,i'+j'}\,
+q^{\frac{j+j'+1}{2}}
+ x^{-\frac{i'+j+1}{4}}
+ y^{-\frac{3j'-i+1}{4}}
+  \\
+\times q^{jj'}\begin{bmatrix} i \\ i-j' \end{bmatrix}_q
+\prod_{1\le r\le i-j'}\left(1-q^{j+r}y^{-1}\right),
+\end{multline}
+if \(i\ge j'\ge 0\) or \(0>i\ge j'\),
+\begin{multline}\label{eq:positive-rmatrix-2}
+\check{R}(x,y)^{\,i',j'}_{i,j}=
+\delta_{i+j,\,i'+j'}\,
+q^{\frac{j+j'+1}{2}}
+ x^{-\frac{i'+j+1}{4}}
+ y^{-\frac{3j'-i+1}{4}}
+  \\
+  \times q^{jj'}\begin{bmatrix} i \\ j' \end{bmatrix}_q
+\prod_{0\le r\le j'-i-1}\left(1-q^{j-r}y^{-1}\right)^{-1},
+\end{multline}
+if \(j'\ge 0>i\), and \(\check{R}(x,y)^{\,i',j'}_{i,j}=0\) otherwise.
+
+For a negative crossing one uses the inverse large-color $R$-matrix:
+\begin{multline}\label{eq:negative-rmatrix-1}
+\check{R}^{-1}(x,y)^{\,i',j'}_{i,j}=
+\delta_{i+j,\,i'+j'}\,
+q^{-\frac{i+i'+1}{2}}
+x^{\frac{3i'-j+1}{4}}
+y^{\frac{j'+i+1}{4}}
+\\
+\times q^{-ii'}
+\begin{bmatrix} j \\ j-i' \end{bmatrix}_{q^{-1}}
+\prod_{1\le r\le j-i'}\left(1-q^{-i-r}x\right),
+\end{multline}
+if \(j\ge i'\ge 0\) or \(0>j\ge i'\),
+\begin{multline}\label{eq:negative-rmatrix-2}
+\check{R}^{-1}(x,y)^{\,i',j'}_{i,j}=
+\delta_{i+j,\,i'+j'}\,
+q^{-\frac{i+i'+1}{2}}
+x^{\frac{3i'-j+1}{4}}
+y^{\frac{j'+i+1}{4}}
+\\
+\times q^{-ii'}
+\begin{bmatrix} j \\ i' \end{bmatrix}_{q^{-1}}
+\prod_{0\le r\le i'-j-1}\left(1-q^{-i+r}x\right)^{-1},
+\end{multline}
+if \(i'\ge 0>j\), and
+\[
+  \check{R}^{-1}(x,y)^{\,i',j'}_{i,j}=0
+\]
+otherwise.
+
+Here
+\begin{equation}\label{eq:qbinomial-background}
+  (a;q)_m=\prod_{r=0}^{m-1}(1-aq^r),\qquad
+  \begin{bmatrix} n \\ k \end{bmatrix}_q
+  =\frac{(q^n;q^{-1})_k}{(q;q)_k}
+\end{equation}
+for \(k\geq 0\), with the convention that an empty product is equal to one.
+
+For a link, the variables \(x\) and \(y\) in the local formula are the variables
+assigned to the two link components passing through the crossing.  For a knot,
+there is only one variable, so \(x=y\).
+
+\subsection{State sums}
+
+The large-color $R$-matrices from Section~2.1 give local weights.  To obtain a
+well-defined series, one must also specify which integer values are allowed on
+each segment of the braid.  This choice is encoded by an \emph{inversion datum}.
+
+An inversion datum is a map
+\[
+  \iota:E_\beta\longrightarrow \{+,-\}.
+\]
+We use the convention that a segment marked \(+\) is assigned a non-negative
+integer and a segment marked \(-\) is assigned a negative integer:
+\[
+  \iota(e)=+ \Longrightarrow s(e)\geq 0,
+  \qquad
+  \iota(e)=- \Longrightarrow s(e)<0.
+\]
+The sign assignment must be locally compatible with the non-zero cases of the
+extended \(R\)-matrices.  In the notation
+\[
+  \begin{matrix}
+  \iota(e_{\mathrm{TL}}) & \iota(e_{\mathrm{TR}})\\
+  \iota(e_{\mathrm{BL}}) & \iota(e_{\mathrm{BR}})
+  \end{matrix},
+\]
+the allowed local patterns are
+\begin{equation}\label{eq:positive-inversion-patterns}
+\begin{gathered}
+\begin{matrix}-&+\\ +&-\end{matrix},\qquad
+\begin{matrix}+&-\\ -&+\end{matrix},\qquad
+\begin{matrix}-&-\\ -&-\end{matrix},\qquad
+\begin{matrix}-&+\\ -&+\end{matrix},\qquad
+\begin{matrix}+&+\\ +&+\end{matrix}
+\end{gathered}
+\end{equation}
+for a positive crossing, and
+\begin{equation}\label{eq:negative-inversion-patterns}
+\begin{gathered}
+\begin{matrix}-&+\\ +&-\end{matrix},\qquad
+\begin{matrix}+&-\\ -&+\end{matrix},\qquad
+\begin{matrix}-&-\\ -&-\end{matrix},\qquad
+\begin{matrix}+&-\\ +&-\end{matrix},\qquad
+\begin{matrix}+&+\\ +&+\end{matrix}
+\end{gathered}
+\end{equation}
+for a negative crossing.  Thus, at every crossing, the number of incoming
+\(-\)-marked segments equals the number of outgoing \(-\)-marked segments.
+
+
+The role of the inversion datum is partly formal and partly computational.
+Formally, it specifies which segments are treated by the highest-weight and
+lowest-weight large-color \(R\)-matrices. The geometric meaning of this choice is not yet
+fully understood.  What is essential for the present paper is that an inversion
+datum gives a concrete finite-order procedure for computing the corresponding
+state sum.
+
+We will call an inversion datum acceptable when the associated state sum is
+well-defined coefficient by coefficient in the \(x\)-variables.  More precisely,
+for each fixed \(x\)-degree, only finitely many states should contribute.  This
+condition is what makes the formal sum computable: the coefficient of any fixed
+monomial in the \(x\)-variables can then be obtained by an ordinary finite
+calculation.
+
+For homogeneous braids, Park showed that such sign data exist and have a simple
+column-wise description \cite{Park21}.  A braid is homogeneous if, for each
+generator index \(k\), all occurrences of \(\sigma_k\) in the braid word have
+the same sign.  Following Park, one labels the right-hand segments of each
+positive crossing by \(+\), and the right-hand segments of each negative
+crossing by \(-\).  Homogeneity ensures that these labels are consistent along
+each column of the braid.  Thus all columns except the leftmost one are
+determined.  The leftmost column may be labelled entirely by \(+\) or entirely by
+\(-\); either choice gives the same construction.
+
+For non-homogeneous braids, there is no such automatic column-wise rule.
+Instead, one must search for an inversion datum satisfying the local sign
+conditions above and the coefficientwise finiteness condition.  In this sense,
+the existence of an acceptable inversion datum is the practical condition that
+makes the inverted state sum computable.  Knots and links admitting such data are often
+called \emph{nice}.
+
+Let \(\Omega(\iota)\) denote the set of states \(s:E_\beta\to\mathbb Z\) satisfying
+the sign bounds determined by \(\iota\), the conservation law
+\eqref{eq:state-conservation}, and the local inequalities required for the
+corresponding \(R\)-matrix entry to be nonzero.  For \(s\in\Omega(\iota)\), let
+\[
+  R_c(s)=
+  \begin{cases}
+  \check R(x_a,x_b)^{\,i',j'}_{i,j}, & c \text{ positive},\\
+  \check R^{-1}(x_a,x_b)^{\,i',j'}_{i,j}, & c \text{ negative},
+  \end{cases}
+\]
+where \(x_a\) and \(x_b\) are the variables attached to the two strands meeting
+at \(c\).
+
+We use the reduced trace convention.  Let \(b_1,\ldots,b_N\) be the bottom
+segments of the braid, identified with the corresponding top segments after
+closure.  The first strand is left open.  Its state is fixed to the ground value
+\[
+  s_0(b_1)=
+  \begin{cases}
+  0, & \iota(b_1)=+,\\
+  -1,& \iota(b_1)=-.
+  \end{cases}
+\]
+We therefore sum over
+\[
+  \Omega_0(\iota)=\{s\in\Omega(\iota):s(b_1)=s_0(b_1)\}.
+\]
+For each closed strand \(b_r\), \(r=2,\ldots,N\), the quantum trace contributes
+\[
+  \mu_r(s)=x_{\ell(r)}^{-1/2}q^{-1/2-s(b_r)},
+\]
+where \(\ell(r)\) is the link component containing \(b_r\).  In the knot case,
+this is simply \(x^{-1/2}q^{-1/2-s(b_r)}\).
+
+The contribution of a state \(s\in\Omega_0(\iota)\) is
+\begin{equation}\label{eq:state-contribution}
+  P_\iota(s)
+  =
+  \left(\prod_{r=2}^{N} x_{\ell(r)}^{-1/2}q^{-1/2-s(b_r)}\right)
+  \left(\prod_{c\in V_\beta} R_c(s)\right).
+\end{equation}
+The inverted state sum is
+\begin{equation}\label{eq:inverted-state-sum}
+  Z^{\mathrm{inv}}_\iota(\beta)
+  =
+  (-1)^{\mathbf{s}(\iota)}
+  \sum_{s\in\Omega_0(\iota)} P_\iota(s).
+\end{equation}
+Here \(\mathbf{s}(\iota)\) is the number of closed components of the simple
+multicycle determined by the \(-\)-marked segments; open components, including
+the one containing the open strand, are not counted.
+
+For a knot, the corresponding \(F_K\) series is normalized by
+\begin{equation}\label{eq:FK-from-Zinv}
+  F_K(x,q)=(x^{1/2}-x^{-1/2})Z^{\mathrm{inv}}_\iota(\beta).
+\end{equation}
+For a link, the same construction uses one variable for each link component and
+the corresponding reduced trace convention.
+
+
+  \section{Algorithm}
+
+The implementation in \texttt{fkcompute} evaluates the inverted state sum
+\eqref{eq:inverted-state-sum} by a three-phase pipeline.
+Phase~1 produces an inversion datum~$\iota$ (called a \emph{sign assignment} in
+the code) that is compatible with the braid and yields a coefficientwise finite
+truncation to the requested $x$-degree.
+Phase~2 turns the definition of $\Omega_0(\iota)$ into a reduced integer linear
+constraint system, eliminates dependent state variables, and exports a compact
+``ILP'' description.
+Phase~3 (a compiled C\texttt{++} binary) enumerates the integer points in this
+polyhedron and evaluates the $R$-matrix weights using FLINT-backed polynomial
+arithmetic.
+
+\subsection{Topological Preprocessing and State Coordinates}
+
+Internally, a braid word is represented as a list
+\(\beta=[g_1,\dots,g_n]\) with each \(g_t\in\pm\{1,\dots,N-1\}\).
+The sign of \(g_t\) is the crossing sign and \(|g_t|=k\) means that, at height
+\(t\), strands \(k-1\) and \(k\) cross.
+The Python class \texttt{BraidTopology} 
+realizes the closure of~\(\beta\) as a lattice diagram with coordinates
+\((i,t)\) where \(i\in\{0,\dots,N-1\}\) is the strand index and
+\(t\in\{0,\dots,n\}\) is the level between crossings.
+At each crossing at level~\(t\) with \(|g_t|=k\), the four corners are
+\begin{equation}\label{eq:corner-coordinates}
+  (k-1,t),\ (k,t),\ (k-1,t+1),\ (k,t+1),
+\end{equation}
+which correspond to bottom-left, bottom-right, top-left, and top-right,
+respectively.
+
+Not every lattice position \((i,t)\) carries an independent state variable:
+if strand~\(i\) does not participate in the crossing at height~\(t\), then the
+integer label is transported unchanged through that layer.
+Accordingly, \texttt{BraidTopology} maintains a map
+\(\mathrm{state}(i,t)\) which identifies \((i,t)\) with the canonical state
+variable representing the segment of the diagram containing that position.
+Equivalently, the set of state variables is the set of segments obtained by
+cutting the braid diagram at the crossings, as in Section~2.2.
+The closure is encoded by the periodicity aliases
+\begin{equation}\label{eq:periodicity}
+  \mathrm{state}(i,n)\equiv \mathrm{state}(i,0),\qquad i=0,\dots,N-1,
+\end{equation}
+which correspond to the identifications of top and bottom endpoints under braid
+closure.
+The component structure of the closure is computed by traversing the lattice
+diagram; the resulting component indices are used throughout to decide which
+topological variable \(x_c\) is attached to a given strand segment.
+
+\subsection{Phase 1: Constructing an Acceptable Inversion Datum}
+
+Phase~1 is implemented via
+\texttt{find\_sign\_assignment}.
+The braid is first classified as homogeneous or non-homogeneous.
+
+\paragraph{Homogeneous braids.}
+If \(\beta\) is homogeneous, \texttt{fkcompute} constructs the inversion datum
+deterministically using Park's column-wise rule: for each generator index
+\(k\), all occurrences of \(\sigma_k\) have the same sign, and the code assigns a
+single strand sign \(\pm 1\) to that column.
+This is expanded to a sign assignment on all segments by following the component
+decomposition of the closure.
+Given these signs, local compatibility checks are performed 
+every crossing and one of four crossing types \(R1,R2,R3,R4\) is assigned, 
+corresponding exactly to the four nonzero cases in
+\eqref{eq:positive-rmatrix-1}--\eqref{eq:negative-rmatrix-2}.
+
+\paragraph{Non-homogeneous braids (search over multicycle candidates).}
+For non-homogeneous braids, a column-wise rule is unavailable.
+Instead, \texttt{fkcompute} searches for an inversion datum by enumerating
+\emph{multicycle candidates}.
+The search is performed over braid variants obtained by cyclic rotation of the
+braid word and, optionally, a horizontal mirror.
+These transformations do not change the isotopy type of the closure but can
+dramatically change the structure of the sign search.
+
+The permutation enumeration begins by labelling arc-segments at the corners of
+each crossing.
+Concretely, integer labels are assigned to the bottom-left,
+bottom-right, top-left, and top-right corners of every crossing by walking the
+successor map on entry corners; for knots one obtains labels in
+\(\{1,\dots,2n+1\}\), while for links additional labels appear, one for each
+component cycle of the successor map.
+The routine then records, for each crossing, the pair of arc
+labels seen by the overstrand and understrand.
+
+From this data, permutations
+\(\pi\) of the arc labels satisfying a fixed list of local options at each
+crossing are lazily generated with each permutation inducing a sign diagram by the rule
+\begin{equation}\label{eq:perm-to-signs}
+  \text{sign}(\ell)=\begin{cases}
+    +1, & \pi(\ell)=\ell,\\
+    -1, & \pi(\ell)\neq \ell,
+  \end{cases}
+\end{equation}
+for each arc label \(\ell\); these signs are then grouped by link component to match the inversion datum format used throughout the package.
+
+Candidate sign assignments are tested in parallel using Python
+\texttt{multiprocessing}.
+For each candidate, the local validation step computes the crossing sign matrix
+and rejects assignments that do not realize one of the allowed local patterns
+\eqref{eq:positive-inversion-patterns}--\eqref{eq:negative-inversion-patterns}.
+If the local test passes, the candidate is subjected to a global boundedness
+check at the requested degree.
+This boundedness check is the computational incarnation of the acceptability
+condition from Section~2.2: after adding the degree truncation inequalities, the
+resulting integer polyhedron must be nonempty and bounded.
+In \texttt{fkcompute}, this is certified by building the reduced constraint
+system (Phase~2 machinery) and then calling a Gurobi-based boundedness test,
+which maximizes each free
+integer parameter in turn and rejects the candidate if any direction is
+unbounded.
+
+\subsection{Phase 2: Linear Constraint System and ILP Export}
+
+Starting from a braid topology and an inversion datum, the code generates the
+following families of relations.
+
+\paragraph{Boundary conditions.}
+The reduced trace leaves strand~0 open and fixes its endpoints to the ground
+state.  In the code this is the pair of constraints
+\begin{equation}\label{eq:boundary}
+  \mathrm{state}(0,0)=s_0,\qquad \mathrm{state}(0,n)=s_0,
+\end{equation}
+with \(s_0=0\) when the open strand is marked \(+\) and \(s_0=-1\) when it is
+marked \(-\) (cf.~\eqref{eq:state-contribution}).
+
+\paragraph{Closure (periodicity).}
+For every strand index \(i\), the closure imposes the aliases
+\eqref{eq:periodicity}.
+In the constraint language, these are \texttt{Alias} relations.
+
+\paragraph{Sign bounds.}
+The inversion datum specifies whether each segment carries a nonnegative or
+negative integer.
+In the code, a sign assignment is expanded to a function
+\((i,t)\mapsto \pm 1\) on lattice locations.
+For each state variable \(u\) (each segment), this yields one inequality of the
+form
+\begin{equation}\label{eq:sign-bounds}
+  u\ge 0\quad\text{or}\quad u\le -1.
+\end{equation}
+These are stored as \texttt{Leq} constraints against the literals
+\texttt{[0]} and \texttt{[-1]}.
+
+\paragraph{Crossing relations.}
+At every crossing, the conservation law \eqref{eq:state-conservation} is added.
+In addition, for crossings of type \(R1\) or \(R4\) the code adds two inequalities
+ensuring that the $q$-binomial and $q$-Pochhammer parameters are nonnegative.
+In the coordinate convention \eqref{eq:corner-coordinates}, these are
+\begin{equation}\label{eq:r1-r4-ineq}
+  \begin{aligned}
+  R1:&\qquad \mathrm{state}(k,t+1)\le \mathrm{state}(k-1,t),\\
+     &\qquad \mathrm{state}(k,t)\le \mathrm{state}(k-1,t+1),\\
+  R4:&\qquad \mathrm{state}(k-1,t)\le \mathrm{state}(k,t+1),\\
+     &\qquad \mathrm{state}(k-1,t+1)\le \mathrm{state}(k,t).
+  \end{aligned}
+\end{equation}
+For types \(R2\) and \(R3\) the corresponding nonnegativity conditions are
+automatic from the sign bounds \eqref{eq:sign-bounds} (the relevant differences
+are strictly positive because the two diagonal entries have opposite signs), so
+no extra inequalities are required.
+
+\paragraph{Reduction and parametrization.}
+The raw relations are simplified by a fixed-point reduction:
+constants are propagated through aliases, symmetric inequalities \((a\le b\) and
+\(b\le a)\) are turned into equalities, unary conservation relations are turned
+into aliases, and vacuous constraints are removed.
+From the reduced system, the code assigns fresh
+symbols to the remaining free variables and propagates these to all state
+variables using the equalities and ``sum-alias'' instances of conservation.
+The outcome is an explicit affine-linear expression
+\begin{equation}\label{eq:state-affine}
+  \mathrm{state}(i,t)=c_{i,t}+\sum_{r=1}^m M_{i,t,r}\,a_r,
+\end{equation}
+in a small set of free integer parameters \(a_1,\dots,a_m\).
+
+Finally, the code rewrites all inequalities and all $x$-degree truncation
+conditions in these parameters.
+Single-variable inequalities are used to normalize the sign of each parameter:
+if a parameter is constrained by \(a_r\le -1\), the substitution
+\(a_r=-b_r-1\) is performed so that all parameters become nonnegative.
+The resulting data---the braid and component metadata, a list of linear
+inequalities \(0\le \alpha+\sum \beta_r b_r\), and the full assignment
+matrix \eqref{eq:state-affine} evaluated at every lattice location---is
+serialized into a compact CSV file.
+This file is the only input consumed by the C\texttt{++} backend.
+
+\subsection{Phase 3: Integer-Point Enumeration and $R$-Matrix Evaluation}
+
+Phase~3 is performed by the executable \texttt{fk\_main}.
+It parses the CSV into an \texttt{FKConfiguration} consisting of:
+the braid word (generator indices), the crossing types \(1,2,3,4\) corresponding
+to \(R1,R2,R3,R4\), the component indices for each crossing and each closed
+strand, a list of linear ``criteria'' rows encoding the $x$-degree truncation,
+auxiliary inequalities from Phase~2, and the affine assignment matrix
+\eqref{eq:state-affine} at all lattice locations.
+
+\paragraph{Validated bounded criteria.}
+The C\texttt{++} code must turn the degree constraints into effective upper
+bounds for all free parameters in order to enumerate integer points.
+Because the criteria are stored as general linear forms in the nonnegative
+parameters, they do not necessarily exhibit an explicit upper bound for each
+parameter.
+The routine \texttt{findValidCriteria} therefore searches for an \emph{auxiliary}
+collection of bounding rows in which every parameter appears with a negative
+coefficient in some row whose remaining coefficients are nonpositive.
+If the original degree criteria already have this monotonicity property, they
+are used directly.
+Otherwise, \texttt{fk\_main} performs a breadth-first exploration in the space of
+rows obtained by repeatedly replacing a criterion row \(c\) by
+\(c+\tfrac12\,u\), where \(u\) ranges over the supporting inequalities (the
+auxiliary inequalities together with the original criteria).
+Since every supporting inequality is itself enforced during enumeration,
+replacements of the form \(c\mapsto c+\tfrac12 u\) only weaken the row constraint
+and are therefore redundant; they are used solely to derive explicit upper bounds
+for the parameters.
+
+\paragraph{Enumerating integer points.}
+After a bounded criterion set is found, the admissible parameter vectors are
+precisely the integer points
+\begin{equation}\label{eq:polytope}
+  \mathcal P=\Bigl\{b\in\mathbb Z_{\ge 0}^m:\;\text{all exported inequalities hold}\Bigr\}.
+\end{equation}
+The enumerator first derives per-variable bounds from the validated criteria and
+then performs an iterative depth-first search over variable assignments.
+At each step, a chosen inequality with a negative coefficient in the next
+variable provides an explicit upper bound for that variable after substituting
+the already-fixed values.
+The first variable is parallelized with OpenMP, and each branch checks the full
+inequality set before accepting a point.
+The resulting list of points is exactly the set of admissible integer parameter
+assignments for which the truncated inverted sum is finite.
+
+\paragraph{Evaluating the $R$-matrix product.}
+For each point \(b\in\mathcal P\), the engine evaluates the affine assignment
+matrix to recover the numerical state values at every lattice location
+\((i,t)\); in particular, at each crossing one obtains the quartet
+\((i,j,i',j')\) used in Section~2.1.
+The contribution of \(b\) is computed in a factorized form mirroring the local
+weights \eqref{eq:positive-rmatrix-1}--\eqref{eq:negative-rmatrix-2}:
+the monomial prefactors in \(q\) and the \(x_c\) are accumulated as explicit
+exponent offsets, while the $q$-binomial and (inverse) $q$-Pochhammer factors are
+expanded as polynomials and multiplied in.
+Concretely, for each crossing type \(r\in\{1,2,3,4\}\), the code multiplies by a
+product of a $q$-binomial
+\(\begin{bmatrix}\cdot\\\cdot\end{bmatrix}_q\) and either \((xq^{\ast};q)_{\ast}\) or its inverse.
+Inverse Pochhammer factors are expanded as geometric series and truncated using
+the remaining $x$-degree budget so that no term beyond the requested degree is
+ever constructed.
+Polynomial arithmetic is performed using FLINT multivariate polynomials
+together with thread-safe caches for $q$-binomials,
+Pochhammers, and per-crossing products.
+
+\paragraph{Normalization and output.}
+After summing the contributions over all points, the final reduced-trace
+normalization is applied by multiplying by \((-1+x_0)\) and truncating in each topological variable.
+The result is written to JSON together with metadata recording the number of
+variables and the constant fractional offsets in the \(q\)- and \(x\)-powers.
+The Python layer reads this JSON and, if requested, converts it to a symbolic
+expression by re-introducing the fractional power offsets.
+
+\section{Usage and examples}
+
+The package is distributed as a Python library, a command-line tool, and a
+Mathematica paclet.  All three interfaces ultimately call the same pipeline
+from Section~4: Phase~1 (inversion/sign assignment), Phase~2 (ILP export), and
+Phase~3 (compiled enumeration and $R$-matrix evaluation).  In this section we
+describe the supported entry points and illustrate typical workflows.
+
+\subsection{Braid input conventions}
+
+Throughout the package a braid on $N$ strands is encoded as a list of signed
+generator indices
+\[
+  \beta=[g_1,\dots,g_n],\qquad g_t\in \pm\{1,\dots,N-1\}.
+\]
+The integer $|g_t|=k$ corresponds to the Artin generator $\sigma_k$ and the sign
+of $g_t$ specifies the crossing sign (positive for $\sigma_k$ and negative for
+$\sigma_k^{-1}$).  The computation is always performed on the \emph{closure} of
+this braid word.
+
+On the command line, braid words may be passed as a string in any of the
+following equivalent formats:
+\begin{verbatim}
+"[1, -2, 1, -2]"     (JSON-style)
+"1,-2,1,-2"          (comma-separated)
+"1 -2 1 -2"          (space-separated)
+\end{verbatim}
+In a shell, the braid argument should be quoted so that a negative generator
+is not misinterpreted as a command-line flag.
+
+\subsection{Command-line interface}
+
+After installation, the entry point \texttt{fk} is available.
+Running \texttt{fk --help} shows the global help as well as the available
+subcommands.  The CLI is intentionally split into a minimal ``one-off'' mode
+for quick exploration and a configuration-file mode which exposes the full set
+of computation parameters.
+
+\paragraph{Interactive wizard.}
+Invoking \texttt{fk} with no additional arguments launches an interactive
+terminal wizard (a richer version is used when the optional dependency
+\texttt{rich} is installed).  The wizard prompts for a braid word and degree,
+offers a preset choice (single-threaded vs.\\ parallel), and then runs the
+three-phase pipeline while reporting progress.
+
+In addition to the default wizard, one may explicitly run
+\begin{verbatim}
+fk interactive
+fk interactive --enhanced
+fk interactive --quick
+\end{verbatim}
+The \texttt{--quick} option skips nonessential prompts and uses sensible
+defaults.  In either mode the wizard can optionally (i) save intermediate files
+to disk (inversion JSON, ILP CSV, and the final result JSON), and (ii) print a
+symbolic rendering of the output using SymPy (if installed).
+
+\paragraph{Simple mode (single braid).}
+The subcommand
+\begin{verbatim}
+fk simple "[1,1,1]" 2
+\end{verbatim}
+computes the truncated invariant for the closure of the braid and prints the
+result as JSON.  This ``simple'' mode is a convenience wrapper intended for
+quick experiments; it uses defaults for parallelism and saving, and exposes
+only a small number of options.
+
+If SymPy is installed (\texttt{pip install "fkcompute[symbolic]"}), one may ask
+for a human-readable expression instead of raw JSON:
+\begin{verbatim}
+fk simple "[1,1,1]" 2 --symbolic
+fk simple "[1,1,1]" 2 --format latex
+fk simple "[1,1,1]" 2 --format mathematica
+\end{verbatim}
+The \texttt{--format} flag automatically enables symbolic printing and selects
+one of \texttt{pretty}, \texttt{inline}, \texttt{latex}, or \texttt{mathematica}.
+
+The option \texttt{--weight} enables an additional ``stratified'' bound used by
+the boundedness tests in Phases~1--2.  Unless one is explicitly computing such
+stratified truncations, this option should be left unset.
+
+\paragraph{Reformatting saved output.}
+When results are saved to disk (see below), the subcommand
+\begin{verbatim}
+fk print-as result.json --format latex
+\end{verbatim}
+reformats a previously computed JSON result into a symbolic expression without
+rerunning the three-phase pipeline.
+
+\paragraph{Config mode (reproducible runs and batches).}
+For reproducibility and large computations we recommend using configuration
+files.  A template may be created by
+\begin{verbatim}
+fk template create my_run.yaml
+fk template create my_run.yaml --overwrite
+\end{verbatim}
+The resulting YAML file contains commented documentation for the supported
+keys.  After editing, run
+\begin{verbatim}
+fk config my_run.yaml
+\end{verbatim}
+Configuration files can be either JSON (always available) or YAML (requires
+\texttt{PyYAML}, installed via \texttt{pip install "fkcompute[yaml]"}).
+
+The config loader supports two shapes:
+\begin{itemize}
+  \item \emph{single computation:} a file with top-level keys \texttt{braid} and
+    \texttt{degree};
+  \item \emph{batch mode:} a file with a top-level \texttt{computations} list,
+    each entry containing a \texttt{name}, \texttt{braid}, and \texttt{degree}.
+\end{itemize}
+In batch mode, any additional top-level keys are treated as defaults and are
+merged into each computation unless overridden locally.
+
+\subsection{Output format}
+
+All entry points return the same JSON-serializable dictionary.
+For a single computation, the top-level structure is
+\begin{verbatim}
+{
+  "terms": [...],
+  "metadata": {...}
+}
+\end{verbatim}
+The list \texttt{terms} encodes a sparse polynomial in the topological
+variables and $q$.  Each element has an $x$-exponent vector and a sparse
+$q$-polynomial coefficient:
+\begin{verbatim}
+{ 
+  "x": [a1, a2, ...],
+  "q_terms": [
+    {"q": k1, "c": "n1"},
+    {"q": k2, "c": "n2"},
+    ...
+  ]
+}
+\end{verbatim}
+Here \texttt{c} is stored as a decimal string to preserve arbitrary-precision
+integers produced by the FLINT backend.
+The \texttt{metadata} field records auxiliary information such as the braid word
+actually used (cyclic shifts may be applied during inversion), the inversion
+datum, the number of link components, and fixed fractional power offsets in the
+$x$- and $q$-exponents.  When symbolic output is requested, these offsets are
+reintroduced automatically.
+
+In batch mode (a config file with a top-level \texttt{computations} list), the
+return value is a dictionary mapping computation names to per-computation result
+dictionaries of the above form.
+
+\subsection{Python API}
+
+Programmatic access is provided by the single function \texttt{fkcompute.fk}.
+In ``simple'' mode, it is called with a braid list and a degree:
+\begin{verbatim}
+from fkcompute import fk
+
+result = fk([1, 1, 1], degree=2)
+\end{verbatim}
+The returned dictionary has the same \texttt{terms}/\texttt{metadata} structure as
+the CLI output.
+
+The Python entry point additionally accepts keyword arguments controlling the
+pipeline.  The most commonly used are:
+\begin{itemize}
+  \item \texttt{threads}: number of threads used by the Phase~3 C++ backend;
+  \item \texttt{max\_workers} and \texttt{chunk\_size}: parallelism settings for
+    the Phase~1 inversion search;
+  \item \texttt{include\_flip} and \texttt{max\_shifts}: control which braid
+    variants are tried during inversion (cyclic shifts are always considered;
+    a horizontal mirror is included only when \texttt{include\_flip=true});
+  \item \texttt{save\_data}, \texttt{save\_dir}, \texttt{name}: enable saving of
+    the inversion JSON, ILP CSV, and final result JSON;
+  \item \texttt{symbolic}: attach a SymPy pretty-printed expression as
+    \texttt{metadata["symbolic"]} (requires SymPy).
+\end{itemize}
+
+Two additional mechanisms are provided for resuming or accelerating
+computations:
+\begin{itemize}
+  \item passing \texttt{inversion} or \texttt{inversion\_file} skips Phase~1 by
+    supplying a sign assignment directly;
+  \item passing \texttt{ilp\_file} skips Phases~1--2 and runs Phase~3 on a
+    pre-generated ILP export.
+\end{itemize}
+These options are particularly useful when computing the same braid at several
+degrees: Phase~1 can be cached once and reused.
+
+An advanced option \texttt{partial\_signs} can be used to constrain the inversion
+search by fixing some strand signs while leaving others free.  In the current
+implementation the ``free'' entries must be given as \texttt{None} (Python) or
+\texttt{null} (YAML), while fixed entries are \texttt{+1} or \texttt{-1}.
+
+Finally, \texttt{fk} also accepts a configuration path as its first argument.
+In that case it dispatches to the same config loader used by \texttt{fk config}.
+
+\subsection{Mathematica interface}
+
+The directory \texttt{mathematica/FkCompute/} contains a Wolfram Language paclet
+which calls the Python implementation through a JSON bridge
+\texttt{python -m fkcompute.mathematica\_bridge}.  After installing the paclet,
+one loads it in Mathematica via
+\begin{verbatim}
+PacletInstall[".../mathematica/FkCompute"]
+Needs["FkCompute`"]
+\end{verbatim}
+and computes (for example) the trefoil by
+\begin{verbatim}
+FkCompute[{1, 1, 1}, 2]
+\end{verbatim}
+When SymPy is available in the Python environment, the default return value is
+a Mathematica expression for the truncated polynomial in the variables
+corresponding to the link components and $q$.
+
+The wrapper also exposes \texttt{FkComputeVersion[]} to query the Python and
+\texttt{fkcompute} versions seen by Mathematica.  If Mathematica does not find
+the correct Python executable (for instance when using a virtual environment),
+set the executable explicitly, e.g.
+\begin{verbatim}
+SetFkComputePythonExecutable[
+  "/path/to/python3"
+]
+\end{verbatim}
+
+The function \texttt{FkCompute} accepts options mirroring the Python keyword
+arguments (e.g. \texttt{"Threads"}, \texttt{"MaxWorkers"}, \texttt{"Verbose"},
+\texttt{"SaveData"}, and \texttt{"Preset"}), which are passed through to the
+bridge unchanged.
+
+\subsection{Worked examples}
+
+We conclude with three representative examples.
+
+\paragraph{Trefoil knot.}
+The trefoil is the closure of $\sigma_1^3$, encoded by \texttt{[1,1,1]}.
+In simple CLI mode:
+\begin{verbatim}
+fk simple "[1,1,1]" 2 --symbolic
+\end{verbatim}
+This example is homogeneous, so Phase~1 is instantaneous.
+
+\paragraph{Figure-eight knot.}
+The figure-eight knot is represented by the 3-braid
+$\sigma_1\sigma_2^{-1}\sigma_1\sigma_2^{-1}$, encoded by \texttt{[1,-2,1,-2]}.
+In this case Phase~1 performs a search for an acceptable inversion datum.
+A typical workflow is to use the wizard (to tune workers/threads) or to store a
+reproducible configuration:
+\begin{verbatim}
+# figure_eight.yaml
+braid: [1, -2, 1, -2]
+degree: 5
+max_workers: 8
+threads: 8
+save_data: true
+name: figure_eight_d5
+\end{verbatim}
+and run \texttt{fk config figure\_eight.yaml}.  The saved
+\texttt{figure\_eight\_d5\_inversion.json} can then be reused at higher degrees.
+
+\paragraph{A two-component link (Hopf link).}
+The Hopf link is the closure of $\sigma_1^2$, encoded by \texttt{[1,1]}.
+The computation returns a polynomial in two topological variables and $q$.
+For example:
+\begin{verbatim}
+fk simple "[1,1]" 2 --format latex
+\end{verbatim}
+prints a LaTeX expression in variables \texttt{x} and \texttt{y} (one per
+component), while the JSON output encodes the same data via $x$-degree vectors
+of length two.
+
+\section{Performance}
+
+\section{Validation and dataset}
+
+The $F_K$ series is not defined by a simple closed formula: for non-homogeneous
+braids one must find an acceptable inversion datum and then evaluate a large
+integer-point sum whose truncation depends on subtle boundedness properties.
+For this reason we validated the implementation using three independent checks,
+each targeting a different failure mode of the three-phase pipeline from
+Section~4.
+
+\subsection{Regression against reference tables}
+
+The first check is a direct coefficientwise comparison against a fixed table of
+precomputed reference values.
+In the repository this is implemented as a regression test suite
+\texttt{tests/test\_fk\_baseline.py}.
+
+In addition, for development against externally published tables, the companion
+script \texttt{tests/compare\_fks.py} compares locally computed JSON outputs
+against a downloaded snapshot of the topology.fyi FK table (see
+Section~7.4).
+
+\paragraph{Inputs.}
+The test enumerates a collection of knot configurations stored as YAML files in
+\texttt{tests/configs/config\_10/}.
+Each configuration provides a knot identifier (e.g. \texttt{10\_100}), a braid
+word (in the convention of Section~5.1), and (optionally) an inversion datum.
+The test restricts to knots with crossing number at most~11 and then runs
+\texttt{fkcompute.fk} at a fixed truncation degree (\texttt{MAX\_DEGREE=10} in
+the test).
+
+\paragraph{Reference data.}
+For every configuration included in the parameter list, the repository contains
+a corresponding JSON output file in \texttt{tests/data\_baseline/}.
+These JSON files use exactly the same output schema described in
+Section~5.3 (a sparse list of \texttt{terms} with $x$-degree vectors and sparse
+$q$-polynomial coefficients, together with metadata such as the braid and the
+inversion).
+The baseline directory also contains the intermediate inversion JSON and ILP CSV
+exports for many examples (files ending in \texttt{\_inversion.json} and
+\texttt{\_ilp.csv}), which are useful for diagnosing mismatches by isolating the
+pipeline stage at which a discrepancy is introduced.
+
+\paragraph{Comparison procedure.}
+The test converts both the newly computed JSON result and the baseline JSON file
+to explicit SymPy expressions in $x$ and~$q$ (helper \texttt{data\_file\_to\_sympy}
+in \texttt{tests/test\_fk\_baseline.py}).
+Since a change in truncation conventions could lead to one side containing fewer
+$x$-degrees than the other, the comparison is performed after truncating both
+expressions to the largest $x$-degree guaranteed to be present on both sides:
+if $d_{\mathrm{new}}$ and $d_{\mathrm{base}}$ are the maximal $x$-degrees in the
+two expressions, the test sets $d=\min(d_{\mathrm{new}},d_{\mathrm{base}})$ and
+checks equality of the truncations to degree~$d$.
+The resulting assertion is therefore an exact coefficientwise equality check
+within a common computed range.
+
+This regression suite is primarily intended to guard against implementation
+regressions in Phases~2--3 (constraint reduction, export, enumeration, and
+polynomial arithmetic).  When an inversion datum is supplied explicitly, those
+stages are fully deterministic; when Phase~1 is run as part of the computation,
+the same comparison still serves as an end-to-end check, and the saved inversion
+and ILP artifacts can be used to localize the source of any discrepancy.
+
+\subsection{The $q\to 1$ (Alexander/MMR) specialization}
+
+The second check uses the $q\to 1$ specialization predicted by the
+Melvin--Morton--Rozansky expansion, as recalled in
+Section~3.1.  In the knot case this is the identity
+\eqref{eq:q-one-limit-background}, equivalently
+\(\lim_{q\to 1}F_K(x,q)=\operatorname{s.e.}((x^{1/2}-x^{-1/2})/\Delta_K(x))\).
+
+In the codebase this check is implemented for knots in
+\texttt{tests/test\_bar\_natan.py}.
+The test reads a collection of precomputed FK outputs from \texttt{tests/data/}
+(JSON files produced by running \texttt{fkcompute} with \texttt{save\_data=true}).
+It then computes the Alexander-polynomial prediction from an independent planar
+diagram computation and compares the resulting $x$-series coefficients to those
+obtained by specializing the FK output at $q=1$.
+
+\paragraph{Extracting the $q=1$ specialization from FK JSON.}
+For a single-component result, the JSON output is a sparse sum
+\(F_K(x,q)=\sum_d a_d(q)\,x^d\).
+The specialization at $q=1$ is obtained termwise by evaluating each coefficient
+polynomial at~$1$:
+\(a_d(1)=\sum_k c_{d,k}\), where \(a_d(q)=\sum_k c_{d,k}q^k\).
+The helper \texttt{\_fk\_coeffs\_q1} in \texttt{tests/test\_bar\_natan.py} computes
+the resulting integer coefficients \(a_d(1)\) for all $0\le d\le x_{\max}$,
+where \(x_{\max}\) is read from \texttt{metadata["max\_x\_degrees"][0]}.
+
+\paragraph{Computing the Alexander prediction (independent of the FK pipeline).}
+To avoid relying on any part of the FK implementation, the test computes the
+Alexander side using a separate SymPy translation of Bar--Natan's $Z$-function
+algorithm.
+The function \texttt{bar\_natan\_Z} in \texttt{tests/bar\_natan.py} takes a knot
+presented in KnotTheory's PD notation \(X[a,b,c,d]\) and returns a pair of
+rational functions \((P_0(T),P_1(T))\) in a variable~$T$, where $P_0$ is (up to
+the usual \(\pm T^k\) ambiguity) the Alexander polynomial.
+The algorithm follows the matrix-based formula of Bar--Natan and collaborators
+and is independent of the braid-based $R$-matrix evaluation used by
+\texttt{fkcompute}.
+
+The test obtains a PD code for each knot in one of two ways.
+When available, it uses the PD notation stored in \texttt{tests/knotinfo.csv}.
+If the knot identifier is not present in that table, it constructs a PD code
+directly from the braid word stored in the FK JSON metadata (helpers
+\texttt{braid\_to\_pd} and \texttt{normalize\_pd} in
+\texttt{tests/test\_bar\_natan.py}).
+
+Finally, the predicted $q\to 1$ series is extracted from $P_0$ by expanding
+\((1-1/T)/P_0(T)\) at $T=0$ to order $x_{\max}$ and comparing its coefficients
+to the list returned by \texttt{\_fk\_coeffs\_q1}.
+Since \(\Delta_K\) is only defined up to an overall sign, the test normalizes
+$P_0$ by requiring the leading coefficient of the numerator (after clearing
+denominators) to be positive.
+
+\subsection{The first $q$-derivative at $q=1$ (first MMR correction)}
+
+The third check refines the $q\to 1$ specialization by testing the first
+$q$-derivative predicted by the next term in the MMR expansion.
+In the notation of Section~3.1, this is the constraint
+\eqref{eq:q-derivative-background} on
+\(\left.D_q f_K(x,q)\right|_{q=1}\), which translates into a coefficientwise
+identity for \(\left.\partial_q F_K(x,q)\right|_{q=1}\) after the fixed
+normalization factor \((x^{1/2}-x^{-1/2})\).
+
+This check is carried out in the same test
+\texttt{tests/test\_bar\_natan.py}.
+Given FK output data in JSON form, the derivative at $q=1$ is extracted directly
+from the sparse coefficient representation:
+\(\partial_q a_d(q)|_{q=1}=\sum_k k\,c_{d,k}\) when
+\(a_d(q)=\sum_k c_{d,k}q^k\).
+The helper \texttt{\_fk\_deriv\_coeffs\_q1} computes these integers for
+$0\le d\le x_{\max}$.
+On the prediction side, the same Bar--Natan algorithm returns the first-order
+term $P_1(T)$, and the expected $x$-series is obtained by expanding
+\(-(1-1/T)\,P_1(T)/P_0(T)^3\) at $T=0$ to order $x_{\max}$.
+The test compares the coefficient lists exactly.
+Unlike $P_0$, the expression governing $P_1$ is sign-invariant because it is
+computed from $\Delta_K^2$; accordingly the sign normalization applied to $P_0$
+does not affect the $P_1$ check.
+
+\subsection{Dataset availability}
+
+In addition to the above validation checks, we generated a dataset of computed
+$F_K$ (and $F_L$) truncations which is distributed online at
+\url{topology.fyi}.
+Each dataset entry records the input braid word, the inversion datum used,
+the requested truncation degree(s), and the resulting sparse polynomial data in
+the JSON format described in Section~5.3.
+
+The repository contains the scripts and input tables used to run such batch
+computations reproducibly.
+In particular, \texttt{tests/compute\_fks.py} is a small runner which reads a
+YAML table of braids and precomputed inversion data (e.g.
+\texttt{tests/all\_knots.yaml} and \texttt{tests/all\_links.yaml}), invokes
+\texttt{fkcompute.fk} with \texttt{save\_data=true} and the provided inversion
+to bypass Phase~1, and records per-instance timing and memory usage.
+The companion script \texttt{tests/compare\_fks.py} implements an external
+consistency check against a downloaded snapshot of the topology.fyi FK table by
+parsing the website's polynomial strings into SymPy and comparing them to locally
+computed JSON results up to a common $x$-degree.
+
+Finally, while the three checks above validate the invariant values at the level
+of the final truncated series, the repository also contains targeted unit tests
+for the Phase~1 sign-diagram machinery (arc labelling, permutation-based
+candidate generation, and deduplication).  For example,
+\texttt{tests/test\_sign\_diagram\_candidates.py} matches the exact candidate
+sets listed in \texttt{ImproveSignDiagramSearch-Davide.nb}, and
+\texttt{tests/test\_perm\_signs\_knots.py} and
+\texttt{tests/test\_perm\_signs\_links.py} verify that the inversion data used
+in batch runs (\texttt{tests/all\_knots.yaml} and \texttt{tests/all\_links.yaml})
+is indeed produced by the permutation enumeration used by \texttt{fkcompute}.
+
+\section{Limitations and future work}
+
+\bibliographystyle{abbrv}
+\bibliography{refs}
+
+\end{document}

@@ -1,0 +1,2211 @@
+A polynomial time knot polynomial
+Dror Bar-Natan and Roland van der Veen
+Abstract
+
+arXiv:1708.04853v3 [math.GT] 18 Mar 2018
+
+We present the strongest known knot invariant that can be computed effectively (in polynomial time)1 .
+
+1
+
+Introduction
+
+We present a simple, strong knot invariant that is closely related to the Alexander polynomial and seems to
+share many of its good properties. For example, unlike the commonly used quantum invariants such as the
+Jones polynomial, our invariant is computable in polynomial time. For simple knots the Jones polynomial
+works well but as the number of crossings grows the exponentially many terms in the resulting state sums
+quickly become unmanageable. Our invariant does not suffer from these issues, it scales well with the
+complexity of the knot.
+The plan of the paper is as follows. Our invariant is based on normal ordering exponentials in the q-Weyl
+algebra hE, F i/(EF − qF E = 1), see Section 5. As a warm-up we first show how the Alexander polynomial
+may be derived from the ordinary Weyl algebra hE, F i/(EF − F E = 1) in Section 4. These algebras are but
+examples of a more general theory of invariants coming from algebras satisfying certain equations that we
+introduce in Section 2. As a preview we start by giving a condensed definition of the knot invariant. Proofs
+and additional (conjectured) properties are discussed in Section 6.
+
+1.1
+
+The knot invariant
+
+Consider a (long) knot K presented as a proper smooth embedding of [0, 1] into the closed unit ball such
+that the projection on the third coordinate is a generic immersion γ in the plane, see for example Figure
+1. More specifically, assume that there is an n ∈ N such that γ has the following properties. The points
+k
+γ( n+1
+) where k ∈ {1, . . . , n} are the union of all double points and all points where γ 0 is in the direction of
+the positive x-axis. The double points are known as crossings and the latter as cuaps. Close to any crossing
+we assume γ 0 has positive y-coordinate. The sign of a crossing is the sign of the x-coordinate of γ 0 at the
+σ
+where σ is the sign and i, j are the labels of the over and under strand.
+overpass. A crossing is denoted Xi,j
+The sign of a cuap is the sign of the y-direction of γ 00 . A cuap is denoted uσi where σ is the sign and i is its
+label.
+
+Figure 1: A diagram for the trefoil knot 31 . The double points at the crossings and the right-pointing cuaps are
+enumerated in order of appearance. The matrices W, Q and the number c necessary for computation of the invariant
+Z0 are listed next to it.
+To define our knot invariant Z0 we need to introduce some preliminary constructions. Let Eji be the
+elementary n × n matrix with a single non-zero entry 1 at the (i, j)-th place. Define the matrices
+X σ j
+X i
+Y −σ
+t
+Ej c =
+Q=
+σt 2 (Ej − Eji ) W =
+σ
+Xi,j
+
+i<j
+
+σ ,uσ
+Xi,j
+i
+
+Here the sum and product are over all crossings/cuaps in the diagram. Next recall the adjugate of a matrix
+M is defined by M adj(M ) = det(M )I and define
+1
+
+1
+
+B = I − (t 2 − t− 2 )W Q
+
+G = Qadj(B)
+
+H = adj(B)W
+
+1 This work was partially supported by NSERC grant RGPIN 262178 and the Netherlands Organisation for Scientific Research.
+
+1
+
+ZG = (t − t
+ZH =
+
+Xσ
+
+σ
+Xi,j
+
+2
+
+((1 − t
+
+σ
+
+−1
+
+)
+
+n X
+X
+
+Gja
+
+j=2 a,b<j
+
+1 j X g
+G
+G +
+2 b g>j b
+
+!
+
+σ
+)Hij )2 − ((1 + tσ )Hjj )2 + σtσ (Hij Hji + Hii Hjj ) + tσ (1 − t)Hij ((1 + σ)Hjj + (1 − σ)Hii )
+2
+
++ det(B)
+
+X
+
+σHii
+
+uσ
+i
+
+1
+
+Theorem 1. c 2 det(B) is the Alexander polynomial ∆ and Z0 = c(ZG + ZH ) is a knot invariant. Both are
+elements of Z[t, t−1 ] computable in polynomial time.
+The above formulas immediately show that the computation must be polynomial time, for a more detailed
+discussion see Theorem 5 in Section 6.
+The pair ∆, Z0 distinguishes all knots in the Rolfsen table of prime knots up to ten crossings, see the
+Appendix. That is a better performance than for example Khovanov homology and HOMFLY polynomial combined2 . More importantly Z0 appears to share many of the desirable properties of the Alexander
+polynomial.
+Our invariant Z0 appears to coincide with a part of the colored Jones invariant studied by Overbay [12]
+and Rozansky [14], see Conjecture 3 of Section 6. The present approach seems simpler as it allows a local
+version and a polynomial time algorithm. We also conjecture new bounds on the knot genus and argue Z0
+detects mirror images.
+
+1.2
+
+Example: Trefoil
+
+We illustrate the computation of Z0 for the trefoil knot 31 shown in Figure 1.
+
+
+1
+0
+0 0 1−t 0
+0
+ 0
+t
+0 0 1−t 0
+0 
+
+
+ 0 t−1 1 0 1−t 0 1−t 
+
+
+1
+−1
+
+2
+B=
+ 0 t − 1 0 1 1 − t 0 1 − t  ∆31 (t) = c det(A) = t − 1 + t
+ 0 t−1 0 0
+
+1
+0 1−t 
+
+ 0
+0
+0 0
+0
+1 1−t 
+0
+0
+0 0
+0
+0
+1
+
+
+1
+3
+3
+5
+3
+0 t2 − t2 0 0
+−t 2
+0
+t2 − t2
+1
+3
+1
+5
+3
+1
+
+
+ 0
+t2
+0 0 t2 − t2 0
+t 2 − 2t 2 + t 2 
+
+
+5
+3
+1
+ 0
+0
+0 0
+0
+0 −t 2 + t 2 − t 2 
+2
+
+
+ ZG = t4 − 3t + 1
+
+0
+0 0
+0
+0
+0
+G= 0
+
+2
+2
+3
+5
+3
+
+ 0 t 21 − t 23 0 0
+t2
+0
+t2 − t2
+
+
+1
+1
+3
+5
+3
+1 
+
+ 0
+−t 2
+0 0 t 2 − t 2 0 −t 2 + 2t 2 − t 2 
+5
+3
+1
+0
+0
+0 0
+0
+0
+t2 − t2 + t2
+
+
+0
+ 0
+
+ 0
+
+H=
+ 0
+ 0
+
+ 0
+0
+
+t2 − t + 1
+0
+0
+0
+0
+0
+0
+
+t
+1
+t − t2
+t − t2
+1−t
+0
+0
+
+t
+1
+1
+t − t2
+1−t
+0
+0
+
+t
+1
+1
+1
+1−t
+0
+0
+
+t2
+t
+t
+t
+1
+0
+0
+
+
+t2
+
+t
+
+
+t
+
+
+t
+
+
+1
+
+t2 − t + 1 
+0
+
+ZH = t4 − 3t3 +
+
+7t2
+1
+−t−
+2
+2
+
+It follows that Z0 (31 ) = c(ZG + ZH ) = 2 − t−1 − 3t + 2t2 and its normalization is ρ1 (t) = −t − t−1 , see
+section 6. Comparing to the table in the Appendix, notice we used the mirror image of the usual trefoil 31
+from the table. Conjecture 1 explains the ensuing sign in ρ1 .
+
+2
+
+Snarl diagrams: A local version of the knot invariant
+
+So far we defined Z0 for knot diagrams but did not yet show its value is independent of the chosen diagram.
+As any two diagrams for the same knot are related by Reidemeister moves, all we need to do is show Z0
+is unchanged under those moves. Instead of attempting a direct proof we first extend Z0 to a function Z
+on more general diagrams that we call snarl diagrams. Showing invariance of Z is vastly simpler since now
+all computations become local. Our treatment is closely related to Kauffman’s rotational virtual tangles [7]
+but avoids virtual crossings.
+2 The knots 8
+
+16 and 10156 have identical Khovanov homology and identical HOMFLY polynomials [1].
+
+2
+
+Definition 1. A snarl3 diagram is a finite set L together with a finite oriented graph G = (V, E) and
+functions σ : V → {±1} and ρ : E → Z. The edges E are assumed to be a disjoint union of oriented paths
+and each path is labelled by an element of L. Furthermore the edges around any vertex are ordered cyclically
+such that two adjacent edges enter and two exit each vertex that is not an endpoint of a path.
+The vertices of the graph should be viewed as the crossings and endpoints of a projection of a piece of a
+knot. The paths labeled by L correspond to the connected components. The map ρ keeps track of rotation
+numbers of the tangent vector on the edges so that our diagrams are like Morse diagrams. To build a snarl
+diagram from any knot diagram just make the tangent vector near each crossing point upwards and count
+the resulting rotation numbers of the tangent vector at each edge. For example the edge labeled 4 in Figure
+1 has ρ = −1 as it rotates clockwise. ρ = 0 for all other edges. A more interesting example of a snarl
+diagram is shown in Figure 2.
+
+Figure 2: Left: A snarl diagram corresponding to the left-hand side of equation (2), the numbers give the value of ρ,
+the letters a, b are the labels of the two components. Right: A piece of a knot whose snarl diagram would be on the
+left hand side. Again a, b depict the labels of the two components and the integers are labels of the smaller pieces
+used to build up this diagram as in equation (2).
+Knot diagrams may be assembled from simpler pieces by the following two operations on snarl diagrams.
+Definition 2. Disjoint union: For two snarl-diagrams G, G0 with label sets L, L0 the disjoint union G t G0
+is the snarl diagram with underlying graph as indicated and label set L t L0 . To avoid clutter we sometimes
+omit the t symbol and use juxtaposition instead.
+Stitching: For i 6= j ∈ L and k ∈
+/ L − {i, j} define the snarl diagram mij
+k (G) to be the graph obtained from
+G by connecting the endpoint of component i to the start of component j, erasing the vertex in the middle.
+For the newly created edge e we define ρ(e) to be the sum of the values of ρ on the edges that disappear. The
+newly created component is labeled k so the label set is L − {i, j} ∪ {k}.
+Notice how any snarl diagram may be constructed using disjoint union and stitching from two types of
+±
+fundamental diagrams: The crossing Xij
+where we label the over-strand i and ρ of every edge is 0 and the
+diagram αir , a single oriented edge labelled i with rotation number ρ = r. It is sometimes useful to stitch
+many ends at the same time. For a sequence I = (I1 , . . . , In ) of n distinct elements of L and k ∈
+/ L−I
+define4
+k,I
+n
+3
+mIk = mIk1 ,I2 //mk,I
+// . . . mk n−1 //mk,I
+k
+k
+Even more generally if τ = (τ 1 , . . . τ b ) is a sequence of b such sequences whose disjoint union is L and
+1
+b
+B = (B1 , . . . , Bb ) is any b-element sequence then define mτB = mτB1 // . . . //mτBb . When B is not specified we
+take it to be (1, . . . , b), the commas are sometimes dropped for brevity.
+Snarl diagrams are meant to generalize Morse diagrams of pieces of knots. As such we should consider
+them up to equivalence under a version of the Reidemeister moves as for example described in Chapter 3
+of [11]. Using rotation numbers instead of cuaps and using [13] we only have to look at the four equations
+below, depicted in Figure 3.
+Definition 3. Consider the equivalence relation ∼ on the set of snarl diagrams generated by relabeling
+components and the equivalences
+±
+±
+X13
+t α2∓1 //m(123) ∼ α10 ∼ X31
+t α2±1 //m(123)
+
+−
++
++
+−
+X12
+t X34
+t α5 t α6−1 //m(13)(4526) ∼ α10 t α20 ∼ X12
+t X34
+t α5 t α6−1 //m(5163)(42)
+±
+±
+±
+±
+±
+±
+X12
+t X34
+t X56
+//m(13)(25)(46) ∼ X12
+t X34
+t X56
+//m(35)(16)(24)
+
+±
+±
+X12
+∼ α1±1 t α2±1 t X34
+t α5∓1 t α6∓1 //m(135)(246)
+
+(1)
+(2)
+(3)
+(4)
+
+Our motivation for defining this equivalence relation is the following Reidemeister type theorem.
+Theorem 2. Every isotopy class of long knots can be represented by a snarl diagram. Two snarl diagrams
+representing isotopic knots are equivalent.
+3 Dictionary entry: a knot or tangle, also a growl.
+4 In what follows f //g means the composition g ◦ f .
+
+3
+
+Figure 3: Equivalences on snarl diagrams. The labels of the components and degree 1 vertices are not shown. Only
+the edges with a non-zero value of ρ are marked.
+Proof. This can be proved exactly as in the case of the standard Reidemeister theorem for Morse diagrams
+of tangles. See for example Chapter 3 of [11] or [15]. The fact that our set of moves is sufficient follows from
+Thm 1.2 of [13].
+Snarl diagrams may also be used to represent more general knotted objects such as planar tangles and
+for those a similar theorem will hold.
+
+3
+
+Snarl algebra
+
+In this section we formulate conditions on an algebra to yield a knot invariant. Such invariants are sometimes
+known as universal invariants, see [6] and the references therein.
+By an algebra A we mean a ring with 1 whose center includes a commutative base ring R with 1. All
+tensor products are over R. Similar to the labeling of components of snarl diagrams we would like to explicitly
+label the tensor factors in our tensor products. Given a finite set S we define A⊗S to be the tensor product
+of |S| copies of A indexed by the elements of S. When T ⊂ S define ιT : A⊗T → A⊗S by the identity on
+the tensor factors indexed by elements of T and setting all other tensor factors to 1. We use the shorthand
+⊗St{i,j}
+ι{i,j} (Y ) = Yij and ι{i} (y) = yi . Denote by mij
+→ A⊗St{k} defined
+k the multiplication operation A
+by deleting the i-th and j-th tensor factors and placing the product of those elements into the k-th tensor
+factor.
+Definition 4. A snarl-algebra is an algebra A together with invertible elements X ∈ A⊗{1,2} , α ∈ A such
+that the equations shown below are satisfied. For any snarl diagram D with label set L denote by Z(D) ∈ A⊗L
+±
+±
+the unique element characterized by Z(Xij
+) = Xij
+and Z(αir ) = αir and Z(D t D0 ) = Z(D) ⊗ Z(D0 ) and
+ij
+ij
+Z(mk D) = mk Z(D). Z = ZA,X,α is called the snarl invariant corresponding to A.
+± ∓1
+± ±1
+Z(X13
+α2 //m(123) ) = Z(α10 ) = Z(X31
+α2 //m(123) )
+−
++
++
+−
+Z(X12
+X34
+α5 α6−1 //m(13)(4526) ) = Z(α10 α20 ) = Z(X12
+X34
+α5 α6−1 //m(5163)(42) )
+±
+±
+±
+±
+±
+±
+Z(X12
+X34
+X56
+//m(13)(25)(46) ) = Z(X12
+X34
+X56
+//m(35)(16)(24) )
+±
+± ∓1 ∓1
+Z(X12
+) = Z(α1±1 α2±1 X34
+α5 α6 //m(135)(246) )
+
+(5)
+(6)
+(7)
+(8)
+
+This definition is designed to make following theorem hold.
+Theorem 3. For any snarl algebra the corresponding invariant Z is well-defined and its value is independent
+of the snarl diagram chosen to compute it.
+Proof. For the well-definedness of Z we argue that its value does not depend on the order of stitchings and
+disjoint unions used to build up the snarl. First one may carry out all disjoint union operations at the
+beginning. By associativity of both operations it is then clear that the order is irrelevant.
+By construction equivalent snarl diagrams will yield the same value of Z. Theorem 2 finishes the proof.
+As a relatively simple example, not used below, consider the group algebra CG of a finite group G and
+its dual C(G) = {f : G → C}. Define a snarl algebra D(G) = C(G) ⊗ CG with multiplication determined by
+0
+
+0 −1
+
+(δ g ⊗ h)(δ g ⊗ h0 ) = δ g δ hg h
+
+⊗ hh0
+
+here δ g denotes the function that takes value 1 on g and is zero otherwise.
+
+4
+
+The reader is invited to check that D(G) becomes a snarl algebra if we set:
+X g
+σ
+ZD(G) (Xij
+)=
+(δ ⊗ g −σ )i (1 ⊗ g σ )j
+ZD(G) (αi ) = (1 ⊗ 1)i
+g∈G
+
+σ ∈ {−1, 1}
+
+Using the Wirtinger presentation, the corresponding knot invariant ZD(G) may be interpreted as
+X π(µ)
+ZD(G) (K) =
+δ
+⊗ π(λ)
+π
+
+Here the sum is over all representations π of the fundamental group of the knot complement into G and µ, λ
+are the canonical meridian and 0-framed longitude of the long knot.
+For example the value of the trefoil knot is
+X
+−1
+−1
++
++
++ −1
+ZD(G) (X15
+X62
+X37
+α4 //m(1234567) ) =
+(δ a δ bcb δ bab(ba) ⊗ a−3 bac)1
+a,b,c∈G
+
+We leave these statements as an exercise to the reader as they are neither difficult nor new [9] and also
+not the subject of the present paper. In the next section we will work out a more relevant and interesting
+example in full detail.
+Before going into specific examples of snarl algebras it should be mentioned that many such algebras can
+be obtained from applying the Drinfeld double construction [5]. This includes the finite group example just
+given. The resulting ribbon Hopf algebras always yield snarl algebras but snarl algebras are a little simpler
+since we do not require the coalgebra structure. In future work we will comment more on these general
+constructions.
+
+4
+
+Alexander polynomial and Weyl algebra
+
+In this section we introduce the Weyl algebra and show how it is a snarl algebra. The corresponding invariant
+is the Alexander polynomial and serves as both a special case and a warming up example for the invariant
+treated in the next section.
+1
+The Weyl algebra W is the algebra generated over the ring R = Q(t 2 ) by non-commutative power series
+in E, F subject to the relation F E − EF = 1. Using this relation any element of W may be written as a
+sum of alphabetically ordered monomials. Infinite series are always understood in the topology suggested
+by this alphabetic ordering.
+The foundation for our computations is the well-known Weyl commutation relation between exponentials.
+Lemma 1. In W we have the following relation:
+eyF exE = eyx exE eyF
+Proof. This follows directly from the identity F b E a =
+
+(9)
+
+P
+
+a!b!E a−j F b−j
+j (a−j)!j!(b−j)! that may be proven by induction.
+
+For convenience we formalize our alphabetic approach to W a bit more by introducing V = R[[e, f ]]. The
+map O : V → W given by O(ei f j ) = E i F j is a bijection, this follows from ordering. We may use it to pull
+back the product on W as follows. Define m(g, g 0 ) = O−1 (O(g)O(g 0 )), for example m(ef, ef ) = e2 f 2 + ef .
+Our convention is that this special product on V will be denoted m, while the ordinary product of powerseries is denoted by juxtaposition. Since W is associative the same is true for V with the pulled back product
+m.
+For later use we also define renaming operations, these are algebra maps rji : V ⊗St{i} → V ⊗St{j} by
+rji (ei ) = ej and rji (fi ) = fj and the identity on the other algebra generators. More generally for any ordered
+τ
+partition τ of S into b parts and b-element sequence B we set rB
+(ei ) = eBj if i ∈ τ j and the same for fi .
+ij
+j
+i
+τ
+τ
+We sometimes use the short hand rk = rk //rk and also r = r(1,2,...,b) .
+We now aim to develop techniques for showing V is a snarl algebra with if we set:
+σ
+
+σ
+
+σ
+Z(Xij
+) = t− 2 e(1−t )(ei −ej )fj
+
+σ
+
+Z(αiσ ) = t− 2
+
+The main difficulty is to find a good formula for the multiplication m on elements such as the above. Let
+bfi +aej
+S be a finite set of labels. Lemma 1 tells us that in V ⊗S we have mij
+= eba+aek +bfk . Setting
+k e
+x = (xs )s∈S , y = (ys )s∈S and e = (es )s∈S and f = (fs )s∈S we may write any element of g ∈ V ⊗S as
+g(e, f ) = g(∂x , ∂y )eex+yf |x=y=0 . This allows us to compute mij
+k (g) =
+ex+yf
+ex+yf
+mij
+|x=y=0 ) = g(∂x , ∂y )mij
+)|x=y=0 = g(∂x , ∂y )eyi xj +xe+yf |x=y=0 //rkij
+k (g(∂x , ∂y )e
+k (e
+
+More specifically if g = eeQf for some square matrix Q, as is the case for the fundamental snarls then
+eQf
+mij
+) = e∂x Q∂y eyi xj +xe+yf |x=y=0 //rkij
+k (e
+
+The lemma below will show us how to simplify this.
+
+5
+
+Lemma 2. Given square matrices W, Q such that det(I − W Q) 6= 0 and vectors x, y, e, f we have
+e∂x Q∂y eyW x+ex+yf =
+
+−1
+
+e(eQ+y)(I−W Q) (f +W x)+ex
+det(I − W Q)
+
+(10)
+
+Proof. We claim that both sides of the equation satisfy the system of differential equations
+∂Qij Ψ = ∂xi ∂yj Ψ
+
+Ψ|Q=0 = eyW x+ex+yf
+
+There is only one power series in the commuting variables Qi,j , xi , yj satisfying these equations. Indeed
+we may use the differential equation to express the coefficient of any monomial in terms of coefficients of
+monomials whose joint degree in the Q-variables is lower. It thus suffices to prove our claim that both
+sides satisfy the differential equations. We focus on the right-hand side as the left hand side is clear. Set
+A = I − W Q so the exponent is V = (eQ + y)A−1 (f + W x) + ex. Then
+
+
+∂Qij (det A)
+eV
+eV
+∂Qij
+=
+∂Qij V −
+det A
+det A
+det A
+For the first term we use ∂Qij (A−1 )rs = (A−1 W )ri A−1
+js to find
+∂Qij V = ei (A−1 (f + W x))j + ((eQ + y)A−1 W )i (A−1 (f + W x))j
+For the second term we compute ∂Qij (det A) = −(adj(A)W )ji so −
+the other side of the equation:
+∂xi ∂yj
+
+∂Qij (det A)
+det A
+
+= (A−1 W )ji This matches
+
+eV
+eV
+=
+((eQ + y)A−1 W + e)i (A−1 (f + W x))j + (A−1 W )ji )
+det A
+det A
+
+P
+eQf
+1
+Returning to our computation of mij
+), taking W = Eij gives (I − W Q)−1 = I + 1−Q
+k (e
+b Qjb Eib
+ji
+P
+−1
+1
+and so det(I − W Q) = 1 − Qji and Q(I − W Q) = Q + 1−Qji ab Qjb Qai Eab . This means that
+e
+eQf
+mij
+)=
+k (e
+
+1
+eQf + 1−Q
+
+ji
+
+P
+
+ab ea Qai Qjb fb
+
+(1 − Qji )
+
+//rkij
+
+Sometimes it is convenient to do many multiplications (stitchings) at once. For this we generalize the
+above discussion to prove
+1
+n
+Lemma 3. For any ordered partition of the labels
+an n-element set of new labels L we
+P τ = (τ , .., τ ) and
+τ
+may describe mL as follows. First define W = {(i,j)|∃s:i,j∈τ s ,i≺j} Eji . Here ≺ refers to the ordering of the
+elements in τ k .
+ eQf 
+−1
+e
+1
+τ
+mτL
+=
+eQ(I−W Q) //rL
+∆
+∆ det(I − W Q)
+
+For any constant ∆ and matrix Q whose entries are indexed by L.
+
+Proof. Without loss of generality we restrict ourselves to the special case τ = (1, 2, . . . n) = S. For any
+g ∈ V ⊗S we have mτ (g) =
+mτ1 (g(∂x , ∂y )eex+yf |x=y=0 ) = g(∂x , ∂y )mτ1 (eex+yf )|x=y=0 = g(∂x , ∂y )eyW x+xe+yf |x=y=0 //r1τ
+Here we used the commutation relation that follows from lemma 1
+ex1 E ey1 F ex2 E ey2 F . . . exn E eyn F = eyW x e(x1 +···+xn )E e(y1 +···+yn )F
+eQf
+
+Now if g = e ∆
+
+Lemma 2 finishes the proof.
+
+In case L = {1, ..., k} and τ is a partition of {1, ..., n} we may write out the renaming operation rτ
+explicitly. Define M by Mij = 1 if i ∈ τ j and zero otherwise. Then
+
+
+T
+−1
+1 eQf
+1
+mτL
+e
+=
+eeM Q(I−W Q) M f
+∆
+∆ det(I − W Q)
+
+6
+
+4.1
+
+The Weyl algebra is a snarl algebra
+
+In this section we prove that W, or rather its normal ordered version V, with the formulas below really
+satisfies the axioms of a snarl algebra. We will treat the most important cases and write down the main
+steps in the computations. Readers that would like to see more details are invited to run the computer
+implementation described in the Appendix.
+σ
+
+σ
+
+σ
+
+σ
+Z(Xij
+) = t− 2 e(1−t )(ei −ej )fj
+
+Z(αiσ ) = t− 2
+
+One of the benefits of extending knot invariants to local objects like snarls is that checking the Reidemeister
+moves becomes local too. Each of the axioms is a routine calculation using the formulas we derived above
+(Lemma 3 and the remark coming after it). Here and in the sequel we often write the invariant of a snarl T
+eQT f
+as Z(T ) = ∆−1
+where ∆T , QT are the constant and matrix defined by this equation.
+T e
+First we check
+± ±1
+Z(X31
+α2 //m(123) ) = Z(α10 )
+σ
+eQD f
+To evaluate the left hand side we first consider the disjoint union D = X31
+t α2σ . Z(D) = ∆−1
+, where
+D e
+σ
+∆D = t and W and QD are given below:
+
+
+ σ
+
+
+
+t−σ
+0 0
+t −1 0 0
+0 1 1
+−1
+−σ
+0
+0 0  (I − W Q) =  t − 1 1 0 
+W =  0 0 1  QD = 
+0
+0 1
+1 − tσ 0 0
+0 0 0
+
+The last matrix has determinant t−σ and M T Q(I − W Q)−1 M = 0, where M T = (1, 1, 1). It follows that
+Z(D//m(123) ) = 1 = Z(α10 ). The other two cases of this equation are similar.
+−
++
+Next consider Z(X12
+X34
+α5 α6−1 //m(13)(4526) ) = Z(α10 α20 ). Again we first study the disjoint union D =
+−
++
+−1
+X12 X34 α5 α6 . Then ∆D = 1 and Q, W are given below:
+
+
+0
+ 0
+
+ 0
+QD = 
+ 0
+
+ 0
+0
+
+t−1
+t
+
+0
+0
+0
+0
+0
+0
+
+− t−1
+t
+0
+0
+0
+0
+
+0
+0
+1−t
+t−1
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+
+
+
+0
+0 
+
+0 
+
+0 
+
+0 
+0
+
+
+
+0
+ 0
+
+ 0
+W =
+ 0
+
+ 0
+0
+
+0
+0
+0
+1
+1
+0
+
+1
+0
+0
+0
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+0
+0
+0
+1
+0
+0
+
+
+
+
+0
+1 
+
+0 
+
+1 
+
+1 
+0
+
+
+
+1
+ 0
+
+ 0
+(I − W Q)−1 = 
+ 0
+
+ 0
+0
+
+(t−1)2
+t
+
+1
+0
+
+− t−1
+t
+− t−1
+t
+0
+
+0
+0
+1
+0
+0
+0
+
+1−t
+0
+0
+1
+0
+0
+
+0
+0
+0
+0
+1
+0
+
+
+0
+0 
+
+0 
+
+0 
+
+0 
+1
+
+1 0 1 0 0 0
+we find M T Q(I − W Q)−1 M = 0 and det(I − W Q)−1 . Therefore
+0 1 0 1 1 1
+Z(D//m(13)(4526) ) = 1 = Z(α10 t α20 ). The second equation is proven similarly.
+1
+1
+1
+1
+1
+1
+Next consider Z(X12
+X34
+X56
+//m(13)(25)(46) ) = Z(X12
+X34
+X56
+//m(35)(16)(24) ). The disjoint union of the
+1
+1
+1
+−3
+left hand side is DL = X12 X34 X56 . Then ∆DL = t 2 and QDL , WL are given below:
+Since M T =
+
+
+
+0
+ 0
+
+ 0
+QDL = 
+ 0
+
+ 0
+0
+
+1−t
+t−1
+0
+0
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+0
+0
+1−t
+t−1
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+
+0
+0 
+
+0 
+
+0 
+
+1−t 
+t−1
+
+So det(I − WL QDL ) = 1 and
+
+1 0 1 0 0
+T
+ML =  0 1 0 0 1
+0 0 0 1 0
+
+
+
+0
+ 0
+
+ 0
+WL = 
+ 0
+
+ 0
+0
+
+
+0
+0 
+1
+
+0
+0
+0
+0
+0
+0
+
+1
+0
+0
+0
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+0
+1
+0
+0
+0
+0
+
+
+0
+0 
+
+0 
+
+1 
+
+0 
+0
+
+
+
+1
+ 0
+
+
+0
+(I − WL QDL )−1 = 
+ 0
+
+ 0
+0
+
+
+
+MLT Q(I − WL QDL )−1 ML = 
+
+0
+0
+0
+
+1−t
+t−1
+0
+
+0
+1
+0
+0
+0
+0
+
+0
+0
+1
+0
+0
+0
+
+1−t
+0
+0
+1
+0
+0
+
+0
+0
+0
+0
+1
+0
+
+
+−(t − 1)2
+
+1−t
+
+
+0
+
+
+t−1
+
+
+0
+1
+
+
+1−t
+−(t − 1)t 
+(t − 1)(t + 1)
+
+Likewise, the disjoint union for the right hand side is DR = DL but with different WR , MR as shown below
+
+
+0
+ 0
+
+ 0
+WR = 
+ 0
+
+ 0
+0
+
+0
+0
+0
+0
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+0
+1
+0
+0
+0
+0
+
+0
+0
+1
+0
+0
+0
+
+
+1
+0 
+
+0 
+
+0 
+
+0 
+0
+
+
+
+0
+T
+MR
+= 1
+0
+
+0
+0
+1
+
+1
+0
+0
+
+0
+0
+1
+
+1
+0
+0
+
+
+
+0
+ 0
+
+ 0
+(I − WR QDR )−1 = 
+ 0
+
+ 0
+0
+
+
+
+0
+1 
+0
+
+1−t
+t−1
+0
+0
+0
+0
+
+1−t
+−(t − 1)t
+(t − 1)(t + 1)
+0
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+
+0 1−t
+1−t
+T
+−(t − 1)t 
+So det(I − WR QDR ) = 1 and MR
+Q(I − WR QDR )−1 MR =  0 t − 1
+0
+0
+(t − 1)(t + 1)
+± −1 −1
+1
+For the final equation Z(X12
+) = Z(α11 α21 X34
+α5 α6 //m(135)(246) ) we consider the right-hand side as the
+−1 −1
+1 1 1
+−1
+stitching of D = α1 α2 X34 α5 α6 , with ∆D = t 2 and
+
+
+0
+ 0
+
+ 0
+QD = 
+ 0
+
+ 0
+0
+
+0
+0
+0
+0
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+0
+0
+1−t
+t−1
+0
+0
+
+0
+0
+0
+0
+0
+0
+
+
+
+
+0
+0 
+
+0 
+
+0 
+
+0 
+0
+
+
+0
+0 
+
+0 
+
+0 
+
+0 
+0
+
+
+
+0
+ 0
+
+ 0
+W =
+ 0
+
+ 0
+0
+
+0
+0
+0
+0
+0
+0
+
+1
+0
+0
+0
+0
+0
+
+0
+1
+0
+0
+0
+0
+
+7
+
+1
+0
+1
+0
+0
+0
+
+
+0
+1 
+
+0 
+
+1 
+
+0 
+0
+
+
+
+1
+ 0
+
+ 0
+(I − W QD )−1 = 
+ 0
+
+ 0
+0
+
+0
+1
+0
+0
+0
+0
+
+0
+0
+1
+0
+0
+0
+
+1−t
+t−1
+0
+1
+0
+0
+
+0
+0
+0
+0
+1
+0
+
+
+0
+0 
+
+0 
+
+0 
+
+0 
+1
+
+This shows that with M T =
+
+
+
+1
+0
+
+0
+1
+
+1
+0
+
+0
+1
+
+1
+0
+
+0
+1
+
+
+
+we have M T Q(I − W Q)−1 M =
+
+
+
+1−t
+t−1
+
+0
+0
+
+
+
+and
+
+det(I − W Q) = 1 as required.
+This proves that W is indeed a snarl algebra. Therefore the corresponding invariant ZW is independent
+of the chosen snarl diagram. In the next section we will see that in fact ZW is the Alexander polynomial.
+
+4.2 Connection to the Burau representation and the Alexander polynomial
+For braids we can make the connection with the Burau representation βt : Bn → GL(n) [3] p.162. Recall on
+k+1
+k
+generators σk we have βt (σk ) = I − tEkk + tEk+1
++ Ekk+1 − Ek+1
+. The special case β1 factors through the
+symmetric group and just gives the permutation matrix induced by the braid. Also recall that the Alexander
+polynomial may be defined (up to ±tk ) as det1 (I − βt (b)) where the subscript indicates the first row and
+column of the matrix need to be deleted before taking the determinant.
+T
+
+w
+
+Theorem 4.
+1. Suppose b is a braid. Viewed as a snarl we may compute ZW (b) = t− 2 ee(βt (b) β1 (b)−I)f ,
+where w is the signed sum of the crossings (writhe).
+2. For any knot K, viewed as a snarl, ZW (K) = ∆−1
+K where ∆K is the Alexander polynomial of the knot.
+w
+
+Proof. Part 1) Building the braid from a disjoint union D of crossings we find that ∆D = t 2 . If we label
+the pieces of D so that labels ending up in the same component are enumerated in order of appearance then
+w
+(1 − W Q) is upper triangular with ones on the diagonal. This proves ∆b = t 2 . Moving on to Qb we aim to
+prove that
+βt (b) = β1 (b)(I + Qb )T
+(11)
+Notice that this formula is correct when b = σk±1 is a generator of the braid group or the identity. To prove
+the general case it suffices to show that the right hand side is multiplicative in b. In other words we should
+show that β1 (b0 )(I + Qb0 )T β1 (b)(I + Qb )T = β1 (b0 b)(I + Qb0 b )T . This is equivalent to showing
+Qb0 b = Qb + Qb β1 (b)T Qb0 β1 (b) + β1 (b)T Qb0 β1 (b)
+
+(12)
+0
+
+This formula follows directly from stitching the ends of the disjoint union D = b t b where we number
+the components of b by 1, 2, ..n as they appear at the bottom and likewise b0 by n + 1, ..2n. The precise
+stitching rule is determined by the permutation β1 (b) induced by b: the end i of b is stitched to the beginning
+of component n + β1 (i) of b0 . Therefore in the stitching formula the matrices QD , W, M have the following
+block shapes:
+
+
+
+
+
+
+Qb
+0
+I
+0 β1 (b)T
+QD =
+M=
+W =
+0 Qb0
+β1 (b)
+0
+0
+
+The result (12) now follows from computing Qb0 b = M T Q(1−W Q)−1 M . Note the inverse is easy to compute
+as it is an upper-triangular matrix.
+Part 2) To see that QK = 0 for any knot, consider stitching the knot from a disjoint union D of crossings
+and α’s and notice that M T QD = 0, hence QK = 0. Now view the long knot K as the partial closure of
+braid b to interpret the inverse of the constant as the Alexander polynomial. By conjugating our braid we
+may assume that only the first top and bottom strands are open and β1 (b) is the permutation matrix of the
+cycle (1, 2, 3, ..., n). At first let us ignore the α’s and stitch the ends of the braid directly.
+We aim to show that the determinant det(I − W Qb ), arising from stitching the braid as above, equals
+the determinant det1 (I − βt (b)) defining the Alexander polynomial. As a first step notice that the bottom
+row of W Qb consists of zeroes. Hence det(I − W Qb ) = detn (I − W Qb ), where detk is the determinant after
+deleting the k-th row and column.
+The formula for Qb from part 1) indicates proving det1 (I − βt (b)) = detn (I − W (βt (b)T β1 (b) − I)) is
+enough. To prove this identity we note that the right hand side equals
+det((I−β1 (b)T )(I−W (βt (b)T β1 (b)−I))) = det(I−β1 (b)T −β1 (b)T (βt (b)T β1 (b)−I)) = det(I−β1 (b)T βt (b)T β1 (b))
+n
+
+n
+
+n
+
+Conjugation by β1 (b) and transposition turns it into the desired det1 (I − βt (b)).
+n
+Had we included the α’s into the stitching the only thing that changes is we pick up a power t− 2 where
+n is the number of strands in our braid (we are doing a closure to the right so we only pick up n copies of
+α−1 ).
+In fact the normalization of the Alexander polynomial we compute appears to be symmetric with respect
+to t 7→ t−1 .
+
+8
+
+5
+
+Generalization to the q-Weyl algebra
+
+In this section we present the knot invariant built on a deformation of the Weyl algebra. The theory is
+developed in complete analogy to the case of the usual Weyl algebra and the Alexander polynomial described
+above. We will also indicate how this invariant relates to the knot invariant Z0 from the introduction.
+Define the q-Weyl5 algebra Wq to be the associative algebra with generators 1, E, F and relation F E =
+qEF + 1. To stay as close to the Alexander polynomial as possible we restrict ourselves to the special case
+where our variable q satisfies q = 1 +  and 2 = 0. This means we consider our algebra over the base ring
+1
+R = Q(t 2 )[]/(2 ). Many of the techniques below apply to more general values of q but we leave this for
+future work.
+Alphabetic ordering of the monomials is used precisely as in the case of W to deal with infinite series.
+The commutation relation between exponentials is as follows (recall that ex = 1 + x).
+Lemma 4.
+eyF exE = exE exye
+
+(
+
+y
++E)( x +F )
+2
+2
+
+eyF
+
+And more generally:
+n
+Y
+
+P
+
+exi E eyi F = e(x1 +..+xn )E e
+
+i=1
+
+j xj (y1 +..+yj−1 )e
+
+(
+
+y1 +..yj−1
+xj
++E)(
++xj+1 +..xn +F )
+2
+2
+
+e(y1 +..+yn )F
+
+k
+
+Proof. If we define [k] = 1−q
+= k(1 +  k−1
+) and [a]! = a!(1 +  a(a−1)
+) induction as in Lemma 1 shows
+1−q
+2
+4
+F bEa =
+
+X [a]![b]!E a−j (1 + jEF )F b−j
+j
+
+[a − j]![j]![b − j]!
+
+=
+
+X a!b!E a−j (1 + j( a+b − 1 − 3 (j − 1) + EF )F b−j
+2
+
+4
+
+(a − j)!j!(b − j)!
+
+j
+
+The relations between the exponentials are a direct consequence.
+We prefer to work in commutative setting so define Vq to be the power series ring R[[e, f ]] as in the
+Alexander case. The map O : Vq → Wq defined by O(ea f b ) = E a F b is used to pull back the multiplication
+m from Wq to Vq . Notice O remains a bijection in this more general set up. We claim the following makes
+Vq into a snarl algebra.
+σ
+
+σ
+
+σ
+Z(Xi,j
+) = t− 2 e(1−t )(ei −ej )fj +P
+
+σ
+
+Z(αiσ ) = t− 2 eσei fi
+
+where
+P =σ
+
+
+
+1 − tσ
+ei fj
+4
+
+2
+
+−
+
+
+
+1 + tσ
+ej fj
+4
+
+2
+
+1−t
++ t ei fj (ej fi +
+((σ + 1)ej fj + (σ − 1)ei fi ))
+2
+σ
+
+!
+
+To work with such formulas we need to develop good stitching (multiplication) formulas as we did in
+the Alexander case. Since the arguments are entirely analogous we summarize the results in the following
+lemma.
+Lemma 5. P
+For any ordered partition of the labels τ = (τ 1 , .., τ n ) and an n-element set of new labels L,
+define W = {(i,j)|∃s:i,j∈τ s ,i≺j} Eji and A = (I − W Q)−1 . Here ≺ refers to the ordering of the elements in
+τ k . Also set
+
+
+! 
+n
+X
+X
+X
+t+1 X X
+x
+1
+j
+S(x, y) =
+yi xj 
+yk + ẽj  
++
+xl + f˜j 
+t − 1 m=1 j∈τ m i≺j∈τ m
+2
+2
+m
+m
+k≺j∈τ
+
+j≺l∈τ
+
+Then
+
+ eQf +P 
+e
+e(eQ+y)A(f +W x)+ex
+τ
+= (1 + P (∂x , ∂y ) + S(∂e , ∂f ))
+|
+//rL
+˜
+∆
+∆ det(I − W Q) x=y=0;ẽ,f 7→e,f
+For any constant ∆ and matrix Q whose entries are indexed by L.
+mτL
+
+Proof. The proof is analogous to the W case. Without loss of generality we consider the case τ = (1, 2 . . . , n).
+For any g ∈ Vq⊗S we have mτ (g) =
+mτ (g(∂x , ∂y )eex+yf |x=y=0 ) = g(∂x , ∂y )mτ (eex+yf )|x=y=0 = g(∂x , ∂y )eyW x+xe+yf +S(x,y) |x=y=0 //rτ
+
+Here we used the commutation relation from lemma 4. Now set g = ∆−1 eeQf +P (e,f ) and recall 2 = 0 so
+that we find
+mτ (g) = ∆−1 e∂x Q∂y +P (∂x ,∂y ) eyW x+xe+yf +S(x,y) |x=y=0;ẽ,f˜7→e,f //rτ =
+(1 + P (∂x , ∂y ) + S(∂e , ∂f ))∆−1 e∂x Q∂y eyW x+xe+yf |x=y=0;ẽ,f˜7→e,f //rτ
+
+Applying Lemma 2 gives us
+
+−1
+
+(1 + P (∂x , ∂y ))(1 + S(∂e , ∂f ))
+as required.
+
+e(eQ+y)(I−W Q) (f +W x)+ex
+|x=y=0;ẽ,f˜7→e,f //rτ
+∆ det(I − W Q)
+
+5 Often called q-Heisenberg algebra [8].
+
+9
+
+The above formula may be simplified slightly since both P and S only depend on two of the four sets of
+eQf +P
++ZS +ZP
+τ
+variables. We may rewrite it as mτL ( e ∆ ) = Z∆Cdet(I−W
+//rL
+where
+Q)
+ZC = eeQAf
+
+ZS = S(∂e , ∂f )eeQAf |ẽ,f˜7→e,f
+
+ZP = P (∂x , ∂y )ee(QAW +I)x+yA(f +W x) |x=y=0
+
+Now that we know how to multiply (stitch) exponentials in Wq (or rather Vq ) we are in a position to
+turn it into a snarl algebra.
+Proposition 1. Wq is a snarl algebra when we set
+σ
+
+σ
+
+σ
+ZWq (Xi,j
+) = t− 2 e(1−t )(ei −ej )fj +P
+
+σ
+
+ZWq (αiσ ) = t− 2 eσei fi
+
+where
+P =σ
+
+
+
+1 − tσ
+ei fj
+4
+
+2
+
+−
+
+
+
+1 + tσ
+ej fj
+4
+
+2
+
++ tσ ei fj (ej fi +
+
+1−t
+((σ + 1)ej fj + (σ − 1)ei fi ))
+2
+
+!
+
+Proof. In checking the snarl algebra axioms we only need to pay attention to the -dependent part as the
+rest together with the matrices Q, W etc are already computed in Section 4.1 where we proved that W was
+a snarl algebra with a compatible snarl structure. Given the formulas for stitching in Lemma 5 checking the
+axioms is a straightforward if tedious calculation. As such routine calculations are best done by computer
+we refer the reader to the Mathematica implementation in the Appendix for more details.
+By section any snarl algebra gives rise to a knot invariant. Hence we now have a knot invariant ZWq
+coming from the snarl algebra Wq . In the next section we explore some of its properties. We end this section
+by showing how the formula for Z0 from the introduction follows from the above definition of ZWq .
+Proposition 2. For any knot K, let CK be the coefficient of  of the constant part of ZWq , i.e. when we
+set e = f = 0. We have CK = Z0 /∆2K , where Z0 was defined in the introduction.
+Proof. Our set up is that of a knot diagram with n crossings and cuaps numbered in order of appearance as
+described in the introduction. Denote the disjoint union of these elements as D. The knot K is obtained as
+(12...n)
+. To match the description of Z0 we will follow the instructions for computing the -part
+K = D//m1
+of ZWq cutting a few corners along the way.
+P
+P
+We start with the matrix W = i<j Eji . Next, the matrix QD is QD = X s (1 − ts )(Eji − Ejj ). Set
+i,j
+
+A = (1 − W Q)−1 and S is as above. Since we are only interested in the constant term CK we may ignore
+all parts that only contribute e or f . The formula becomes:
+CK = PD (∂x , ∂y )eyAW x |x=y=0 + S̄(∂e , ∂f )eeQAf |e=f =0
+Here S̄ is a simplified version of S without any irrelevant terms such as ẽj and f˜j :
+
+
+
+n
+n
+X
+x2j
+t+1 X X 1 X
+S̄ =
++
+yi yk  
+xj xl 
+t − 1 m=1 j=2 2
+2
+i,k<j
+
+j<l
+
+The first term in CK is a sum over all crossings and cuaps where each monomial ei fj ek fl contributes
+(AW )ij (AW )kl + (AW )il (AW )kj and xi yj contributes (AW )ij . Likewise each monomial yi xj yk xl of S̄ contributes (QA)ij (QA)kl + (QA)il (QA)kj . As these expressions are nearly homogeneous in A and Q we chose
+1
+1
+1
+1
+to rescale them: Q is replaced by Q̄ = Q/(t 2 − t− 2 ) and we set B = A−1 = I − (t 2 − t− 2 )W Q̄ as in the
+introduction. In terms of B we have A = adj(B)/ det(B). The reader should now recognize the expressions for ZH and ZG as the contributions of the crossings/cuaps and the polynomial S̄ scaled suitably with
+H = adj(B)W and G = Qadj(B) as described.
+1
+2
+We already know that ∆−1
+K = c det(B) is the normalized Alexander polynomial, where c is the correction
+that comes from ∆D . This prompts us to scale PK by ∆2K and not just by det(B)2 as we were about to.
+
+6
+
+Properties of ZWq
+
+In this section we list some (conjectured) properties of the invariant ZWq coming from the q-Weyl algebra.
+For simplicity we restrict ourselves to the case for knots.
+Theorem 5. If a knot diagram for K is stitched from n fundamental snarls (X and α) then O(n6 ) operations
+1
+1
+in the ring Z[t 2 , t− 2 ] suffice to compute ZWq .
+Proof. By proposition 2 it suffices to consider computing Z0 as described in the introduction. Computing
+the matrices G and H may be done in O(n4 ) steps. Their matrix entries are Laurent polynomials of degree
+O(n) with coefficients bounded by O(2n ). Since ZG has O(n4 ) terms and each term consists of multiplying
+1
+1
+two entries of G, computing ZG takes O(n6 ) operations in Z[t 2 , t− 2 ]. Computing ZH is similar but faster
+as it involves less terms.
+
+10
+
+The above bound can be improved on quite a bit. For example a divide and conquer approach as in
+[2] is expected to bring the complexity down to O(n5 ). For general snarl diagrams Lemma 5 and similar
+arguments as above predict the number of operations is O(n8 ).
+We remark that the algorithm being polynomial time is a qualitative feature that is independent of the
+precise notion of complexity of the input used. This is because converting our knot to any other reasonable
+format can be done in polynomial time (usually linear time). The precise cost of the ring-operations needed
+is also of little consequence to polynomiality as all such operations can be done in polynomial time.
+We end this section with three conjectures on our invariant ZWq (K) = ∆1K eeQK f +PK or rather the
+normalization
+
+
+t∆2K
+d
+ρ1 (K; t) = −
+P
+−
+t
+log
+∆
+K
+K
+(1 − t)2
+dt
+
+Conjecture 1. The normalized knot invariant ρ1 (K; t) is a Laurent polynomial in t with the following
+symmetries.
+1. If −K denotes the mirror image of a knot K then we have ρ1 (−K) = −ρ1 (K).
+2. ρ1 (K) is symmetric with respect to t 7→ t−1 .
+
+3. ρ1 (K) is invariant under reversing the orientation of K.
+In particular, ρ1 vanishes on amphicheiral knots as conjectured by Rozansky for his related invariant,
+see below. The conjecture was checked experimentally for all knots up to 12 crossings.
+As an illustration we list the value of ρ1 on the family of alternating torus knots T (2, ±(2p + 1)) where
+∓(2p+1)
+p ∈ Z>0 is the closure of the braid σ1
+in B2 .
+ρ1 T (2, ±(2p + 1)) = ∓
+
+p−1
+X
+1
+
+k=0
+
+2
+
+(p − k)(p + k + 1)(t2k+1 − t−2k−1 )
+
+Recall that the Alexander polynomial bounds the genus g as follows. Denote by maxdeg f (t) the highest
+power of t in Laurent polynomial f . When written in its symmetric form, the Alexander polynomial satisfies
+maxdeg ∆ ≤ g. A similar but sometimes more powerful bound is provided by ρ1 .
+
+Conjecture 2. For a knot K with genus g we have maxdeg(ρ1 ) ≤ 2g − 1.
+
+This was checked experimentally for all knots up to 12-crossings and sometimes improves the genus
+bound given by the Alexander polynomial. For example the knot 12313 has genus 2 [4] and trivial Alexander
+polynomial, but the maximal power in t of ρ1 is 2. We expect this conjecture to follow from a formula for
+Z in terms of a Seifert surface for the knot.
+2
+
+(1)
+t
+Conjecture 3. ρ1 (K; t2 ) = (1−t
+(K; t) where P (1) is the invariant of Rozansky defined in [14].
+2 )2 P
+
+This conjecture is true for all knots up to nine crossings for which P (1) was computed in [12]. Briefly,
+Rozansky showed that the colored Jones polynomial may be expanded in h = q − 1 as
+X n X
+Jα (q) =
+h (
+Dm,n (αh)2m )
+n≥0
+
+such that the coefficients have the property
+
+P
+
+0≤m≤n
+
+P (n) (K;q α )
+2m
+= 2n+1
+where ∆K is as above
+α
+−α
+m≥0 Dm,n+2m (αh)
+∆
+(q 2 −q 2 )
+K
+
+and P (n) (K; t) is a Laurent polynomial.
+The invariant P (1) is also known as the 2-loop invariant and was studied from the Kontsevich integral
+point of view by Ohtsuki in [10]. His work includes a similar genus bound so that the second conjecture will
+follow from the last.
+Instead of deriving our invariant as an expansion of the colored Jones polynomial, we in some sense
+expanded the underlying quantum group itself. Our invariant may be interpreted as the universal invariant
+[11] for some simplified versions of Uq (sl2 ) or rather the Drinfeld double [5] of the universal enveloping
+algebra of the Borel subgroup of sl2 . In a sequel to this paper we will explain a general theory for solvable
+approximation of Lie algebras and how it may be used to derive effective knot invariants. In particular we
+expect polynomial time algorithms for all of Rozansky’s invariants P (n) . Our approach is also expected to
+yield formulas for strand reversal and doubling using Hopf-algebraic techniques. This might yield a proof of
+the first two conjectures.
+
+7
+
+Summary and outlook
+
+After formulating a convenient local notion of knot diagrams called snarl diagrams, we constructed a powerful
+new knot invariant from the q-Weyl algebra. This algebra has two generators and one relation EF −qF E = 1.
+We considered the cases q = 1 and q = 1 +  with 2 = 1. The first yields the Alexander polynomial, while
+the latter is new. Both may be computed in polynomial time using normally ordered exponentials. As such
+our invariant is the strongest known knot invariant computable in polynomial time, this is illustrated in the
+table in the appendix: all knots up to ten crossings are distinguished.
+
+11
+
+In future work we plan to show that our techniques apply to algebras much more general than the Weyl
+algebras presented here. For example we expect that the invariants coming from appropriately truncated
+Drinfeld doubles of universal enveloping algebras of solvable Lie algebras yields similar invariants. All computable in polynomial time. In this context the q-Weyl algebra arose from considering the two-dimensional
+non-abelian Lie algebra. We also hope to clarify connections to classical invariants such as the genus and
+with Rozansky’s work on the colored Jones polynomial.
+
+References
+[1] The Knot Atlas. http://katlas.org/.
+[2] Dror Bar-Natan. Fast Khovanov homology computations. J. Knot Theory Ramifications, 16(3):243–255,
+2007.
+[3] G. Burde and H. Zieschang. Knots. Birkhauser, 2003.
+[4] J.C. Cha and C. Livingston. KnotInfo: Table of knot invariants. http://www.indiana.edu/~knotinfo.
+[5] P. Etingof and O. Schiffman. Lectures on quantum groups. International Press, 1998.
+[6] Kazuo Habiro. Bottom tangles and universal invariants. Algebr. Geom. Topol., 6:1113–1214, 2006.
+[7] Louis H. Kauffman. Rotational virtual knots and quantum link invariants. J. Knot Theory Ramifications, 24(13):1541008, 46, 2015.
+[8] Shung Long Luo. Wick ordering for q-Heisenberg algebra. Physics Letters A, 234(3):159–162, 1997.
+[9] Shahn Majid. A quantum groups primer, volume 292 of London Mathematical Society Lecture Note
+Series. Cambridge University Press, Cambridge, 2002.
+[10] T. Ohstuki. On the 2-loop polynomial of knots. Geom. Topol., 11:13571475, 2007.
+[11] T. Ohtsuki. Quantum invariants. World Scientific, 2001.
+[12] A. Overbay. Perturbative expansion of the colored Jones polynomial. University of North Carolina
+PhD thesis, 2013.
+[13] Michael Polyak. Minimal generating sets of Reidemeister moves. Quantum Topol., 1(4):399–411, 2010.
+[14] L. Rozansky. The universal R-matrix, Burau representation and the Melvin-Morton expansion of the
+colored Jones polynomial. Adv. math., 134-1:1–31, 1998.
+[15] Vladimir G. Turaev. Quantum invariants of knots and 3-manifolds, volume 18 of De Gruyter Studies
+in Mathematics. De Gruyter, Berlin, 2016. Third edition.
+Department of Mathematics, University of Toronto, Toronto Ontario M5S 2E4, Canada
+E-mail address: drorbn@math.toronto.edu
+URL: http://www.math.toronto.edu/drorbn
+Mathematisch Instituut, Universiteit Leiden, Niels Bohrweg 1, 2333 CA Leiden, Holland
+E-mail address: r.i.van.der.veen@math.leidenuniv.nl
+URL: http://www.rolandvdv.nl
+
+12
+
+Appendix: Implementation
+In this appendix we briefly describe an implementation of the knot invariant described in this paper in
+Mathematica. This serves two purposes. First it allows us to automatically verify the snarl axioms hold as
+claimed in Proposition 1. It also allows us to compile a table of the values of our invariant on the table of
+prime knots up to 10 crossings. The program and table are available at http://www.rolandvdv.nl/MLA/
+1 eQf +P
+e
+as E[∆, Q, P ], where ∆ is a Laurent polynomial
+The program encodes our invariant ZWq (K) = ∆
+1
+in t and Q (really eQf ) is a quadratic in ei , fi with coefficients in Q(t 2 ) and P is a quartic in the same
+variables.
+To specify the stitching mτ we use a list of disjoint subsets τ i of the label set. For simplicity, after
+stitching all components in τ i are renamed i. To improve clarity, disjoint union is written as juxtaposition.
+
+The program
+Introducing the canonical form, disjoint union and some utilities:
+
+The program for stitching, implementing Lemma 5:
+
+The values of ZWq on the fundamental tangles:
+
+13
+
+Verification of Proposition 1
+The following commands verify the computations required for Proposition 1 and also Section 4.1, the output
+is trivial as expected.
+
+Sample output
+As a sample calculation we apply our algorithm to a snarl diagram of the figure eight knot. The disjoint
+union of the fundamental snarls it is built up from is shown in figure 4.
+
+Figure 4: A diagram for the figure eight knot 41 about to be stitched together from a disjoint union of fundamental
+snarls. Rotation numbers ρ are not listed but should be clear from the picture.
+
+14
+
+

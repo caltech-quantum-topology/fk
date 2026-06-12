@@ -1,0 +1,70 @@
+# FK Computation Configuration Template
+# This is a YAML configuration file for computing FK invariants
+
+# Required: Braid word as a list of integers
+braid:
+  - 2
+  - -3
+  - 2
+  - 3
+  - 3
+  - 3
+  - 3
+  - -2
+  - -1
+  - 2
+  - -3
+  - -1
+  
+# Required: Computation degree (positive integer)
+degree: 3
+
+# Optional: Name for this computation (used for output files if save_data is true)
+# name: my_knot
+
+# Optional: Inversion data
+inversion:
+  0:
+  - -1
+  - -1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - -1
+  1:
+  - -1
+  - -1
+  - -1
+  - -1
+  - 1
+  - -1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - -1
+  - 1
+  - -1
+  - -1
+  - -1
+
+# Optional: Preset configuration (single thread, or parallel)
+# preset: single thread
+
+# Optional: Maximum number of worker processes for parallel computation
+max_workers: 24
+
+# Optional: Number of threads for C++ computation
+threads: 24
+
+# Optional: Enable verbose logging
+# verbose: false
+
+# Optional: Save computation data to files
+save_data: true
+
+# Optional: Weight parameter for stratified calculation
+# weight: 5

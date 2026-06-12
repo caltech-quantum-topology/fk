@@ -1,0 +1,99 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-debug",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-std=c++17",
+                "-g",
+                "-O0",
+                "-Wall",
+                "-Wextra",
+                "cpp/*.cpp",
+                "-o",
+                "build/fk_segments_links"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "dependsOn": "create-build-dir",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "cmake-build-debug",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "build",
+                "--config",
+                "Debug"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "dependsOn": "cmake-configure-debug",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "cmake-configure-debug",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                ".",
+                "-B",
+                "build",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "dependsOn": "create-build-dir",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "create-build-dir",
+            "type": "shell",
+            "command": "mkdir",
+            "args": ["-p", "build"],
+            "group": "build",
+            "presentation": {
+                "echo": false,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "rm",
+            "args": ["-rf", "build"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        }
+    ]
+}

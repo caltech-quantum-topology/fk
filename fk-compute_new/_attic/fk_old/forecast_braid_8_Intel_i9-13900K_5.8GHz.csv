@@ -1,0 +1,11 @@
+# Forecast Table - Braid Length 8
+# Reference CPU: 3.2 GHz (M1 2020)
+# Target CPU: 5.8 GHz
+# Fit Quality (R²): 0.999883
+Degree,Ground_Truth_Time_Seconds,Ground_Truth_Formatted_Time,Ground_Truth_Cycles,Ground_Truth_Formatted_Cycles,Predicted_Time_Seconds,Predicted_Formatted_Time,Status
+25,219.640000,3.66m,702848000000,702.85G,121.180690,2.02m,measured
+26,327.210634,5.45m,1047074029080,1.05T,180.530005,3.01m,predicted
+27,487.666348,8.13m,1560532313201,1.56T,269.057295,4.48m,predicted
+28,726.847737,12.11m,2325912758236,2.33T,401.019441,6.68m,predicted
+29,1083.380612,18.06m,3466817956882,3.47T,597.727234,9.96m,predicted
+30,1614.842073,26.91m,5167494634397,5.17T,890.947351,14.85m,predicted

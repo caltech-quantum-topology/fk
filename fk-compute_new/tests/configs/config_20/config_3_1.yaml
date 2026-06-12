@@ -1,0 +1,7 @@
+name: '3_1'
+braid: [1, 1, 1]
+degree: 21
+save_data: true
+inversion:
+  0: [-1, 1, -1, 1, -1, 1]
+threads: 24
